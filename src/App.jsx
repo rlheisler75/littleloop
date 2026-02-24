@@ -130,7 +130,7 @@ function Modal({ open, onClose, children }) {
 }
 
 // ─── Invite Family Modal ──────────────────────────────────────────────────────
-function InviteFamilyModal({ open, onClose, sitterId, onInvited }) {
+function InviteFamilyModal({ open, onClose, sitterId, sitterName, onInvited }) {
   const [familyName,   setFamilyName]   = useState("");
   const [adminEmail,   setAdminEmail]   = useState("");
   const [childrenStr,  setChildrenStr]  = useState("");
@@ -176,7 +176,12 @@ function InviteFamilyModal({ open, onClose, sitterId, onInvited }) {
         if (kidErr) throw kidErr;
       }
 
-      setAlert({ type:"success", text:`${familyName} invited! They'll get an email when you connect Resend.` });
+      // 4 — Send invite email via Edge Function
+      await supabase.functions.invoke("send-invite", {
+        body: { familyName, parentEmail: adminEmail, sitterName },
+      });
+
+      setAlert({ type:"success", text:`${familyName} invited! An email is on its way to ${adminEmail}.` });
       setTimeout(() => {
         onInvited();
         onClose();
@@ -274,7 +279,7 @@ function FamilyDetail({ family, children, onRefresh }) {
 }
 
 // ─── Families Tab ─────────────────────────────────────────────────────────────
-function FamiliesTab({ sitterId }) {
+function FamiliesTab({ sitterId, sitterName }) {
   const [families,     setFamilies]     = useState([]);
   const [children,     setChildren]     = useState({});  // familyId → []
   const [selected,     setSelected]     = useState(null);
@@ -383,6 +388,7 @@ function FamiliesTab({ sitterId }) {
         open={showInvite}
         onClose={() => setShowInvite(false)}
         sitterId={sitterId}
+        sitterName={sitterName}
         onInvited={() => { loadFamilies(); }}
       />
     </div>
@@ -429,7 +435,7 @@ function Dashboard({ session, onSignOut }) {
 
       {/* Content */}
       <div style={{ flex:1, overflowY:"auto", padding:"22px 20px", maxWidth:800, width:"100%", margin:"0 auto" }}>
-        {tab === "families" && <FamiliesTab sitterId={sitterId} />}
+        {tab === "families" && <FamiliesTab sitterId={sitterId} sitterName={name} />}
 
         {tab === "feed" && (
           <div className="empty-state">
