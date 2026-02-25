@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -1137,6 +1137,469 @@ function SitterFeedWrapper({sitterId}) {
   );
 }
 
+
+// ─── Messages ─────────────────────────────────────────────────────────────────
+
+// New Conversation Modal
+function NewConversationModal({open, onClose, familyId, currentUserId, isSitter, families=[], members, sitterName, sitterAvatar, onCreated}) {
+  const [title, setTitle]       = useState("");
+  const [selected, setSelected] = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [alert, setAlert]       = useState(null);
+
+  function reset(){setTitle("");setSelected([]);setAlert(null);}
+  function close(){if(loading)return;reset();onClose();}
+
+  function toggleMember(m){
+    setSelected(s=>s.find(x=>x.user_id===m.user_id)?s.filter(x=>x.user_id!==m.user_id):[...s,m]);
+  }
+
+  async function create(e){
+    e.preventDefault();
+    if(selected.length===0){setAlert({t:"e",m:"Select at least one person."});return;}
+    setLoading(true);setAlert(null);
+    try{
+      // Create conversation
+      const {data:conv,error:convErr}=await supabase.from("conversations").insert({
+        family_id:selectedFamily||familyId,
+        created_by:currentUserId,
+        title:title.trim()||null,
+      }).select().single();
+      if(convErr) throw convErr;
+
+      // Add all participants (current user + selected)
+      const participants=[
+        {conversation_id:conv.id, user_id:currentUserId, participant_name:isSitter?sitterName:"You", participant_avatar:isSitter?"🌿":sitterAvatar||"👤", is_sitter:isSitter},
+        ...selected.map(m=>({conversation_id:conv.id, user_id:m.user_id, participant_name:m.name, participant_avatar:m.avatar||"👤", is_sitter:false})),
+      ];
+      // If family member starting, also add sitter
+      if(!isSitter){
+        const {data:fam}=await supabase.from("families").select("sitter_id, sitters(name)").eq("id",familyId).single();
+        if(fam?.sitter_id){
+          participants.push({conversation_id:conv.id, user_id:fam.sitter_id, participant_name:fam.sitters?.name||"Sitter", participant_avatar:"🌿", is_sitter:true});
+        }
+      }
+      const {error:partErr}=await supabase.from("conversation_participants").insert(participants);
+      if(partErr) throw partErr;
+
+      reset();onCreated(conv.id);onClose();
+    }catch(err){setAlert({t:"e",m:err.message||"Something went wrong."});}
+    finally{setLoading(false);}
+  }
+
+  const [availableMembers, setAvailableMembers] = useState([]);
+  const [selectedFamily, setSelectedFamily] = useState(familyId||"");
+
+  useEffect(()=>{
+    if(!open) return;
+    setSelectedFamily(familyId||"");
+    setSelected([]);
+  },[open,familyId]);
+
+  useEffect(()=>{
+    if(!selectedFamily) return;
+    async function loadMembers(){
+      const {data}=await supabase.from("members").select("*").eq("family_id",selectedFamily);
+      setAvailableMembers((data||[]).filter(m=>m.user_id&&m.user_id!==currentUserId&&["admin","member"].includes(m.role)));
+    }
+    loadMembers();
+  },[selectedFamily,currentUserId]);
+
+  // Available people to add (exclude current user)
+  const available = availableMembers;
+
+  return (
+    <Modal open={open} onClose={close}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:4}}>New Conversation</div>
+      <p style={{fontSize:12,color:"rgba(255,255,255,.35)",marginBottom:20,lineHeight:1.6}}>
+        {isSitter?"Start a conversation with family members.":"Start a conversation with your sitter and family members."}
+      </p>
+      {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
+      <form onSubmit={create}>
+        {isSitter&&families&&families.length>1&&(
+          <div style={{marginBottom:14}}>
+            <SectionLabel>Family</SectionLabel>
+            <select className="fi" value={selectedFamily} onChange={e=>{setSelectedFamily(e.target.value);setSelected([]);}} style={{marginBottom:0}}>
+              <option value="">Select a family…</option>
+              {families.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
+        )}
+        <Field label="Title (optional)" value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Emma's schedule" required={false} autoComplete="off"/>
+        <div style={{marginBottom:16}}>
+          <SectionLabel>Add people</SectionLabel>
+          {available.length===0
+            ?<p style={{fontSize:12,color:"rgba(255,255,255,.3)",fontStyle:"italic"}}>No other members available yet.</p>
+            :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {available.map(m=>{
+                const sel=!!selected.find(x=>x.user_id===m.user_id);
+                return (
+                  <div key={m.id} onClick={()=>toggleMember(m)}
+                    style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,border:`1px solid ${sel?"#7BAAEE":"rgba(255,255,255,.07)"}`,background:sel?"rgba(111,163,232,.1)":"rgba(255,255,255,.03)",cursor:"pointer"}}>
+                    <span style={{fontSize:22}}>{m.avatar||"👤"}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:500}}>{m.name}</div>
+                      <div style={{fontSize:11,color:"rgba(255,255,255,.3)"}}>{ROLE_LABELS[m.role]}</div>
+                    </div>
+                    <span style={{fontSize:16}}>{sel?"✅":"○"}</span>
+                  </div>
+                );
+              })}
+            </div>
+          }
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          <button type="submit" className="bp full" disabled={loading||selected.length===0}>
+            {loading?<><Spinner/> Creating…</>:"Start Conversation"}
+          </button>
+          <button type="button" className="bg" onClick={close}>Cancel</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// Add Participant Modal
+function AddParticipantModal({open, onClose, convId, familyId, currentParticipants, currentUserId, isSitter, onAdded}) {
+  const [members, setMembers]   = useState([]);
+  const [selected, setSelected] = useState([]);
+  const [loading, setLoading]   = useState(false);
+
+  useEffect(()=>{
+    if(!open) return;
+    async function load(){
+      const {data}=await supabase.from("members").select("*").eq("family_id",familyId);
+      setMembers((data||[]).filter(m=>
+        m.user_id &&
+        m.user_id!==currentUserId &&
+        ["admin","member"].includes(m.role) &&
+        !currentParticipants.find(p=>p.user_id===m.user_id)
+      ));
+    }
+    load();
+  },[open,familyId,currentParticipants]);
+
+  async function add(){
+    if(selected.length===0) return;
+    setLoading(true);
+    await supabase.from("conversation_participants").insert(
+      selected.map(m=>({conversation_id:convId, user_id:m.user_id, participant_name:m.name, participant_avatar:m.avatar||"👤", is_sitter:false}))
+    );
+    setLoading(false);setSelected([]);onAdded();onClose();
+  }
+
+  function toggle(m){setSelected(s=>s.find(x=>x.user_id===m.user_id)?s.filter(x=>x.user_id!==m.user_id):[...s,m]);}
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:16}}>Add People</div>
+      {members.length===0
+        ?<p style={{fontSize:13,color:"rgba(255,255,255,.35)",marginBottom:20}}>Everyone is already in this conversation.</p>
+        :<div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+          {members.map(m=>{
+            const sel=!!selected.find(x=>x.user_id===m.user_id);
+            return (
+              <div key={m.id} onClick={()=>toggle(m)}
+                style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,border:`1px solid ${sel?"#7BAAEE":"rgba(255,255,255,.07)"}`,background:sel?"rgba(111,163,232,.1)":"rgba(255,255,255,.03)",cursor:"pointer"}}>
+                <span style={{fontSize:22}}>{m.avatar||"👤"}</span>
+                <span style={{fontSize:13,fontWeight:500,flex:1}}>{m.name}</span>
+                <span style={{fontSize:16}}>{sel?"✅":"○"}</span>
+              </div>
+            );
+          })}
+        </div>
+      }
+      <div style={{display:"flex",gap:10}}>
+        <button className="bp full" onClick={add} disabled={loading||selected.length===0}>{loading?<Spinner/>:"Add"}</button>
+        <button className="bg" onClick={onClose}>Cancel</button>
+      </div>
+    </Modal>
+  );
+}
+
+// Conversation Thread
+function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, participants, onParticipantsChanged}) {
+  const [messages, setMessages]     = useState([]);
+  const [newMsg, setNewMsg]         = useState("");
+  const [sending, setSending]       = useState(false);
+  const [showAdd, setShowAdd]       = useState(false);
+  const [loading, setLoading]       = useState(true);
+  const bottomRef                   = useRef(null);
+  const senderName                  = isSitter ? "Your Sitter" : (participants.find(p=>p.user_id===currentUserId)?.participant_name||"You");
+  const senderAvatar                = isSitter ? "🌿" : (participants.find(p=>p.user_id===currentUserId)?.participant_avatar||"👤");
+
+  const load = useCallback(async()=>{
+    const {data}=await supabase.from("messages").select("*").eq("conversation_id",conv.id).order("created_at",{ascending:true});
+    setMessages(data||[]);
+    setLoading(false);
+    // Mark seen
+    await supabase.from("message_seen").upsert({conversation_id:conv.id, user_id:currentUserId, last_seen_at:new Date().toISOString()},{onConflict:"conversation_id,user_id"});
+    setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),100);
+  },[conv.id,currentUserId]);
+
+  useEffect(()=>{load();},[load]);
+
+  useEffect(()=>{
+    const sub=supabase.channel(`conv-${conv.id}`)
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:`conversation_id=eq.${conv.id}`},()=>load())
+      .subscribe();
+    return()=>supabase.removeChannel(sub);
+  },[conv.id]);
+
+  async function send(){
+    if(!newMsg.trim()) return;
+    setSending(true);
+    await supabase.from("messages").insert({
+      conversation_id:conv.id,
+      sender_id:currentUserId,
+      sender_name:senderName,
+      sender_avatar:senderAvatar,
+      is_sitter:isSitter,
+      text:newMsg.trim(),
+    });
+    setNewMsg("");setSending(false);
+  }
+
+  const convTitle = conv.title || participants.filter(p=>p.user_id!==currentUserId).map(p=>p.participant_name).join(", ") || "Conversation";
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 160px)",minHeight:400}}>
+      {/* Thread header */}
+      <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:"1px solid rgba(255,255,255,.06)",marginBottom:12,flexShrink:0}}>
+        <button onClick={onBack} className="bg" style={{padding:"6px 10px",fontSize:12}}>← Back</button>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:600,fontSize:14}}>{convTitle}</div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,.3)"}}>
+            {participants.map(p=>p.participant_name).join(", ")}
+          </div>
+        </div>
+        <button onClick={()=>setShowAdd(true)} className="bg" style={{padding:"6px 10px",fontSize:12}}>+ Add</button>
+      </div>
+
+      {/* Messages */}
+      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8,paddingBottom:8}}>
+        {loading
+          ?<div style={{textAlign:"center",padding:40}}><Spinner size={20}/></div>
+          :messages.length===0
+            ?<div style={{textAlign:"center",padding:40,color:"rgba(255,255,255,.25)",fontSize:13}}>No messages yet. Say hello! 👋</div>
+            :messages.map((m,i)=>{
+              const isMe = m.sender_id===currentUserId;
+              const showAvatar = i===0||messages[i-1].sender_id!==m.sender_id;
+              return (
+                <div key={m.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",alignItems:"flex-end",gap:8}}>
+                  {!isMe&&showAvatar&&<span style={{fontSize:22,flexShrink:0}}>{m.sender_avatar}</span>}
+                  {!isMe&&!showAvatar&&<span style={{width:30,flexShrink:0}}/>}
+                  <div style={{maxWidth:"70%"}}>
+                    {showAvatar&&!isMe&&<div style={{fontSize:10,color:"rgba(255,255,255,.3)",marginBottom:3,marginLeft:2}}>{m.sender_name}</div>}
+                    <div style={{padding:"9px 13px",borderRadius:isMe?"16px 16px 4px 16px":"16px 16px 16px 4px",background:isMe?"linear-gradient(135deg,#3A6FD4,#2550A8)":"rgba(255,255,255,.08)",fontSize:13,lineHeight:1.5,color:"#E4EAF4",wordBreak:"break-word"}}>
+                      {m.text}
+                    </div>
+                    <div style={{fontSize:10,color:"rgba(255,255,255,.2)",marginTop:3,textAlign:isMe?"right":"left"}}>{timeAgo(m.created_at)}</div>
+                  </div>
+                </div>
+              );
+            })
+        }
+        <div ref={bottomRef}/>
+      </div>
+
+      {/* Input */}
+      <div style={{display:"flex",gap:8,paddingTop:12,borderTop:"1px solid rgba(255,255,255,.06)",flexShrink:0}}>
+        <input className="fi" value={newMsg} onChange={e=>setNewMsg(e.target.value)}
+          placeholder="Type a message…" style={{marginBottom:0,flex:1}}
+          onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}/>
+        <button className="bp" onClick={send} disabled={sending||!newMsg.trim()} style={{padding:"8px 16px",flexShrink:0}}>
+          {sending?<Spinner/>:"Send"}
+        </button>
+      </div>
+
+      <AddParticipantModal open={showAdd} onClose={()=>setShowAdd(false)}
+        convId={conv.id} familyId={familyId} currentParticipants={participants}
+        currentUserId={currentUserId} isSitter={isSitter}
+        onAdded={()=>{onParticipantsChanged();setShowAdd(false);}}/>
+    </div>
+  );
+}
+
+// Messages Tab
+function MessagesTab({currentUserId, isSitter, families, memberInfo}) {
+  const [convs, setConvs]           = useState([]);
+  const [participants, setParticipants] = useState({});
+  const [lastMessages, setLastMessages] = useState({});
+  const [unseenCounts, setUnseenCounts] = useState({});
+  const [selectedConv, setSelectedConv] = useState(null);
+  const [selectedFamilyId, setSelectedFamilyId] = useState(null);
+  const [showNew, setShowNew]       = useState(false);
+  const [loading, setLoading]       = useState(true);
+
+  // For sitter: all families; for family: their family
+  const familyId = isSitter ? null : memberInfo?.family_id;
+  const familyList = isSitter ? families : (memberInfo ? [{id:memberInfo.family_id,name:"My Family"}] : []);
+
+  const [newConvFamilyId, setNewConvFamilyId] = useState(null);
+
+  const load = useCallback(async()=>{
+    setLoading(true);
+    let query = supabase.from("conversations").select("*").order("updated_at",{ascending:false});
+    if(!isSitter && familyId) query=query.eq("family_id",familyId);
+    const {data:convData}=await query;
+    const filtered=(convData||[]).filter(c=>isSitter||familyList.find(f=>f.id===c.family_id));
+    setConvs(filtered);
+
+    if(filtered.length>0){
+      const ids=filtered.map(c=>c.id);
+
+      // Load participants
+      const {data:parts}=await supabase.from("conversation_participants").select("*").in("conversation_id",ids);
+      const pg={};(parts||[]).forEach(p=>{if(!pg[p.conversation_id])pg[p.conversation_id]=[];pg[p.conversation_id].push(p);});
+      setParticipants(pg);
+
+      // Load last message per conversation
+      const lastMsgs={};
+      await Promise.all(ids.map(async id=>{
+        const {data}=await supabase.from("messages").select("*").eq("conversation_id",id).order("created_at",{ascending:false}).limit(1);
+        if(data?.[0]) lastMsgs[id]=data[0];
+      }));
+      setLastMessages(lastMsgs);
+
+      // Load unseen counts
+      const {data:seen}=await supabase.from("message_seen").select("*").eq("user_id",currentUserId).in("conversation_id",ids);
+      const seenMap={};(seen||[]).forEach(s=>{seenMap[s.conversation_id]=s.last_seen_at;});
+      const unseen={};
+      await Promise.all(ids.map(async id=>{
+        const since=seenMap[id];
+        if(!since){const {count}=await supabase.from("messages").select("*",{count:"exact",head:true}).eq("conversation_id",id).neq("sender_id",currentUserId);unseen[id]=count||0;}
+        else{const {count}=await supabase.from("messages").select("*",{count:"exact",head:true}).eq("conversation_id",id).gt("created_at",since).neq("sender_id",currentUserId);unseen[id]=count||0;}
+      }));
+      setUnseenCounts(unseen);
+    }
+    setLoading(false);
+  },[currentUserId,isSitter,familyId]);
+
+  useEffect(()=>{load();},[load]);
+
+  // Realtime for new messages
+  useEffect(()=>{
+    const sub=supabase.channel("messages-list")
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},()=>load())
+      .subscribe();
+    return()=>supabase.removeChannel(sub);
+  },[]);
+
+  const totalUnseen=Object.values(unseenCounts).reduce((a,b)=>a+b,0);
+  const selectedConvData=convs.find(c=>c.id===selectedConv);
+  const selectedParts=participants[selectedConv]||[];
+
+  const sitterName = isSitter ? "Your Sitter" : "";
+
+  if(loading) return <div style={{textAlign:"center",padding:"60px 0"}}><Spinner size={24}/></div>;
+
+  // Show thread view
+  if(selectedConv&&selectedConvData) return (
+    <ConversationThread
+      conv={selectedConvData}
+      currentUserId={currentUserId}
+      isSitter={isSitter}
+      familyId={selectedConvData.family_id}
+      participants={selectedParts}
+      onBack={()=>{setSelectedConv(null);load();}}
+      onParticipantsChanged={load}
+    />
+  );
+
+  // Conversation list
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600}}>
+          Messages {totalUnseen>0&&<span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:"#3A6FD4",fontSize:11,fontWeight:700,marginLeft:6}}>{totalUnseen}</span>}
+        </div>
+        <button className="bp" onClick={()=>{setNewConvFamilyId(isSitter?(families[0]?.id||null):familyId);setShowNew(true);}}>+ New</button>
+      </div>
+
+      {convs.length===0
+        ?<div className="es"><div className="ic">💬</div><h3>No conversations yet</h3><p>Start a conversation with {isSitter?"a family":"your sitter"}.</p><button className="bp" onClick={()=>{setNewConvFamilyId(isSitter?(families[0]?.id||null):familyId);setShowNew(true);}}>+ Start a conversation</button></div>
+        :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {convs.map(c=>{
+            const parts=participants[c.id]||[];
+            const last=lastMessages[c.id];
+            const unseen=unseenCounts[c.id]||0;
+            const title=c.title||parts.filter(p=>p.user_id!==currentUserId).map(p=>p.participant_name).join(", ")||"Conversation";
+            const fam=familyList.find(f=>f.id===c.family_id);
+            return (
+              <div key={c.id} className="fc" onClick={()=>setSelectedConv(c.id)}
+                style={{padding:"14px 16px"}}>
+                <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+                  <div style={{width:40,height:40,borderRadius:12,background:"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>💬</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:3}}>
+                      <div style={{fontWeight:600,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
+                        {title}
+                        {unseen>0&&<span style={{background:"#3A6FD4",borderRadius:"50%",width:18,height:18,fontSize:10,fontWeight:700,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{unseen}</span>}
+                      </div>
+                      {last&&<div style={{fontSize:10,color:"rgba(255,255,255,.25)",flexShrink:0}}>{timeAgo(last.created_at)}</div>}
+                    </div>
+                    {isSitter&&fam&&<div style={{fontSize:10,color:"rgba(111,163,232,.6)",marginBottom:3}}>{fam.name}</div>}
+                    {last
+                      ?<div style={{fontSize:12,color:"rgba(255,255,255,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><strong style={{color:"rgba(255,255,255,.55)"}}>{last.sender_id===currentUserId?"You":last.sender_name}:</strong> {last.text}</div>
+                      :<div style={{fontSize:12,color:"rgba(255,255,255,.25)",fontStyle:"italic"}}>No messages yet</div>
+                    }
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      }
+
+      <NewConversationModal
+        open={showNew}
+        onClose={()=>setShowNew(false)}
+        familyId={newConvFamilyId}
+        currentUserId={currentUserId}
+        isSitter={isSitter}
+        families={familyList}
+        members={[]}
+        sitterName={sitterName}
+        sitterAvatar="🌿"
+        onCreated={(id)=>{setSelectedConv(id);load();}}
+      />
+    </div>
+  );
+}
+
+// ─── Sitter Messages Wrapper ──────────────────────────────────────────────────
+function SitterMessagesWrapper({sitterId, sitterName}) {
+  const [families, setFamilies] = useState([]);
+  const [allMembers, setAllMembers] = useState({});
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(()=>{
+    async function load(){
+      const {data:fams}=await supabase.from("families").select("*").eq("sitter_id",sitterId).neq("status","inactive");
+      setFamilies(fams||[]);
+      if(fams?.length){
+        const {data:mems}=await supabase.from("members").select("*").in("family_id",fams.map(f=>f.id));
+        const g={};(mems||[]).forEach(m=>{if(!g[m.family_id])g[m.family_id]=[];g[m.family_id].push(m);});
+        setAllMembers(g);
+      }
+      setLoading(false);
+    }
+    load();
+  },[sitterId]);
+
+  if(loading) return <div style={{textAlign:"center",padding:"60px 0"}}><Spinner size={24}/></div>;
+  if(families.length===0) return <div className="es"><div className="ic">💬</div><h3>No families yet</h3><p>Invite a family first to start messaging.</p></div>;
+
+  return <MessagesTab currentUserId={sitterId} isSitter={true} families={families} memberInfo={null} allMembers={allMembers} sitterName={sitterName}/>;
+}
+
+// ─── Family Messages Wrapper ──────────────────────────────────────────────────
+function MessagesTabWrapper({currentUserId, member, family, memberName, memberAvatar}) {
+  if(!member||!family) return <div className="es"><div className="ic">💬</div><h3>Not connected</h3><p>No family connected yet.</p></div>;
+  return <MessagesTab currentUserId={currentUserId} isSitter={false} families={[family]} memberInfo={{...member, family_id:family.id}} allMembers={{[family.id]:[]}} sitterName="Your Sitter" memberName={memberName} memberAvatar={memberAvatar}/>;
+}
+
 // ─── Sitter Dashboard ─────────────────────────────────────────────────────────
 function SitterDashboard({session,onSignOut}) {
   const [tab,setTab]=useState("families");
@@ -1163,7 +1626,7 @@ function SitterDashboard({session,onSignOut}) {
         {tab==="families"&&<FamiliesTab sitterId={sitterId} sitterName={name}/>}
         {tab==="feed"&&<SitterFeedWrapper sitterId={sitterId}/>}
         {tab==="invoices"&&<div className="es"><div className="ic">💰</div><h3>Invoices coming soon</h3><p>Create and track invoices with payment history.</p></div>}
-        {tab==="messages"&&<div className="es"><div className="ic">💬</div><h3>Messages coming soon</h3><p>Private messaging with each family.</p></div>}
+        {tab==="messages"&&<SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
       </div>
     </div>
   );
@@ -1318,7 +1781,7 @@ function ParentDashboard({session,onSignOut}) {
 
         {tab==="feed"&&family&&<FeedTab familyId={family.id} sitterId={null} memberId={member?.id} isSitter={false} children={children} unseenCount={0} onMarkSeen={null}/>}
         {tab==="feed"&&!family&&<div className="es"><div className="ic">🌸</div><h3>Not connected</h3><p>No family connected yet.</p></div>}
-        {tab==="messages"&&<div className="es"><div className="ic">💬</div><h3>Messages coming soon</h3><p>Chat directly with your sitter.</p></div>}
+        {tab==="messages"&&member&&<MessagesTabWrapper currentUserId={session.user.id} member={member} family={family} memberName={name} memberAvatar={member?.avatar||"👤"}/>}
         {tab==="invoices"&&<div className="es"><div className="ic">💰</div><h3>Invoices coming soon</h3><p>View and pay invoices from your sitter.</p></div>}
       </div>
 
