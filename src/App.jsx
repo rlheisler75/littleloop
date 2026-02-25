@@ -283,21 +283,21 @@ function InviteFamilyModal({open,onClose,sitterId,sitterName,onInvited}) {
         .maybeSingle();
 
       if(existing){
-        if(existing.sitter_id && existing.sitter_id !== sitterId){
+        if(existing.sitter_id && existing.sitter_id !== sitterId && existing.status !== 'inactive'){
           setAlert({type:"warn",text:"This family already has a sitter. The family admin or current sitter must remove them before you can be added."});
           setLoading(false); return;
         }
-        if(existing.sitter_id === sitterId){
+        if(existing.sitter_id === sitterId && existing.status !== 'inactive'){
           setAlert({type:"info",text:"You're already connected to this family."});
           setLoading(false); return;
         }
-        // Family exists but no sitter — claim it
+        // Family exists but inactive or no sitter — claim it
         const {error} = await supabase
           .from("families")
           .update({sitter_id:sitterId, status:"active"})
           .eq("id", existing.id);
         if(error) throw error;
-        setAlert({type:"success",text:`You've been connected to the ${existing.name} family!`});
+        setAlert({type:"success",text:`You've been reconnected to the ${existing.name} family!`});
         setTimeout(()=>{onInvited();onClose();setFamilyName("");setAdminEmail("");setChildrenStr("");setAlert(null);},1800);
         return;
       }
@@ -379,7 +379,7 @@ function FamilyDetail({family,children,sitterId,onRefresh,onDeactivate}) {
     setLoading(true);
     const {error} = await supabase
       .from("families")
-      .update({sitter_id:null, status:"inactive"})
+      .update({status:"inactive"})
       .eq("id", family.id);
     setLoading(false);
     setConfirmRemove(false);
@@ -391,7 +391,7 @@ function FamilyDetail({family,children,sitterId,onRefresh,onDeactivate}) {
     setLoading(true);
     const {error} = await supabase
       .from("families")
-      .update({sitter_id:null, status:"inactive"})
+      .update({status:"inactive"})
       .eq("id", family.id)
       .eq("sitter_id", sitterId);
     setLoading(false);
@@ -463,6 +463,7 @@ function FamiliesTab({sitterId,sitterName}) {
     const {data:fams} = await supabase
       .from("families").select("*")
       .eq("sitter_id",sitterId)
+      .neq("status","inactive")
       .order("created_at",{ascending:false});
 
     setFamilies(fams||[]);
