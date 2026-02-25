@@ -810,8 +810,9 @@ function NewPostModal({open,onClose,familyId,sitterId,children,onPosted}) {
         const path=`${familyId}/${Date.now()}.${ext}`;
         const {error:upErr}=await supabase.storage.from("post-photos").upload(path,photo,{contentType:photo.type});
         if(upErr) throw upErr;
-        const {data:{publicUrl}}=supabase.storage.from("post-photos").getPublicUrl(path);
-        photo_url=publicUrl;
+        const urlResult=supabase.storage.from("post-photos").getPublicUrl(path);
+        photo_url=urlResult?.data?.publicUrl||null;
+        if(!photo_url) throw new Error("Could not get photo URL. Check that the post-photos bucket is set to public in Supabase Storage.");
       }
       const {data:post,error:postErr}=await supabase.from("posts").insert({
         family_id:familyId,author_id:sitterId,author_role:"sitter",
