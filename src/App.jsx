@@ -2533,6 +2533,17 @@ export default function App() {
   },[]);
 
   useEffect(()=>{
+    // Check if this is a password recovery redirect via URL hash
+    const hash = window.location.hash;
+    if(hash.includes("type=recovery")) {
+      setUserRole("__reset__");
+      // Let Supabase process the token from hash
+      supabase.auth.getSession().then(({data:{session}})=>{
+        setSession(session??null);
+      });
+      return;
+    }
+
     supabase.auth.getSession().then(({data:{session}})=>{
       setSession(session??null);
       if(session) setUserRole(session.user.user_metadata?.role||"sitter");
@@ -2558,8 +2569,8 @@ export default function App() {
 
   const signOut=()=>supabase.auth.signOut();
 
-  if(!session) return <><Bg/><AuthForm portal={portal}/></>;
   if(userRole==="__reset__") return <><Bg/><ResetPasswordForm/></>;
+  if(!session) return <><Bg/><AuthForm portal={portal}/></>;
   if(userRole==="parent") return <><Bg/><ParentDashboard session={session} onSignOut={signOut}/></>;
   return <><Bg/><SitterDashboard session={session} onSignOut={signOut}/></>;
 }
