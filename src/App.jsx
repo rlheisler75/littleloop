@@ -1174,7 +1174,7 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
 
   async function create(e){
     e.preventDefault();
-    if(selected.length===0){setAlert({t:"e",m:"Select at least one person."});return;}
+    if(isSitter && selected.length===0){setAlert({t:"e",m:"Select at least one family member."});return;}
     setLoading(true);setAlert(null);
     try{
       // Create conversation
@@ -1192,7 +1192,7 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
       ];
       // If family member starting, also add sitter
       if(!isSitter){
-        const {data:fam}=await supabase.from("families").select("sitter_id, sitters(name)").eq("id",familyId).single();
+        const {data:fam}=await supabase.from("families").select("sitter_id, sitters(name)").eq("id",selectedFamily||familyId).single();
         if(fam?.sitter_id){
           participants.push({conversation_id:conv.id, user_id:fam.sitter_id, participant_name:fam.sitters?.name||"Sitter", participant_avatar:"🌿", is_sitter:true});
         }
@@ -1245,9 +1245,10 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
         )}
         <Field label="Title (optional)" value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Emma's schedule" required={false} autoComplete="off"/>
         <div style={{marginBottom:16}}>
-          <SectionLabel>Add people</SectionLabel>
+          <SectionLabel>{isSitter?"Add family members":"Add more family members (optional)"}</SectionLabel>
+          {!isSitter&&<p style={{fontSize:11,color:"rgba(88,158,122,.8)",marginBottom:8}}>✓ Your sitter will be included automatically</p>}
           {available.length===0
-            ?<p style={{fontSize:12,color:"rgba(255,255,255,.3)",fontStyle:"italic"}}>No other members available yet.</p>
+            ?<p style={{fontSize:12,color:"rgba(255,255,255,.3)",fontStyle:"italic"}}>{isSitter?"No family members available yet.":"No other members to add."}</p>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
               {available.map(m=>{
                 const sel=!!selected.find(x=>x.user_id===m.user_id);
@@ -1267,7 +1268,7 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
           }
         </div>
         <div style={{display:"flex",gap:10}}>
-          <button type="submit" className="bp full" disabled={loading||selected.length===0}>
+          <button type="submit" className="bp full" disabled={loading||(isSitter&&selected.length===0)}>
             {loading?<><Spinner/> Creating…</>:"Start Conversation"}
           </button>
           <button type="button" className="bg" onClick={close}>Cancel</button>
