@@ -2279,6 +2279,52 @@ function PayButtons({sitter, invoice}) {
     </div>
   );
 }
+
+// ─── Reset Password Form ──────────────────────────────────────────────────────
+function ResetPasswordForm() {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm]   = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [alert, setAlert]       = useState(null);
+  const [done, setDone]         = useState(false);
+
+  async function submit(e){
+    e.preventDefault();
+    if(password.length<6){setAlert({t:"e",m:"Password must be at least 6 characters."});return;}
+    if(password!==confirm){setAlert({t:"e",m:"Passwords don't match."});return;}
+    setLoading(true);setAlert(null);
+    const {error}=await supabase.auth.updateUser({password});
+    setLoading(false);
+    if(error){setAlert({t:"e",m:error.message});return;}
+    setDone(true);
+    // Sign out and redirect to login after 2 seconds
+    setTimeout(()=>{supabase.auth.signOut();},2000);
+  }
+
+  return (
+    <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div className="mb" style={{maxWidth:420,width:"100%",padding:32}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div className="leaf" style={{fontSize:36,marginBottom:8}}>🌿</div>
+          <div className="logo-text" style={{fontSize:26,marginBottom:6}}>littleloop</div>
+          <p style={{fontSize:13,color:"rgba(255,255,255,.4)"}}>Set your new password</p>
+        </div>
+        {done
+          ?<div className="al al-s">Password updated! Redirecting to login…</div>
+          :<form onSubmit={submit}>
+            {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
+            <Field label="New password" value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="At least 6 characters"/>
+            <Field label="Confirm password" value={confirm} onChange={e=>setConfirm(e.target.value)} type="password" placeholder="Repeat password"/>
+            <button type="submit" className="bp full" disabled={loading} style={{marginTop:8}}>
+              {loading?<><Spinner/> Saving…</>:"Set Password"}
+            </button>
+          </form>
+        }
+      </div>
+    </div>
+  );
+}
+
 // ─── Sitter Dashboard ─────────────────────────────────────────────────────────
 function SitterDashboard({session,onSignOut}) {
   const [tab,setTab]=useState("families");
@@ -2491,9 +2537,10 @@ export default function App() {
       setSession(session??null);
       if(session) setUserRole(session.user.user_metadata?.role||"sitter");
     });
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,session)=>{
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
       setSession(session??null);
       if(session) setUserRole(session.user.user_metadata?.role||"sitter");
+      if(event==="PASSWORD_RECOVERY") setUserRole("__reset__");
     });
     return()=>subscription.unsubscribe();
   },[]);
@@ -2512,6 +2559,7 @@ export default function App() {
   const signOut=()=>supabase.auth.signOut();
 
   if(!session) return <><Bg/><AuthForm portal={portal}/></>;
+  if(userRole==="__reset__") return <><Bg/><ResetPasswordForm/></>;
   if(userRole==="parent") return <><Bg/><ParentDashboard session={session} onSignOut={signOut}/></>;
   return <><Bg/><SitterDashboard session={session} onSignOut={signOut}/></>;
 }
