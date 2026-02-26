@@ -1749,7 +1749,7 @@ function LineItemRow({item, children, onChange, onRemove, index}) {
     <div style={{padding:"12px 14px",borderRadius:12,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",marginBottom:8}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
         <div>
-          <label className="fl">Date</label>
+          <label className="fl">{item.rate_type==="flat"?"Start date":"Date"}</label>
           <input className="fi" type="date" value={item.service_date} onChange={e=>onChange(index,{service_date:e.target.value})} style={{marginBottom:0}}/>
         </div>
         <div>
@@ -1763,6 +1763,12 @@ function LineItemRow({item, children, onChange, onRemove, index}) {
           </select>
         </div>
       </div>
+      {item.rate_type==="flat"&&(
+        <div style={{marginBottom:8}}>
+          <label className="fl">End date</label>
+          <input className="fi" type="date" value={item.end_date||""} onChange={e=>onChange(index,{end_date:e.target.value})} style={{marginBottom:0}} min={item.service_date}/>
+        </div>
+      )}
       <div style={{display:"grid",gridTemplateColumns:"100px 1fr 1fr auto",gap:8,alignItems:"end"}}>
         <div>
           <label className="fl">Type</label>
@@ -1804,7 +1810,7 @@ function InvoiceModal({open, onClose, sitterId, families, allFamilyChildren, onS
   const [loading, setLoading]     = useState(false);
   const [alert, setAlert]         = useState(null);
 
-  function blankItem(){return {service_date:new Date().toISOString().slice(0,10),child_id:"",child_name:"",rate_type:"hourly",hours:0,rate:0,amount:0,description:""};}
+  function blankItem(){return {service_date:new Date().toISOString().slice(0,10),end_date:"",child_id:"",child_name:"",rate_type:"hourly",hours:0,rate:0,amount:0,description:""};}
 
   useEffect(()=>{
     if(!open) return;
@@ -1860,7 +1866,7 @@ function InvoiceModal({open, onClose, sitterId, families, allFamilyChildren, onS
       }
       const {error:itemErr}=await supabase.from("invoice_items").insert(
         items.map((it,i)=>({
-          invoice_id:invId,service_date:it.service_date,
+          invoice_id:invId,service_date:it.service_date,end_date:it.end_date||null,
           child_id:it.child_id||null,child_name:it.child_name,
           rate_type:it.rate_type,hours:it.hours||null,rate:it.rate,
           amount:it.amount,description:it.description||null,sort_order:i,
@@ -2014,7 +2020,7 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
   <tbody>
     ${items.map(it=>`
     <tr>
-      <td>${fmtDate(it.service_date)}</td>
+      <td>${it.end_date&&it.end_date!==it.service_date?fmtDate(it.service_date)+' – '+fmtDate(it.end_date):fmtDate(it.service_date)}</td>
       <td>${it.child_name}</td>
       <td>${it.description||"—"}</td>
       <td style="text-transform:capitalize">${it.rate_type}</td>
