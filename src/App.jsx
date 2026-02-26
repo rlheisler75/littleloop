@@ -1504,8 +1504,6 @@ function MessagesTab({currentUserId, isSitter, families=[], memberInfo, allMembe
   const selectedConvData=convs.find(c=>c.id===selectedConv);
   const selectedParts=participants[selectedConv]||[];
 
-  const sitterName = isSitter ? "Your Sitter" : "";
-
   if(loading) return <div style={{textAlign:"center",padding:"60px 0"}}><Spinner size={24}/></div>;
 
   // Show thread view
