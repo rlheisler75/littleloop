@@ -64,6 +64,16 @@ const CSS = `
   .note-card{padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);margin-bottom:8px}
   .chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:5px 11px;font-size:12px}
   ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+
+  @media(max-width:600px){
+    .mb{padding:20px 16px;max-height:95vh;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;width:100%;max-width:100%}
+    .mo{align-items:flex-end;padding:0}
+    .two-col{grid-template-columns:1fr!important}
+    .hide-mobile{display:none!important}
+    .nav-tab{font-size:11px}
+    .logo-text{font-size:16px!important}
+    .bp{font-size:12px;padding:9px 14px}
+  }
 `;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -670,8 +680,8 @@ function SitterFamilyDetail({family,children,sitterId,onDeactivate}) {
           :<div style={{display:"flex",flexWrap:"wrap",gap:8}}>
             {children.map(c=>(
               <button key={c.id} onClick={()=>setSelectedChild(c)}
-                style={{display:"flex",alignItems:"center",gap:7,background:`${c.color||"#8B78D4"}18`,borderRadius:20,padding:"6px 14px",border:`1px solid ${c.color||"#8B78D4"}44`,cursor:"pointer",color:"#E4EAF4"}}>
-                <span style={{fontSize:16}}>{c.avatar||"🌟"}</span>
+                style={{display:"flex",alignItems:"center",gap:7,background:`${c.color||"#8B78D4"}18`,borderRadius:20,padding:"8px 14px",border:`1px solid ${c.color||"#8B78D4"}44`,cursor:"pointer",color:"#E4EAF4",minWidth:0}}>
+                <span style={{fontSize:18}}>{c.avatar||"🌟"}</span>
                 <span style={{fontSize:13,fontWeight:500}}>{c.name}</span>
               </button>
             ))}
@@ -727,23 +737,27 @@ function FamiliesTab({sitterId,sitterName}) {
 
       {families.length===0
         ?<div className="es"><div className="ic">👨‍👩‍👧</div><h3>No families yet</h3><p>Invite your first family to get started.</p><button className="bp" onClick={()=>setShowInvite(true)}>+ Invite your first family</button></div>
-        :<div style={{display:"grid",gridTemplateColumns:"200px 1fr",gap:14,alignItems:"start"}}>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {families.map(f=>(
-              <div key={f.id} className={`fc ${selected===f.id?"active":""}`} onClick={()=>setSelected(f.id)}>
-                <div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{f.name}</div>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <span style={{fontSize:11,color:"rgba(255,255,255,.3)"}}>{(kids[f.id]||[]).length} child{(kids[f.id]||[]).length!==1?"ren":""}</span>
-                  <span className={`sb sb-${f.status==="active"?"a":"p"}`} style={{fontSize:9}}>{f.status}</span>
+        :<div>
+          {/* Mobile: show detail if selected, else show list */}
+          {selected && selFam
+            ? <div>
+                <button className="bg" style={{marginBottom:12,fontSize:12,padding:"6px 12px"}} onClick={()=>setSelected(null)}>← All Families</button>
+                <div className="card" style={{padding:22}}>
+                  <SitterFamilyDetail family={selFam} children={kids[selected]||[]} sitterId={sitterId} onDeactivate={()=>{setSelected(null);load();}}/>
                 </div>
               </div>
-            ))}
-          </div>
-          {selFam&&(
-            <div className="card" style={{padding:22}}>
-              <SitterFamilyDetail family={selFam} children={kids[selected]||[]} sitterId={sitterId} onDeactivate={()=>{setSelected(null);load();}}/>
-            </div>
-          )}
+            : <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {families.map(f=>(
+                  <div key={f.id} className={`fc ${selected===f.id?"active":""}`} onClick={()=>setSelected(f.id)}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <div style={{fontWeight:600,fontSize:14}}>{f.name}</div>
+                      <span className={`sb sb-${f.status==="active"?"a":"p"}`} style={{fontSize:9}}>{f.status}</span>
+                    </div>
+                    <div style={{fontSize:12,color:"rgba(255,255,255,.3)",marginTop:3}}>{(kids[f.id]||[]).length} child{(kids[f.id]||[]).length!==1?"ren":""}</div>
+                  </div>
+                ))}
+              </div>
+          }
         </div>
       }
       <InviteFamilyModal open={showInvite} onClose={()=>setShowInvite(false)} sitterId={sitterId} sitterName={sitterName} onInvited={load}/>
@@ -943,7 +957,7 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
     <div className="card" style={{padding:0,marginBottom:14,overflow:"hidden"}}>
       {post.photo_url&&(
         <div style={{cursor:"pointer"}} onClick={()=>setExpanded(!expanded)}>
-          <img src={post.photo_url} alt="post" style={{width:"100%",maxHeight:expanded?800:320,objectFit:"cover",display:"block",transition:"max-height .3s"}}/>
+          <img src={post.photo_url} alt="post" style={{width:"100%",maxHeight:expanded?"100vw":280,objectFit:"cover",display:"block",transition:"max-height .3s"}}/>
         </div>
       )}
       <div style={{padding:"14px 16px"}}>
@@ -1389,7 +1403,7 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
                 <div key={m.id} style={{display:"flex",flexDirection:isMe?"row-reverse":"row",alignItems:"flex-end",gap:8}}>
                   {!isMe&&showAvatar&&<span style={{fontSize:22,flexShrink:0}}>{m.sender_avatar}</span>}
                   {!isMe&&!showAvatar&&<span style={{width:30,flexShrink:0}}/>}
-                  <div style={{maxWidth:"70%"}}>
+                  <div style={{maxWidth:"80%"}}>
                     {showAvatar&&!isMe&&<div style={{fontSize:10,color:"rgba(255,255,255,.3)",marginBottom:3,marginLeft:2}}>{m.sender_name}</div>}
                     <div style={{padding:"9px 13px",borderRadius:isMe?"16px 16px 4px 16px":"16px 16px 16px 4px",background:isMe?"linear-gradient(135deg,#3A6FD4,#2550A8)":"rgba(255,255,255,.08)",fontSize:13,lineHeight:1.5,color:"#E4EAF4",wordBreak:"break-word"}}>
                       {m.text}
@@ -1422,7 +1436,7 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
 }
 
 // Messages Tab
-function MessagesTab({currentUserId, isSitter, families, memberInfo}) {
+function MessagesTab({currentUserId, isSitter, families=[], memberInfo, allMembers={}, sitterName='', memberName='', memberAvatar='👤'}) {
   const [convs, setConvs]           = useState([]);
   const [participants, setParticipants] = useState({});
   const [lastMessages, setLastMessages] = useState({});
@@ -1433,8 +1447,8 @@ function MessagesTab({currentUserId, isSitter, families, memberInfo}) {
   const [loading, setLoading]       = useState(true);
 
   // For sitter: all families; for family: their family
-  const familyId = isSitter ? null : memberInfo?.family_id;
-  const familyList = isSitter ? families : (memberInfo ? [{id:memberInfo.family_id,name:"My Family"}] : []);
+  const familyId = memberInfo?.family_id || null;
+  const familyList = families.length > 0 ? families : (memberInfo ? [{id:memberInfo.family_id,name:"My Family"}] : []);
 
   const [newConvFamilyId, setNewConvFamilyId] = useState(null);
 
@@ -1514,11 +1528,11 @@ function MessagesTab({currentUserId, isSitter, families, memberInfo}) {
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600}}>
           Messages {totalUnseen>0&&<span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:"#3A6FD4",fontSize:11,fontWeight:700,marginLeft:6}}>{totalUnseen}</span>}
         </div>
-        <button className="bp" onClick={()=>{setNewConvFamilyId(isSitter?(families[0]?.id||null):familyId);setShowNew(true);}}>+ New</button>
+        <button className="bp" onClick={()=>{setNewConvFamilyId(families[0]?.id||familyId||null);setShowNew(true);}}>+ New</button>
       </div>
 
       {convs.length===0
-        ?<div className="es"><div className="ic">💬</div><h3>No conversations yet</h3><p>Start a conversation with {isSitter?"a family":"your sitter"}.</p><button className="bp" onClick={()=>{setNewConvFamilyId(isSitter?(families[0]?.id||null):familyId);setShowNew(true);}}>+ Start a conversation</button></div>
+        ?<div className="es"><div className="ic">💬</div><h3>No conversations yet</h3><p>Start a conversation with {isSitter?"a family":"your sitter"}.</p><button className="bp" onClick={()=>{setNewConvFamilyId(families[0]?.id||familyId||null);setShowNew(true);}}>+ Start a conversation</button></div>
         :<div style={{display:"flex",flexDirection:"column",gap:8}}>
           {convs.map(c=>{
             const parts=participants[c.id]||[];
@@ -1615,14 +1629,14 @@ function SitterDashboard({session,onSignOut}) {
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{fontSize:12,color:"rgba(255,255,255,.35)"}}>{name}</div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,.35)",display:"none"}} className="hide-mobile-name">{name}</div>
           <button className="bg" style={{padding:"6px 12px",fontSize:12}} onClick={onSignOut}>Sign out</button>
         </div>
       </div>
       <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,.06)",background:"rgba(0,0,0,.15)"}}>
         {NAV.map(n=><div key={n.id} className={`nav-tab ${tab===n.id?"active":""}`} onClick={()=>setTab(n.id)}><span style={{fontSize:18}}>{n.icon}</span><span>{n.label}</span></div>)}
       </div>
-      <div style={{flex:1,overflowY:"auto",padding:"22px 20px",maxWidth:800,width:"100%",margin:"0 auto"}}>
+      <div style={{flex:1,overflowY:"auto",padding:"16px 14px",maxWidth:800,width:"100%",margin:"0 auto"}}>
         {tab==="families"&&<FamiliesTab sitterId={sitterId} sitterName={name}/>}
         {tab==="feed"&&<SitterFeedWrapper sitterId={sitterId}/>}
         {tab==="invoices"&&<div className="es"><div className="ic">💰</div><h3>Invoices coming soon</h3><p>Create and track invoices with payment history.</p></div>}
@@ -1671,7 +1685,7 @@ function ParentDashboard({session,onSignOut}) {
   // Build nav based on role
   const NAV=[
     ...(!feedOnly&&!pickup?[{id:"home",icon:"🏠",label:"Home"}]:[]),
-    {id:"feed",icon:"🌸",label:"Feed",badge:unseenCount},
+    {id:"feed",icon:"🌸",label:"Feed",badge:0},
     ...(canView||isAdmin?[{id:"invoices",icon:"💰",label:"Invoices"}]:[]),
     {id:"messages",icon:"💬",label:"Messages"},
   ];
@@ -1692,7 +1706,7 @@ function ParentDashboard({session,onSignOut}) {
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{fontSize:12,color:"rgba(255,255,255,.35)"}}>{name}</div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,.35)",display:"none"}} className="hide-mobile-name">{name}</div>
           <button className="bg" style={{padding:"6px 12px",fontSize:12}} onClick={onSignOut}>Sign out</button>
         </div>
       </div>
@@ -1709,7 +1723,7 @@ function ParentDashboard({session,onSignOut}) {
         ))}
       </div>
 
-      <div style={{flex:1,overflowY:"auto",padding:"22px 20px",maxWidth:800,width:"100%",margin:"0 auto"}}>
+      <div style={{flex:1,overflowY:"auto",padding:"16px 14px",maxWidth:800,width:"100%",margin:"0 auto"}}>
 
         {tab==="home"&&(
           <div>
@@ -1737,10 +1751,10 @@ function ParentDashboard({session,onSignOut}) {
                       :<div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                         {children.map(c=>(
                           <button key={c.id} onClick={()=>setSelectedChild(c)}
-                            style={{display:"flex",alignItems:"center",gap:7,background:`${c.color||"#8B78D4"}18`,borderRadius:20,padding:"6px 14px",border:`1px solid ${c.color||"#8B78D4"}44`,cursor:"pointer",color:"#E4EAF4"}}>
-                            <span style={{fontSize:16}}>{c.avatar||"🌟"}</span>
+                            style={{display:"flex",alignItems:"center",gap:7,background:`${c.color||"#8B78D4"}18`,borderRadius:20,padding:"8px 14px",border:`1px solid ${c.color||"#8B78D4"}44`,cursor:"pointer",color:"#E4EAF4",minWidth:0}}>
+                            <span style={{fontSize:18}}>{c.avatar||"🌟"}</span>
                             <span style={{fontSize:13,fontWeight:500}}>{c.name}</span>
-                            {isAdmin&&<span style={{fontSize:10,opacity:.4}} onClick={e=>{e.stopPropagation();setEditChild(c);}}>✏️</span>}
+                            {isAdmin&&<span style={{fontSize:11,opacity:.4,marginLeft:2}} onClick={e=>{e.stopPropagation();setEditChild(c);}}>✏️</span>}
                           </button>
                         ))}
                       </div>
@@ -1763,10 +1777,10 @@ function ParentDashboard({session,onSignOut}) {
                               <div style={{fontSize:11,color:"rgba(255,255,255,.3)"}}>{m.email}</div>
                             </div>
                           </div>
-                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                             <span className={`sb sb-${m.status==="active"?"a":"p"}`} style={{fontSize:9}}>{ROLE_LABELS[m.role]||m.role}</span>
                             {isAdmin&&m.user_id!==session.user.id&&(
-                              <button className="bg" style={{padding:"4px 10px",fontSize:11}} onClick={()=>setEditMember(m)}>Edit</button>
+                              <button className="bg" style={{padding:"4px 8px",fontSize:11}} onClick={()=>setEditMember(m)}>✏️</button>
                             )}
                           </div>
                         </div>
