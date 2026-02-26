@@ -1617,6 +1617,662 @@ function MessagesTabWrapper({currentUserId, member, family, memberName, memberAv
   return <MessagesTab currentUserId={currentUserId} isSitter={false} families={[family]} memberInfo={{...member, family_id:family.id}} allMembers={{[family.id]:[]}} sitterName="Your Sitter" memberName={memberName} memberAvatar={memberAvatar}/>;
 }
 
+
+// ─── Invoices ──────────────────────────────────────────────────────────────────
+
+const PAYMENT_TYPES = [
+  {id:"venmo",    label:"Venmo",        icon:"💜", placeholder:"@username",    deeplink:(handle,amount,note)=>`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(handle.replace('@',''))}&amount=${amount}&note=${encodeURIComponent(note)}`},
+  {id:"paypal",   label:"PayPal",       icon:"💙", placeholder:"username",     deeplink:(handle,amount,note)=>`https://paypal.me/${handle}/${amount}`},
+  {id:"zelle",    label:"Zelle",        icon:"💛", placeholder:"email or phone",deeplink:null},
+  {id:"cash",     label:"Cash",         icon:"💵", placeholder:"(no handle needed)",deeplink:null},
+  {id:"check",    label:"Check",        icon:"📝", placeholder:"(no handle needed)",deeplink:null},
+  {id:"transfer", label:"Bank Transfer",icon:"🏦", placeholder:"routing/account or instructions",deeplink:null},
+];
+
+function fmt(n){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n||0);}
+function fmtDate(d){if(!d)return"";return new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}
+function fmtDateRange(items){
+  if(!items?.length) return "";
+  const dates=items.map(i=>new Date(i.service_date+"T00:00:00")).sort((a,b)=>a-b);
+  const lo=dates[0],hi=dates[dates.length-1];
+  if(lo.toDateString()===hi.toDateString()) return fmtDate(lo.toISOString().slice(0,10));
+  return `${fmtDate(lo.toISOString().slice(0,10))} – ${fmtDate(hi.toISOString().slice(0,10))}`;
+}
+
+// ─── Sitter Payment Settings Modal ───────────────────────────────────────────
+function PaymentSettingsModal({open, onClose, sitterId, onSaved}) {
+  const [legalName, setLegalName]   = useState("");
+  const [addr1, setAddr1]           = useState("");
+  const [addr2, setAddr2]           = useState("");
+  const [city, setCity]             = useState("");
+  const [state, setState]           = useState("");
+  const [zip, setZip]               = useState("");
+  const [methods, setMethods]       = useState([]);
+  const [loading, setLoading]       = useState(false);
+  const [alert, setAlert]           = useState(null);
+
+  useEffect(()=>{
+    if(!open) return;
+    async function load(){
+      const {data}=await supabase.from("sitters").select("*").eq("id",sitterId).single();
+      if(data){
+        setLegalName(data.legal_name||"");setAddr1(data.address_line1||"");
+        setAddr2(data.address_line2||"");setCity(data.city||"");
+        setState(data.state||"");setZip(data.zip||"");
+        setMethods(data.payment_methods||[]);
+      }
+    }
+    load();
+  },[open,sitterId]);
+
+  function toggleMethod(id){
+    setMethods(ms=>{
+      const ex=ms.find(m=>m.type===id);
+      if(ex) return ms.map(m=>m.type===id?{...m,enabled:!m.enabled}:m);
+      return [...ms,{type:id,handle:"",enabled:true}];
+    });
+  }
+  function setHandle(id,val){
+    setMethods(ms=>{
+      const ex=ms.find(m=>m.type===id);
+      if(ex) return ms.map(m=>m.type===id?{...m,handle:val}:m);
+      return [...ms,{type:id,handle:val,enabled:true}];
+    });
+  }
+  function getMethod(id){return methods.find(m=>m.type===id)||{type:id,handle:"",enabled:false};}
+
+  async function save(e){
+    e.preventDefault();setAlert(null);setLoading(true);
+    const {error}=await supabase.from("sitters").update({
+      legal_name:legalName,address_line1:addr1,address_line2:addr2||null,
+      city,state,zip,payment_methods:methods,
+    }).eq("id",sitterId);
+    setLoading(false);
+    if(error){setAlert({t:"e",m:error.message});return;}
+    setAlert({t:"s",m:"Settings saved!"});
+    setTimeout(()=>{onSaved();onClose();},1000);
+  }
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:4}}>Invoice Settings</div>
+      <p style={{fontSize:12,color:"rgba(255,255,255,.35)",marginBottom:20,lineHeight:1.6}}>This info appears on your invoices for FSA reimbursement.</p>
+      {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
+      <form onSubmit={save}>
+        <Field label="Legal full name" value={legalName} onChange={e=>setLegalName(e.target.value)} placeholder="Jane Smith"/>
+        <Field label="Address line 1" value={addr1} onChange={e=>setAddr1(e.target.value)} placeholder="123 Main St"/>
+        <Field label="Address line 2 (optional)" value={addr2} onChange={e=>setAddr2(e.target.value)} placeholder="Apt 4B" required={false}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px",gap:8,marginBottom:14}}>
+          <div><label className="fl">City</label><input className="fi" value={city} onChange={e=>setCity(e.target.value)} style={{marginBottom:0}}/></div>
+          <div><label className="fl">State</label><input className="fi" value={state} onChange={e=>setState(e.target.value)} maxLength={2} style={{marginBottom:0}}/></div>
+          <div><label className="fl">ZIP</label><input className="fi" value={zip} onChange={e=>setZip(e.target.value)} maxLength={10} style={{marginBottom:0}}/></div>
+        </div>
+
+        <div style={{marginBottom:16}}>
+          <SectionLabel>Accepted payment methods</SectionLabel>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {PAYMENT_TYPES.map(pt=>{
+              const m=getMethod(pt.id);
+              return (
+                <div key={pt.id} style={{borderRadius:12,border:`1px solid ${m.enabled?"rgba(111,163,232,.3)":"rgba(255,255,255,.07)"}`,background:m.enabled?"rgba(111,163,232,.06)":"rgba(255,255,255,.02)",padding:"10px 14px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:m.enabled?8:0}}>
+                    <span style={{fontSize:20}}>{pt.icon}</span>
+                    <span style={{fontSize:13,fontWeight:500,flex:1}}>{pt.label}</span>
+                    <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
+                      <input type="checkbox" checked={m.enabled} onChange={()=>toggleMethod(pt.id)} style={{accentColor:"#7BAAEE",width:16,height:16}}/>
+                      <span style={{fontSize:11,color:"rgba(255,255,255,.4)"}}>Accept</span>
+                    </label>
+                  </div>
+                  {m.enabled&&pt.placeholder!=="(no handle needed)"&&(
+                    <input className="fi" value={m.handle} onChange={e=>setHandle(pt.id,e.target.value)}
+                      placeholder={pt.placeholder} style={{marginBottom:0,fontSize:12}}/>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{display:"flex",gap:10}}>
+          <button type="submit" className="bp full" disabled={loading}>{loading?<Spinner/>:"Save Settings"}</button>
+          <button type="button" className="bg" onClick={onClose}>Cancel</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// ─── Invoice Line Item Editor ─────────────────────────────────────────────────
+function LineItemRow({item, children, onChange, onRemove, index}) {
+  const child = children.find(c=>c.id===item.child_id)||null;
+  return (
+    <div style={{padding:"12px 14px",borderRadius:12,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",marginBottom:8}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+        <div>
+          <label className="fl">Date</label>
+          <input className="fi" type="date" value={item.service_date} onChange={e=>onChange(index,{service_date:e.target.value})} style={{marginBottom:0}}/>
+        </div>
+        <div>
+          <label className="fl">Child</label>
+          <select className="fi" value={item.child_id||""} onChange={e=>{
+            const c=children.find(x=>x.id===e.target.value);
+            onChange(index,{child_id:e.target.value,child_name:c?.name||""});
+          }} style={{marginBottom:0}}>
+            <option value="">Select child…</option>
+            {children.map(c=><option key={c.id} value={c.id}>{c.avatar} {c.name}</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"100px 1fr 1fr auto",gap:8,alignItems:"end"}}>
+        <div>
+          <label className="fl">Type</label>
+          <select className="fi" value={item.rate_type} onChange={e=>onChange(index,{rate_type:e.target.value,hours:e.target.value==="flat"?null:item.hours})} style={{marginBottom:0}}>
+            <option value="hourly">Hourly</option>
+            <option value="flat">Flat</option>
+          </select>
+        </div>
+        {item.rate_type==="hourly"&&(
+          <div>
+            <label className="fl">Hours</label>
+            <input className="fi" type="number" step="0.25" min="0" value={item.hours||""} onChange={e=>onChange(index,{hours:parseFloat(e.target.value)||0})} style={{marginBottom:0}}/>
+          </div>
+        )}
+        <div>
+          <label className="fl">Rate ($)</label>
+          <input className="fi" type="number" step="0.01" min="0" value={item.rate||""} onChange={e=>onChange(index,{rate:parseFloat(e.target.value)||0})} style={{marginBottom:0}}/>
+        </div>
+        <div style={{paddingBottom:2}}>
+          <div style={{fontSize:12,fontWeight:600,color:"#88D8B8",textAlign:"right",minWidth:60}}>{fmt(item.rate_type==="hourly"?(item.hours||0)*item.rate:item.rate)}</div>
+        </div>
+      </div>
+      {item.rate_type==="hourly"&&<div/>}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
+        <input className="fi" value={item.description||""} onChange={e=>onChange(index,{description:e.target.value})} placeholder="Notes (optional)" style={{marginBottom:0,fontSize:12,flex:1,marginRight:8}}/>
+        <button onClick={()=>onRemove(index)} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,opacity:.4,padding:4,flexShrink:0}}>🗑️</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Create/Edit Invoice Modal ────────────────────────────────────────────────
+function InvoiceModal({open, onClose, sitterId, families, allFamilyChildren, onSaved, editInvoice}) {
+  const isEdit = !!editInvoice;
+  const [familyId, setFamilyId]   = useState("");
+  const [notes, setNotes]         = useState("");
+  const [dueDate, setDueDate]     = useState("");
+  const [items, setItems]         = useState([]);
+  const [loading, setLoading]     = useState(false);
+  const [alert, setAlert]         = useState(null);
+
+  function blankItem(){return {service_date:new Date().toISOString().slice(0,10),child_id:"",child_name:"",rate_type:"hourly",hours:0,rate:0,amount:0,description:""};}
+
+  useEffect(()=>{
+    if(!open) return;
+    if(isEdit){
+      setFamilyId(editInvoice.family_id);
+      setNotes(editInvoice.notes||"");
+      setDueDate(editInvoice.due_date||"");
+      // load items
+      supabase.from("invoice_items").select("*").eq("invoice_id",editInvoice.id).order("sort_order").then(({data})=>setItems(data||[]));
+    } else {
+      setFamilyId(families[0]?.id||"");
+      setNotes("");setDueDate("");setItems([blankItem()]);
+    }
+    setAlert(null);
+  },[open,editInvoice]);
+
+  function updateItem(i,patch){
+    setItems(its=>its.map((it,idx)=>{
+      if(idx!==i) return it;
+      const merged={...it,...patch};
+      merged.amount=merged.rate_type==="hourly"?(merged.hours||0)*merged.rate:merged.rate;
+      return merged;
+    }));
+  }
+  function removeItem(i){setItems(its=>its.filter((_,idx)=>idx!==i));}
+  function addItem(){setItems(its=>[...its,blankItem()]);}
+
+  const total=items.reduce((s,it)=>s+(it.amount||0),0);
+  const familyChildren=allFamilyChildren[familyId]||[];
+
+  async function save(status="draft"){
+    if(!familyId){setAlert({t:"e",m:"Select a family."});return;}
+    if(items.length===0){setAlert({t:"e",m:"Add at least one line item."});return;}
+    const unset=items.find(it=>!it.child_id||!it.service_date||(it.rate_type==="hourly"&&!it.hours)||!it.rate);
+    if(unset){setAlert({t:"e",m:"Fill in all line item fields."});return;}
+    setLoading(true);setAlert(null);
+    try{
+      let invId=editInvoice?.id;
+      if(!isEdit){
+        const {data:numData}=await supabase.rpc("next_invoice_number",{p_sitter_id:sitterId});
+        const {data:inv,error:invErr}=await supabase.from("invoices").insert({
+          invoice_number:numData,family_id:familyId,sitter_id:sitterId,
+          status,notes:notes||null,due_date:dueDate||null,
+        }).select().single();
+        if(invErr) throw invErr;
+        invId=inv.id;
+      } else {
+        const {error}=await supabase.from("invoices").update({
+          status,notes:notes||null,due_date:dueDate||null,
+        }).eq("id",invId);
+        if(error) throw error;
+        await supabase.from("invoice_items").delete().eq("invoice_id",invId);
+      }
+      const {error:itemErr}=await supabase.from("invoice_items").insert(
+        items.map((it,i)=>({
+          invoice_id:invId,service_date:it.service_date,
+          child_id:it.child_id||null,child_name:it.child_name,
+          rate_type:it.rate_type,hours:it.hours||null,rate:it.rate,
+          amount:it.amount,description:it.description||null,sort_order:i,
+        }))
+      );
+      if(itemErr) throw itemErr;
+      onSaved();onClose();
+    }catch(err){setAlert({t:"e",m:err.message||"Something went wrong."});}
+    finally{setLoading(false);}
+  }
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:16}}>{isEdit?"Edit Invoice":"New Invoice"}</div>
+      {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
+
+      <div style={{marginBottom:14}}>
+        <label className="fl">Family</label>
+        <select className="fi" value={familyId} onChange={e=>setFamilyId(e.target.value)} disabled={isEdit}>
+          {families.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
+        </select>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+        <div><label className="fl">Due date (optional)</label><input className="fi" type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)} style={{marginBottom:0}}/></div>
+      </div>
+
+      <div style={{marginBottom:8}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+          <SectionLabel>Line Items</SectionLabel>
+          <button type="button" className="bp" style={{padding:"5px 12px",fontSize:11}} onClick={addItem}>+ Add Item</button>
+        </div>
+        {items.map((it,i)=>(
+          <LineItemRow key={i} item={it} index={i} children={familyChildren} onChange={updateItem} onRemove={removeItem}/>
+        ))}
+        <div style={{textAlign:"right",fontSize:14,fontWeight:600,color:"#88D8B8",marginTop:8}}>Total: {fmt(total)}</div>
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <label className="fl">Notes (optional)</label>
+        <textarea className="fi" value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="Additional notes…" style={{resize:"vertical",marginBottom:0}}/>
+      </div>
+
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        <button className="bp" onClick={()=>save("draft")} disabled={loading}>{loading?<Spinner/>:"Save Draft"}</button>
+        <button className="bp" onClick={()=>save("sent")} disabled={loading} style={{background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)"}}>{loading?<Spinner/>:"Save & Send"}</button>
+        <button className="bg" onClick={onClose}>Cancel</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Invoice Print View ───────────────────────────────────────────────────────
+function printInvoice(invoice, items, sitter, family, adminMember) {
+  const enabledMethods=(sitter.payment_methods||[]).filter(m=>m.enabled);
+  const total=items.reduce((s,it)=>s+(it.amount||0),0);
+  const totalHours=items.filter(i=>i.rate_type==="hourly").reduce((s,i)=>s+(i.hours||0),0);
+  const dateRange=fmtDateRange(items);
+
+  const paymentButtons=enabledMethods.map(m=>{
+    const pt=PAYMENT_TYPES.find(p=>p.id===m.type);
+    if(!pt) return "";
+    const link=pt.deeplink?pt.deeplink(m.handle,total.toFixed(2),invoice.invoice_number):"";
+    if(link){
+      return `<a href="${link}" style="display:inline-block;padding:10px 20px;background:#1a2a3a;border:1px solid #3A6FD4;border-radius:8px;color:#7BAAEE;text-decoration:none;font-size:13px;margin:4px">${pt.icon} Pay with ${pt.label}${m.handle?" ("+m.handle+")":""}</a>`;
+    }
+    return `<div style="display:inline-block;padding:10px 20px;background:#1a2a3a;border:1px solid #444;border-radius:8px;color:#aaa;font-size:13px;margin:4px">${pt.icon} ${pt.label}${m.handle?": "+m.handle:""}</div>`;
+  }).join("\n");
+
+  const html=`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${invoice.invoice_number} - littleloop</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#14243A;padding:40px;max-width:760px;margin:0 auto}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #E8F0FA}
+  .logo{font-size:24px;font-weight:700;color:#2550A8;letter-spacing:-0.5px}
+  .logo span{font-size:13px;display:block;color:#888;font-weight:400;margin-top:2px}
+  .inv-num{font-size:28px;font-weight:700;color:#2550A8}
+  .inv-meta{font-size:12px;color:#666;margin-top:4px}
+  .parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px}
+  .party h3{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:8px}
+  .party p{font-size:13px;line-height:1.7;color:#333}
+  .party strong{color:#14243A}
+  .section-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:10px}
+  table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px}
+  th{background:#F4F8FF;padding:8px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#666;border-bottom:1px solid #DDE8F5}
+  td{padding:10px 12px;border-bottom:1px solid #EEF3FA;color:#333;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .amount{text-align:right}
+  .totals{margin-left:auto;width:240px;margin-bottom:28px}
+  .totals-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#555;border-bottom:1px solid #EEF3FA}
+  .totals-row.grand{font-size:16px;font-weight:700;color:#14243A;border-bottom:none;padding-top:10px}
+  .status{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+  .status-draft{background:#F5F5F5;color:#888}
+  .status-sent{background:#EEF5FF;color:#2550A8}
+  .status-paid{background:#EEFAF5;color:#1A7A55}
+  .payment-section{margin-bottom:28px}
+  .footer{margin-top:32px;padding-top:20px;border-top:1px solid #EEF3FA;font-size:11px;color:#aaa;text-align:center}
+  .purpose{background:#F4F8FF;border-left:3px solid #3A6FD4;padding:10px 14px;border-radius:0 8px 8px 0;font-size:12px;color:#3A5070;margin-bottom:24px}
+  @media print{body{padding:20px}.no-print{display:none!important}a{color:#2550A8!important}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="logo">🌿 littleloop<span>Independent Childcare</span></div>
+  </div>
+  <div style="text-align:right">
+    <div class="inv-num">${invoice.invoice_number}</div>
+    <div class="inv-meta">Issued: ${fmtDate(invoice.issued_date)}</div>
+    ${invoice.due_date?`<div class="inv-meta">Due: ${fmtDate(invoice.due_date)}</div>`:""}
+    <div style="margin-top:6px"><span class="status status-${invoice.status}">${invoice.status}</span></div>
+  </div>
+</div>
+
+<div class="parties">
+  <div class="party">
+    <h3>Care Provider</h3>
+    <p><strong>${sitter.legal_name||sitter.name}</strong><br>
+    ${sitter.address_line1||""}<br>
+    ${sitter.address_line2?sitter.address_line2+"<br>":""}
+    ${[sitter.city,sitter.state,sitter.zip].filter(Boolean).join(", ")}</p>
+  </div>
+  <div class="party">
+    <h3>Billed To</h3>
+    <p><strong>${family.name}</strong><br>
+    ${adminMember?.name||""}</p>
+  </div>
+</div>
+
+<div class="purpose">
+  <strong>Purpose of care:</strong> Childcare services · Service period: ${dateRange}
+  ${totalHours>0?` · Total hours: ${totalHours.toFixed(2)}`:""}
+</div>
+
+<div class="section-title">Services Rendered</div>
+<table>
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Child</th>
+      <th>Description</th>
+      <th>Type</th>
+      <th>Hrs</th>
+      <th>Rate</th>
+      <th class="amount">Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${items.map(it=>`
+    <tr>
+      <td>${fmtDate(it.service_date)}</td>
+      <td>${it.child_name}</td>
+      <td>${it.description||"—"}</td>
+      <td style="text-transform:capitalize">${it.rate_type}</td>
+      <td>${it.rate_type==="hourly"?(it.hours||0).toFixed(2):"—"}</td>
+      <td>${fmt(it.rate)}${it.rate_type==="hourly"?"/hr":""}</td>
+      <td class="amount">${fmt(it.amount)}</td>
+    </tr>`).join("")}
+  </tbody>
+</table>
+
+<div class="totals">
+  ${totalHours>0?`<div class="totals-row"><span>Total hours</span><span>${totalHours.toFixed(2)}</span></div>`:""}
+  <div class="totals-row grand"><span>Total Due</span><span>${fmt(total)}</span></div>
+</div>
+
+${invoice.notes?`<div style="margin-bottom:24px"><div class="section-title">Notes</div><p style="font-size:13px;color:#555;line-height:1.6">${invoice.notes}</p></div>`:""}
+
+${enabledMethods.length>0?`
+<div class="payment-section no-print">
+  <div class="section-title">Pay This Invoice</div>
+  <div>${paymentButtons}</div>
+</div>`:""}
+
+<div class="footer">
+  This invoice was generated via littleloop · littleloop.xyz<br>
+  For FSA/DCFSA reimbursement: provider's TIN available upon request.
+</div>
+
+<div class="no-print" style="text-align:center;margin-top:24px">
+  <button onclick="window.print()" style="padding:12px 28px;background:#2550A8;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🖨️ Print / Save as PDF</button>
+</div>
+</body>
+</html>`;
+
+  const w=window.open("","_blank");
+  w.document.write(html);
+  w.document.close();
+}
+
+// ─── Invoices Tab (Sitter) ────────────────────────────────────────────────────
+function SitterInvoicesTab({sitterId}) {
+  const [invoices,setInvoices]   = useState([]);
+  const [families,setFamilies]   = useState([]);
+  const [familyChildren,setFamilyChildren] = useState({});
+  const [familyMembers,setFamilyMembers]   = useState({});
+  const [sitter,setSitter]       = useState(null);
+  const [showNew,setShowNew]     = useState(false);
+  const [editInv,setEditInv]     = useState(null);
+  const [showSettings,setShowSettings] = useState(false);
+  const [filter,setFilter]       = useState("all");
+  const [loading,setLoading]     = useState(true);
+  const [confirmPaid,setConfirmPaid] = useState(null);
+
+  const load=useCallback(async()=>{
+    setLoading(true);
+    const [{data:fams},{data:invs},{data:sit}]=await Promise.all([
+      supabase.from("families").select("*").eq("sitter_id",sitterId).neq("status","inactive"),
+      supabase.from("invoices").select("*").eq("sitter_id",sitterId).order("created_at",{ascending:false}),
+      supabase.from("sitters").select("*").eq("id",sitterId).single(),
+    ]);
+    setFamilies(fams||[]);setInvoices(invs||[]);setSitter(sit);
+    if(fams?.length){
+      const [{data:kids},{data:mems}]=await Promise.all([
+        supabase.from("children").select("*").in("family_id",fams.map(f=>f.id)),
+        supabase.from("members").select("*").in("family_id",fams.map(f=>f.id)),
+      ]);
+      const kg={},mg={};
+      (kids||[]).forEach(k=>{if(!kg[k.family_id])kg[k.family_id]=[];kg[k.family_id].push(k);});
+      (mems||[]).forEach(m=>{if(!mg[m.family_id])mg[m.family_id]=[];mg[m.family_id].push(m);});
+      setFamilyChildren(kg);setFamilyMembers(mg);
+    }
+    setLoading(false);
+  },[sitterId]);
+
+  useEffect(()=>{load();},[load]);
+
+  async function markPaid(inv){
+    await supabase.from("invoices").update({status:"paid",paid_date:new Date().toISOString().slice(0,10)}).eq("id",inv.id);
+    setConfirmPaid(null);load();
+  }
+
+  async function deleteInv(id){
+    await supabase.from("invoices").delete().eq("id",id);load();
+  }
+
+  async function openPrint(inv){
+    const {data:items}=await supabase.from("invoice_items").select("*").eq("invoice_id",inv.id).order("sort_order");
+    const family=families.find(f=>f.id===inv.family_id)||{name:"—"};
+    const admin=(familyMembers[inv.family_id]||[]).find(m=>m.role==="admin");
+    printInvoice(inv,items||[],sitter||{},family,admin);
+  }
+
+  const filtered=filter==="all"?invoices:invoices.filter(i=>i.status===filter);
+  const statusColors={draft:"#B0B8C8",sent:"#7BAAEE",paid:"#88D8B8"};
+
+  if(loading) return <div style={{textAlign:"center",padding:"60px 0"}}><Spinner size={24}/></div>;
+
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600}}>Invoices</div>
+        <div style={{display:"flex",gap:8}}>
+          <button className="bg" style={{padding:"7px 12px",fontSize:12}} onClick={()=>setShowSettings(true)}>⚙️ Settings</button>
+          <button className="bp" onClick={()=>setShowNew(true)}>+ New Invoice</button>
+        </div>
+      </div>
+
+      {/* Filter */}
+      <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+        {["all","draft","sent","paid"].map(s=>(
+          <button key={s} onClick={()=>setFilter(s)}
+            style={{padding:"5px 12px",borderRadius:20,border:`1px solid ${filter===s?"#7BAAEE":"rgba(255,255,255,.1)"}`,background:filter===s?"rgba(111,163,232,.15)":"rgba(255,255,255,.04)",color:filter===s?"#7BAAEE":"rgba(255,255,255,.4)",fontSize:11,cursor:"pointer",textTransform:"capitalize"}}>
+            {s==="all"?"All":s.charAt(0).toUpperCase()+s.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length===0
+        ?<div className="es"><div className="ic">💰</div><h3>No invoices yet</h3><p>Create your first invoice for a family.</p><button className="bp" onClick={()=>setShowNew(true)}>+ Create Invoice</button></div>
+        :<div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {filtered.map(inv=>{
+            const fam=families.find(f=>f.id===inv.family_id);
+            return (
+              <div key={inv.id} className="card" style={{padding:"14px 18px"}}>
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                      <span style={{fontWeight:700,fontSize:15}}>{inv.invoice_number}</span>
+                      <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:`${statusColors[inv.status]}22`,color:statusColors[inv.status],textTransform:"capitalize"}}>{inv.status}</span>
+                    </div>
+                    <div style={{fontSize:12,color:"rgba(255,255,255,.5)"}}>{fam?.name} · Issued {fmtDate(inv.issued_date)}</div>
+                    {inv.due_date&&<div style={{fontSize:11,color:"rgba(255,255,255,.3)"}}>Due {fmtDate(inv.due_date)}</div>}
+                    {inv.paid_date&&<div style={{fontSize:11,color:"#88D8B8"}}>Paid {fmtDate(inv.paid_date)}</div>}
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                    <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)}>🖨️ Print</button>
+                    {inv.status!=="paid"&&<button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>setEditInv(inv)}>✏️ Edit</button>}
+                    {inv.status==="sent"&&<button className="bp" style={{padding:"5px 10px",fontSize:11,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)"}} onClick={()=>setConfirmPaid(inv)}>✅ Mark Paid</button>}
+                    {inv.status==="draft"&&<button className="bd" style={{padding:"5px 10px",fontSize:11}} onClick={()=>deleteInv(inv.id)}>🗑️</button>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      }
+
+      <InvoiceModal open={showNew||!!editInv} onClose={()=>{setShowNew(false);setEditInv(null);}}
+        sitterId={sitterId} families={families} allFamilyChildren={familyChildren} onSaved={load} editInvoice={editInv||null}/>
+      <PaymentSettingsModal open={showSettings} onClose={()=>setShowSettings(false)} sitterId={sitterId} onSaved={load}/>
+      <Confirm open={!!confirmPaid} title="Mark as paid?" message={`Mark ${confirmPaid?.invoice_number} as paid today?`} onConfirm={()=>markPaid(confirmPaid)} onCancel={()=>setConfirmPaid(null)}/>
+    </div>
+  );
+}
+
+// ─── Invoices Tab (Family) ────────────────────────────────────────────────────
+function FamilyInvoicesTab({familyId, currentUserId}) {
+  const [invoices,setInvoices] = useState([]);
+  const [sitter,setSitter]     = useState(null);
+  const [family,setFamily]     = useState(null);
+  const [member,setMember]     = useState(null);
+  const [loading,setLoading]   = useState(true);
+
+  useEffect(()=>{
+    async function load(){
+      setLoading(true);
+      const [{data:invs},{data:fam},{data:mem}]=await Promise.all([
+        supabase.from("invoices").select("*").eq("family_id",familyId).in("status",["sent","paid"]).order("created_at",{ascending:false}),
+        supabase.from("families").select("*, sitters(*)").eq("id",familyId).single(),
+        supabase.from("members").select("*").eq("family_id",familyId).eq("user_id",currentUserId).maybeSingle(),
+      ]);
+      setInvoices(invs||[]);
+      setFamily(fam);
+      setSitter(fam?.sitters||null);
+      setMember(mem);
+      setLoading(false);
+    }
+    load();
+  },[familyId,currentUserId]);
+
+  async function openPrint(inv){
+    const {data:items}=await supabase.from("invoice_items").select("*").eq("invoice_id",inv.id).order("sort_order");
+    printInvoice(inv,items||[],sitter||{},family||{name:"—"},member);
+  }
+
+  const statusColors={sent:"#7BAAEE",paid:"#88D8B8"};
+  if(loading) return <div style={{textAlign:"center",padding:"60px 0"}}><Spinner size={24}/></div>;
+
+  return (
+    <div>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:16}}>Invoices</div>
+      {invoices.length===0
+        ?<div className="es"><div className="ic">💰</div><h3>No invoices yet</h3><p>Your sitter hasn't sent any invoices yet.</p></div>
+        :<div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {invoices.map(inv=>(
+            <div key={inv.id} className="card" style={{padding:"14px 18px"}}>
+              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                    <span style={{fontWeight:700,fontSize:15}}>{inv.invoice_number}</span>
+                    <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:`${statusColors[inv.status]}22`,color:statusColors[inv.status],textTransform:"capitalize"}}>{inv.status}</span>
+                  </div>
+                  <div style={{fontSize:12,color:"rgba(255,255,255,.5)"}}>Issued {fmtDate(inv.issued_date)}</div>
+                  {inv.due_date&&<div style={{fontSize:11,color:"rgba(255,255,255,.3)"}}>Due {fmtDate(inv.due_date)}</div>}
+                  {inv.paid_date&&<div style={{fontSize:11,color:"#88D8B8"}}>Paid {fmtDate(inv.paid_date)}</div>}
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)}>🖨️ View / Print</button>
+                </div>
+              </div>
+
+              {/* Payment buttons inline for sent invoices */}
+              {inv.status==="sent"&&sitter&&(
+                <PayButtons sitter={sitter} invoice={inv}/>
+              )}
+            </div>
+          ))}
+        </div>
+      }
+    </div>
+  );
+}
+
+// ─── Pay Buttons ─────────────────────────────────────────────────────────────
+function PayButtons({sitter, invoice}) {
+  const [items,setItems] = useState(null);
+  useEffect(()=>{
+    supabase.from("invoice_items").select("*").eq("invoice_id",invoice.id)
+      .then(({data})=>setItems(data||[]));
+  },[invoice.id]);
+
+  const total=items?items.reduce((s,i)=>s+(i.amount||0),0):0;
+  const enabled=(sitter.payment_methods||[]).filter(m=>m.enabled);
+  if(!enabled.length||!items) return null;
+
+  return (
+    <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(255,255,255,.06)"}}>
+      <div style={{fontSize:10,fontWeight:600,letterSpacing:".9px",textTransform:"uppercase",color:"rgba(255,255,255,.3)",marginBottom:8}}>
+        Pay {fmt(total)}
+      </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+        {enabled.map(m=>{
+          const pt=PAYMENT_TYPES.find(p=>p.id===m.type);
+          if(!pt) return null;
+          const link=pt.deeplink?pt.deeplink(m.handle,total.toFixed(2),invoice.invoice_number):null;
+          return link
+            ?<a key={m.type} href={link} target="_blank" rel="noopener noreferrer"
+                style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.12)",color:"rgba(255,255,255,.8)",textDecoration:"none",fontSize:12,fontWeight:500}}>
+                {pt.icon} {pt.label}
+              </a>
+            :<div key={m.type} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.12)",color:"rgba(255,255,255,.6)",fontSize:12}}>
+                {pt.icon} {pt.label}{m.handle?`: ${m.handle}`:""}
+              </div>;
+        })}
+      </div>
+    </div>
+  );
+}
 // ─── Sitter Dashboard ─────────────────────────────────────────────────────────
 function SitterDashboard({session,onSignOut}) {
   const [tab,setTab]=useState("families");
@@ -1642,7 +2298,7 @@ function SitterDashboard({session,onSignOut}) {
       <div style={{flex:1,overflowY:"auto",padding:"16px 14px",maxWidth:800,width:"100%",margin:"0 auto"}}>
         {tab==="families"&&<FamiliesTab sitterId={sitterId} sitterName={name}/>}
         {tab==="feed"&&<SitterFeedWrapper sitterId={sitterId}/>}
-        {tab==="invoices"&&<div className="es"><div className="ic">💰</div><h3>Invoices coming soon</h3><p>Create and track invoices with payment history.</p></div>}
+        {tab==="invoices"&&<SitterInvoicesTab sitterId={sitterId}/>}
         {tab==="messages"&&<SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
       </div>
     </div>
@@ -1800,7 +2456,7 @@ function ParentDashboard({session,onSignOut}) {
         {tab==="feed"&&family&&<FeedTab familyId={family.id} sitterId={null} memberId={member?.id} isSitter={false} children={children} unseenCount={0} onMarkSeen={null} sitterName={family.sitter_name||'Sitter'} currentUserName={name} currentUserAvatar={member?.avatar||'👤'}/>}
         {tab==="feed"&&!family&&<div className="es"><div className="ic">🌸</div><h3>Not connected</h3><p>No family connected yet.</p></div>}
         {tab==="messages"&&member&&<MessagesTabWrapper currentUserId={session.user.id} member={member} family={family} memberName={name} memberAvatar={member?.avatar||"👤"}/>}
-        {tab==="invoices"&&<div className="es"><div className="ic">💰</div><h3>Invoices coming soon</h3><p>View and pay invoices from your sitter.</p></div>}
+        {tab==="invoices"&&family&&<FamilyInvoicesTab familyId={family.id} currentUserId={session.user.id}/>}
       </div>
 
       {/* Modals */}
