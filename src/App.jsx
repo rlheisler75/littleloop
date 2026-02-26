@@ -910,7 +910,7 @@ function NewPostModal({open,onClose,familyId,sitterId,children,onPosted}) {
 }
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
-function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted}) {
+function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted,sitterName='Sitter',currentUserName='',currentUserAvatar='👤'}) {
   const [comments,setComments]     = useState([]);
   const [likes,setLikes]           = useState([]);
   const [showComments,setShowComments] = useState(false);
@@ -946,8 +946,8 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
       post_id:post.id,
       author_id:currentUserId,
       author_role:isSitter?"sitter":"parent",
-      author_name:isSitter?"Your Sitter":"Family",
-      author_avatar:isSitter?"🌿":"👤",
+      author_name:isSitter?sitterName:currentUserName,
+      author_avatar:isSitter?"🌿":currentUserAvatar,
       text:newComment.trim(),
     });
     setNewComment("");setSubmitting(false);loadComments();
@@ -966,7 +966,7 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
             <div style={{width:36,height:36,borderRadius:12,background:"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🌿</div>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <span style={{fontSize:13,fontWeight:600}}>Your Sitter</span>
+                <span style={{fontSize:13,fontWeight:600}}>{sitterName}</span>
                 <span style={{fontSize:16}}>{getTypeIcon(post.type)}</span>
                 {post.mood&&<span style={{fontSize:16}}>{getMoodIcon(post.mood)}</span>}
               </div>
@@ -1027,7 +1027,7 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
 }
 
 // ─── Feed Tab ─────────────────────────────────────────────────────────────────
-function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMarkSeen}) {
+function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMarkSeen,sitterName='Sitter',currentUserName='',currentUserAvatar='👤'}) {
   const [posts,setPosts]       = useState([]);
   const [postKids,setPostKids] = useState({});
   const [loading,setLoading]   = useState(true);
@@ -1087,7 +1087,8 @@ function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMar
             <PostCard key={p.id} post={p}
               taggedChildren={(postKids[p.id]||[]).map(id=>childMap[id]).filter(Boolean)}
               currentUserId={sitterId||memberId}
-              memberId={memberId} isSitter={isSitter} onDeleted={load}/>
+              memberId={memberId} isSitter={isSitter} onDeleted={load}
+              sitterName={sitterName} currentUserName={currentUserName} currentUserAvatar={currentUserAvatar}/>
           ))}</div>
       }
       {isSitter&&(
@@ -1100,7 +1101,7 @@ function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMar
 
 
 // ─── Sitter Feed Wrapper — picks a family to show feed for ───────────────────
-function SitterFeedWrapper({sitterId}) {
+function SitterFeedWrapper({sitterId, sitterName}) {
   const [families,setFamilies] = useState([]);
   const [children,setChildren] = useState({});
   const [selected,setSelected] = useState(null);
@@ -1145,6 +1146,9 @@ function SitterFeedWrapper({sitterId}) {
           children={children[selected]||[]}
           unseenCount={0}
           onMarkSeen={null}
+          sitterName={sitterName}
+          currentUserName={sitterName}
+          currentUserAvatar="🌿"
         />
       )}
     </div>
@@ -1665,11 +1669,12 @@ function ParentDashboard({session,onSignOut}) {
     if(!mem){setLoading(false);return;}
     setMember(mem);
     const [{data:fam},{data:kids},{data:mems}]=await Promise.all([
-      supabase.from("families").select("*").eq("id",mem.family_id).single(),
+      supabase.from("families").select("*, sitters(name)").eq("id",mem.family_id).single(),
       supabase.from("children").select("*").eq("family_id",mem.family_id),
       supabase.from("members").select("*").eq("family_id",mem.family_id),
     ]);
-    setFamily(fam);setChildren(kids||[]);setMembers(mems||[]);
+    const famWithSitter = fam ? {...fam, sitter_name: fam.sitters?.name||'Sitter'} : fam;
+    setFamily(famWithSitter);setChildren(kids||[]);setMembers(mems||[]);
     setLoading(false);
   },[session.user.id]);
 
@@ -1791,7 +1796,7 @@ function ParentDashboard({session,onSignOut}) {
           </div>
         )}
 
-        {tab==="feed"&&family&&<FeedTab familyId={family.id} sitterId={null} memberId={member?.id} isSitter={false} children={children} unseenCount={0} onMarkSeen={null}/>}
+        {tab==="feed"&&family&&<FeedTab familyId={family.id} sitterId={null} memberId={member?.id} isSitter={false} children={children} unseenCount={0} onMarkSeen={null} sitterName={family.sitter_name||'Sitter'} currentUserName={name} currentUserAvatar={member?.avatar||'👤'}/>}
         {tab==="feed"&&!family&&<div className="es"><div className="ic">🌸</div><h3>Not connected</h3><p>No family connected yet.</p></div>}
         {tab==="messages"&&member&&<MessagesTabWrapper currentUserId={session.user.id} member={member} family={family} memberName={name} memberAvatar={member?.avatar||"👤"}/>}
         {tab==="invoices"&&<div className="es"><div className="ic">💰</div><h3>Invoices coming soon</h3><p>View and pay invoices from your sitter.</p></div>}
