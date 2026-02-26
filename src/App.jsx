@@ -2298,7 +2298,10 @@ function ResetPasswordForm() {
     if(error){setAlert({t:"e",m:error.message});return;}
     setDone(true);
     // Sign out and redirect to login after 2 seconds
-    setTimeout(()=>{supabase.auth.signOut();},2000);
+    setTimeout(async()=>{
+      await supabase.auth.signOut();
+      window.location.href='/';
+    },2000);
   }
 
   return (
