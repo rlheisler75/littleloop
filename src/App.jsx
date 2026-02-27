@@ -2365,7 +2365,7 @@ function ResetPasswordForm() {
 
   async function submit(e){
     e.preventDefault();
-    if(password.length<6){setAlert({t:"e",m:"Password must be at least 6 characters."});return;}
+    if(password.length<8){setAlert({t:"e",m:"Password must be at least 8 characters."});return;}
     if(password!==confirm){setAlert({t:"e",m:"Passwords don't match."});return;}
     setLoading(true);setAlert(null);
     const {error}=await supabase.auth.updateUser({password});
@@ -2391,7 +2391,7 @@ function ResetPasswordForm() {
           ?<div className="al al-s">Password updated! Redirecting to login…</div>
           :<form onSubmit={submit}>
             {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
-            <Field label="New password" value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="At least 6 characters"/>
+            <Field label="New password" value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="At least 8 characters"/>
             <Field label="Confirm password" value={confirm} onChange={e=>setConfirm(e.target.value)} type="password" placeholder="Repeat password"/>
             <button type="submit" className="bp full" disabled={loading} style={{marginTop:8}}>
               {loading?<><Spinner/> Saving…</>:"Set Password"}
@@ -2504,7 +2504,7 @@ function SitterProfileTab({sitterId, sitterName, onNameChange}) {
 
   async function savePassword(e){
     e.preventDefault();
-    if(newPassword.length<6){setPassAlert({t:'e',m:'Password must be at least 6 characters.'});return;}
+    if(newPassword.length<8){setPassAlert({t:'e',m:'Password must be at least 8 characters.'});return;}
     if(newPassword!==confirmPass){setPassAlert({t:'e',m:'Passwords do not match.'});return;}
     setPassSaving(true);setPassAlert(null);
     try{
@@ -2543,7 +2543,7 @@ function SitterProfileTab({sitterId, sitterName, onNameChange}) {
         {passAlert&&<div className={`al al-${passAlert.t}`}>{passAlert.m}</div>}
         <form onSubmit={savePassword}>
           <Field label="Current password" type="password" value={curPassword} onChange={e=>setCurPassword(e.target.value)} placeholder="Your current password"/>
-          <Field label="New password" type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="At least 6 characters"/>
+          <Field label="New password" type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="At least 8 characters"/>
           <Field label="Confirm new password" type="password" value={confirmPass} onChange={e=>setConfirmPass(e.target.value)} placeholder="Repeat new password"/>
           <button type="submit" className="bp" disabled={passSaving}>
             {passSaving?<><Spinner/> Saving…</>:"Change Password"}
@@ -2619,7 +2619,7 @@ function MemberProfileTab({memberId, memberName, onNameChange}) {
 
   async function savePassword(e){
     e.preventDefault();
-    if(newPassword.length<6){setPassAlert({t:'e',m:'Password must be at least 6 characters.'});return;}
+    if(newPassword.length<8){setPassAlert({t:'e',m:'Password must be at least 8 characters.'});return;}
     if(newPassword!==confirmPass){setPassAlert({t:'e',m:'Passwords do not match.'});return;}
     setPassSaving(true);setPassAlert(null);
     try{
@@ -2655,7 +2655,7 @@ function MemberProfileTab({memberId, memberName, onNameChange}) {
         {passAlert&&<div className={`al al-${passAlert.t}`}>{passAlert.m}</div>}
         <form onSubmit={savePassword}>
           <Field label="Current password" type="password" value={curPassword} onChange={e=>setCurPassword(e.target.value)} placeholder="Your current password"/>
-          <Field label="New password" type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="At least 6 characters"/>
+          <Field label="New password" type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="At least 8 characters"/>
           <Field label="Confirm new password" type="password" value={confirmPass} onChange={e=>setConfirmPass(e.target.value)} placeholder="Repeat new password"/>
           <button type="submit" className="bp" disabled={passSaving}>
             {passSaving?<><Spinner/> Saving…</>:"Change Password"}
