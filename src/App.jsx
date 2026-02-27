@@ -705,6 +705,41 @@ function InviteFamilyModal({open,onClose,sitterId,sitterName,onInvited}) {
   );
 }
 
+// ─── Family Name Editor ───────────────────────────────────────────────────────
+function FamilyNameEditor({familyId, name, onSaved}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue]     = useState(name);
+  const [saving, setSaving]   = useState(false);
+
+  async function save(){
+    if(!value.trim()||value.trim()===name){setEditing(false);return;}
+    setSaving(true);
+    const {error} = await supabase.from('families').update({name:value.trim()}).eq('id',familyId);
+    setSaving(false);
+    if(!error){onSaved(value.trim());setEditing(false);}
+  }
+
+  if(editing) return (
+    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+      <input className="fi" value={value} onChange={e=>setValue(e.target.value)}
+        onKeyDown={e=>{if(e.key==='Enter')save();if(e.key==='Escape')setEditing(false);}}
+        style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:0,padding:'4px 8px'}}
+        autoFocus/>
+      <button className="bp" style={{padding:'5px 10px',fontSize:12,flexShrink:0}} onClick={save} disabled={saving}>
+        {saving?<Spinner size={10}/>:'✓'}
+      </button>
+      <button className="bg" style={{padding:'5px 10px',fontSize:12,flexShrink:0}} onClick={()=>{setValue(name);setEditing(false);}}>✕</button>
+    </div>
+  );
+
+  return (
+    <div style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer'}} onClick={()=>setEditing(true)}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600}}>{name}</div>
+      <span style={{fontSize:12,opacity:.35}}>✏️</span>
+    </div>
+  );
+}
+
 // ─── Sitter Family Detail ─────────────────────────────────────────────────────
 function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) {
   const [selectedChild,setSelectedChild] = useState(null);
@@ -724,11 +759,11 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
     <div className="slide-in">
       {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20}}>
-        <div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600}}>{family.name}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <FamilyNameEditor familyId={family.id} name={family.name} onSaved={n=>{family.name=n;setAlert({t:'s',m:'Family name updated!'});setTimeout(()=>setAlert(null),2000);}}/>
           <div style={{fontSize:11,color:"var(--text-faint,rgba(255,255,255,.3))",marginTop:2}}>{family.admin_email}</div>
         </div>
-        <span className={`sb sb-${family.status==="active"?"a":family.status==="pending"?"p":"i"}`}>
+        <span className={`sb sb-${family.status==="active"?"a":family.status==="pending"?"p":"i"}`} style={{flexShrink:0,marginLeft:8}}>
           {family.status==="active"?"✅ Active":family.status==="pending"?"⏳ Pending":"⬜ Inactive"}
         </span>
       </div>
@@ -2939,8 +2974,11 @@ function ParentDashboard({session,onSignOut}) {
                 <div className="card fade-up" style={{padding:24,marginBottom:16}}>
                   <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
                     <div style={{width:48,height:48,borderRadius:14,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>👨‍👩‍👧</div>
-                    <div>
-                      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600}}>{family.name}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      {isAdmin
+                        ?<FamilyNameEditor familyId={family.id} name={family.name} onSaved={n=>{setFamily(f=>({...f,name:n}));}}/>
+                        :<div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600}}>{family.name}</div>
+                      }
                       <span className={`sb sb-${family.status==="active"?"a":"p"}`} style={{marginTop:4}}>{family.status}</span>
                     </div>
                   </div>
