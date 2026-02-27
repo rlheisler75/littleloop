@@ -2702,16 +2702,21 @@ function CheckInButton({child, familyId, currentUserId, checkerName, isSitter, o
   async function toggle(){
     setLoading(true);
     const newStatus = status==='in' ? 'out' : 'in';
-    const {error} = await supabase.from('checkins').insert({
+    const now = new Date().toISOString();
+    const {data:inserted, error} = await supabase.from('checkins').insert({
       child_id: child.id,
       family_id: familyId,
       status: newStatus,
       checked_by: currentUserId,
       checked_by_name: checkerName,
       checked_by_role: isSitter ? 'sitter' : 'member',
-    });
-    if(!error){
+      checked_at: now,
+    }).select().single();
+    if(error){
+      console.error('checkin error:', error);
+    } else {
       setStatus(newStatus);
+      setLastEntry(inserted||{status:newStatus,checked_at:now,checked_by_name:checkerName});
       if(onChecked) onChecked(child.id, newStatus);
     }
     setLoading(false);
@@ -2732,7 +2737,7 @@ function CheckInButton({child, familyId, currentUserId, checkerName, isSitter, o
       </button>
       {lastEntry&&(
         <div style={{fontSize:9,color:'var(--text-faint,rgba(255,255,255,.3))',lineHeight:1.4}}>
-          {isIn?'In':'Out'} · {timeAgo(lastEntry.checked_at)} · {lastEntry.checked_by_name}
+          {status==='in'?'In':'Out'} · {timeAgo(lastEntry.checked_at)} · {lastEntry.checked_by_name}
         </div>
       )}
     </div>
