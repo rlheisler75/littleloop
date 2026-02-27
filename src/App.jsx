@@ -2016,8 +2016,7 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
 </div>
 
 <div class="section-title">Services Rendered</div>
-<div style="overflow-x:auto">
-<table>
+<table style="width:100%">
   <thead>
     <tr>
       <th>Date</th>
@@ -2042,7 +2041,6 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
     </tr>`).join("")}
   </tbody>
 </table>
-</div>
 
 <div class="totals">
   ${totalHours>0?`<div class="totals-row"><span>Total hours</span><span>${totalHours.toFixed(2)}</span></div>`:""}
