@@ -11,11 +11,71 @@ function getPortal() {
   return p.get("portal") || "sitter";
 }
 
+
+// ─── Themes ───────────────────────────────────────────────────────────────────
+const PALETTES = [
+  // DARK
+  { id:"midnight",  name:"Midnight",    dark:true,  body:"#0C1420", orb1:"rgba(30,70,140,.35)",  orb2:"rgba(20,90,80,.25)",  card:"rgba(255,255,255,.035)", accent:"#3A6FD4", accentGrad:"linear-gradient(135deg,#3A6FD4,#2550A8)", nav:"rgba(0,0,0,.2)",   logo:"linear-gradient(90deg,#6FA3E8,#A8CCFF,#E2EDFF,#A8CCFF,#6FA3E8)" },
+  { id:"forest",    name:"Forest",      dark:true,  body:"#0A1610", orb1:"rgba(20,90,40,.35)",   orb2:"rgba(10,70,60,.25)",  card:"rgba(255,255,255,.035)", accent:"#3A9E5A", accentGrad:"linear-gradient(135deg,#3A9E5A,#1E6B3A)", nav:"rgba(0,0,0,.2)",   logo:"linear-gradient(90deg,#6FB87A,#A8D4AE,#E2F4E8,#A8D4AE,#6FB87A)" },
+  { id:"amethyst",  name:"Amethyst",    dark:true,  body:"#120E20", orb1:"rgba(80,30,140,.35)",  orb2:"rgba(60,20,100,.25)", card:"rgba(255,255,255,.035)", accent:"#7B4FD4", accentGrad:"linear-gradient(135deg,#7B4FD4,#5530A8)", nav:"rgba(0,0,0,.2)",   logo:"linear-gradient(90deg,#B07BE8,#CFA8FF,#EEE2FF,#CFA8FF,#B07BE8)" },
+  { id:"ember",     name:"Ember",       dark:true,  body:"#1A0E08", orb1:"rgba(140,60,20,.35)",  orb2:"rgba(100,30,10,.25)", card:"rgba(255,255,255,.035)", accent:"#D46A3A", accentGrad:"linear-gradient(135deg,#D46A3A,#A84520)", nav:"rgba(0,0,0,.2)",   logo:"linear-gradient(90deg,#E8956F,#FFBFA8,#FFE8E2,#FFBFA8,#E8956F)" },
+  { id:"arctic",    name:"Arctic",      dark:true,  body:"#091520", orb1:"rgba(20,100,160,.35)", orb2:"rgba(10,70,120,.25)", card:"rgba(255,255,255,.035)", accent:"#2AA8D4", accentGrad:"linear-gradient(135deg,#2AA8D4,#1580A8)", nav:"rgba(0,0,0,.2)",   logo:"linear-gradient(90deg,#6FD4E8,#A8E8FF,#E2F8FF,#A8E8FF,#6FD4E8)" },
+  { id:"obsidian",  name:"Obsidian",    dark:true,  body:"#0A0A0A", orb1:"rgba(60,60,60,.35)",   orb2:"rgba(40,40,40,.25)",  card:"rgba(255,255,255,.035)", accent:"#8A8A9A", accentGrad:"linear-gradient(135deg,#8A8A9A,#5A5A6A)", nav:"rgba(0,0,0,.2)",   logo:"linear-gradient(90deg,#C0C0D0,#E0E0F0,#FFFFFF,#E0E0F0,#C0C0D0)" },
+  // LIGHT
+  { id:"cloud",     name:"Cloud",       dark:false, body:"#F0F4FA", orb1:"rgba(100,140,220,.2)", orb2:"rgba(80,160,140,.15)",card:"rgba(255,255,255,.8)",   accent:"#3A6FD4", accentGrad:"linear-gradient(135deg,#3A6FD4,#2550A8)", nav:"rgba(255,255,255,.7)",logo:"linear-gradient(90deg,#3A6FD4,#2550A8,#3A6FD4)" },
+  { id:"mint",      name:"Mint",        dark:false, body:"#EFF8F4", orb1:"rgba(80,180,120,.2)",  orb2:"rgba(60,140,100,.15)",card:"rgba(255,255,255,.8)",   accent:"#2A8A5A", accentGrad:"linear-gradient(135deg,#2A8A5A,#1A6040)", nav:"rgba(255,255,255,.7)",logo:"linear-gradient(90deg,#2A8A5A,#1A6040,#2A8A5A)" },
+  { id:"lavender",  name:"Lavender",    dark:false, body:"#F4F0FB", orb1:"rgba(140,100,220,.2)", orb2:"rgba(100,80,180,.15)",card:"rgba(255,255,255,.8)",   accent:"#7040C8", accentGrad:"linear-gradient(135deg,#7040C8,#5020A0)", nav:"rgba(255,255,255,.7)",logo:"linear-gradient(90deg,#7040C8,#5020A0,#7040C8)" },
+  { id:"peach",     name:"Peach",       dark:false, body:"#FBF2EE", orb1:"rgba(220,120,80,.2)",  orb2:"rgba(180,80,50,.15)", card:"rgba(255,255,255,.8)",   accent:"#C85030", accentGrad:"linear-gradient(135deg,#C85030,#A03010)", nav:"rgba(255,255,255,.7)",logo:"linear-gradient(90deg,#C85030,#A03010,#C85030)" },
+  { id:"sky",       name:"Sky",         dark:false, body:"#EEF6FB", orb1:"rgba(80,160,220,.2)",  orb2:"rgba(60,120,180,.15)",card:"rgba(255,255,255,.8)",   accent:"#1888C8", accentGrad:"linear-gradient(135deg,#1888C8,#0060A0)", nav:"rgba(255,255,255,.7)",logo:"linear-gradient(90deg,#1888C8,#0060A0,#1888C8)" },
+  { id:"sand",      name:"Sand",        dark:false, body:"#FAF7F0", orb1:"rgba(180,150,80,.2)",  orb2:"rgba(140,110,60,.15)",card:"rgba(255,255,255,.8)",   accent:"#8A6020", accentGrad:"linear-gradient(135deg,#8A6020,#604010)", nav:"rgba(255,255,255,.7)",logo:"linear-gradient(90deg,#8A6020,#604010,#8A6020)" },
+];
+
+function getPalette(id) {
+  return PALETTES.find(p=>p.id===id) || PALETTES[0];
+}
+
+function applyTheme(palette) {
+  const p = typeof palette === 'string' ? getPalette(palette) : palette;
+  const root = document.documentElement;
+  root.style.setProperty('--body-bg', p.body);
+  root.style.setProperty('--card-bg', p.card);
+  root.style.setProperty('--accent', p.accent);
+  root.style.setProperty('--accent-grad', p.accentGrad);
+  root.style.setProperty('--nav-bg', p.nav);
+  root.style.setProperty('--orb1', p.orb1);
+  root.style.setProperty('--orb2', p.orb2);
+  root.style.setProperty('--logo-grad', p.logo);
+  // Light mode text adjustments
+  if(!p.dark) {
+    root.style.setProperty('--text', '#14243A');
+    root.style.setProperty('--text-dim', 'rgba(20,36,58,.5)');
+    root.style.setProperty('--text-faint', 'rgba(20,36,58,.3)');
+    root.style.setProperty('--border', 'rgba(20,36,58,.1)');
+    root.style.setProperty('--input-bg', 'rgba(20,36,58,.04)');
+    root.style.setProperty('--input-border', 'rgba(20,36,58,.12)');
+    root.style.setProperty('--dot-color', 'rgba(20,36,58,.06)');
+  } else {
+    root.style.setProperty('--text', '#E4EAF4');
+    root.style.setProperty('--text-dim', 'rgba(255,255,255,.5)');
+    root.style.setProperty('--text-faint', 'rgba(255,255,255,.3)');
+    root.style.setProperty('--border', 'rgba(255,255,255,.07)');
+    root.style.setProperty('--input-bg', 'rgba(255,255,255,.04)');
+    root.style.setProperty('--input-border', 'rgba(255,255,255,.09)');
+    root.style.setProperty('--dot-color', 'rgba(255,255,255,.05)');
+  }
+  document.body.style.background = p.body;
+  document.body.style.color = p.dark ? '#E4EAF4' : '#14243A';
+}
+
+// Load saved theme from localStorage on startup
+const savedTheme = localStorage.getItem('ll_theme') || 'midnight';
+applyTheme(savedTheme);
+
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'DM Sans',sans-serif;background:#0C1420;color:#E4EAF4;min-height:100vh;overflow-x:hidden}
+  body{font-family:'DM Sans',sans-serif;background:var(--body-bg,#0C1420);color:var(--text,#E4EAF4);min-height:100vh;overflow-x:hidden}
   input,button,textarea,select{font-family:'DM Sans',sans-serif}
   @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
   @keyframes floatLeaf{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-10px) rotate(2deg)}}
@@ -29,19 +89,19 @@ const CSS = `
   .d1{animation-delay:.05s}.d2{animation-delay:.10s}.d3{animation-delay:.15s}.d4{animation-delay:.20s}.d5{animation-delay:.25s}.d6{animation-delay:.30s}
   .leaf{animation:floatLeaf 5s ease-in-out infinite;display:inline-block}
   .spin{animation:spin .65s linear infinite}
-  .logo-text{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:700;letter-spacing:-1px;background:linear-gradient(90deg,#6FA3E8,#A8CCFF,#E2EDFF,#A8CCFF,#6FA3E8);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 5s linear infinite}
-  .card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:18px;backdrop-filter:blur(24px);box-shadow:0 20px 60px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
-  .nav-tab{flex:1;padding:11px 0;text-align:center;cursor:pointer;font-size:12px;font-weight:500;color:rgba(255,255,255,.3);border-bottom:2px solid transparent;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px}
-  .nav-tab:hover{color:rgba(255,255,255,.6)}.nav-tab.active{color:#7BAAEE;border-bottom-color:#7BAAEE}
-  .tab{flex:1;padding:9px 0;text-align:center;cursor:pointer;font-size:13px;font-weight:500;color:rgba(255,255,255,.3);border-bottom:2px solid transparent;transition:all .2s}
-  .tab:hover{color:rgba(255,255,255,.6)}.tab.active{color:#7BAAEE;border-bottom-color:#7BAAEE}
-  .fl{display:block;font-size:10px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:7px}
-  .fi{width:100%;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:10px;color:#E4EAF4;font-size:13px;outline:none;transition:all .2s;margin-bottom:14px}
-  .fi::placeholder{color:rgba(255,255,255,.2)}.fi:focus{border-color:rgba(111,163,232,.45);background:rgba(111,163,232,.06);box-shadow:0 0 0 3px rgba(111,163,232,.1)}
-  .bp{padding:11px 20px;background:linear-gradient(135deg,#3A6FD4,#2550A8);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
+  .logo-text{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:700;letter-spacing:-1px;background:var(--logo-grad,linear-gradient(90deg,#6FA3E8,#A8CCFF,#E2EDFF,#A8CCFF,#6FA3E8));background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 5s linear infinite}
+  .card{background:var(--card-bg,rgba(255,255,255,.035));border:1px solid var(--border,rgba(255,255,255,.07));border-radius:18px;backdrop-filter:blur(24px);box-shadow:0 20px 60px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.06)}
+  .nav-tab{flex:1;padding:11px 0;text-align:center;cursor:pointer;font-size:12px;font-weight:500;color:var(--text-faint,rgba(255,255,255,.3));border-bottom:2px solid transparent;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .nav-tab:hover{color:var(--text-dim,rgba(255,255,255,.6))}.nav-tab.active{color:var(--accent,#7BAAEE);border-bottom-color:var(--accent,#7BAAEE)}
+  .tab{flex:1;padding:9px 0;text-align:center;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-faint,rgba(255,255,255,.3));border-bottom:2px solid transparent;transition:all .2s}
+  .tab:hover{color:var(--text-dim,rgba(255,255,255,.5))}.tab.active{color:var(--accent,#7BAAEE);border-bottom-color:var(--accent,#7BAAEE)}
+  .fl{display:block;font-size:10px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;color:var(--text-faint,rgba(255,255,255,.3));margin-bottom:7px}
+  .fi{width:100%;padding:11px 14px;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--input-border,rgba(255,255,255,.09));border-radius:10px;color:var(--text,#E4EAF4);font-size:13px;outline:none;transition:all .2s;margin-bottom:14px}
+  .fi::placeholder{color:var(--text-faint,rgba(255,255,255,.2))}.fi:focus{border-color:rgba(111,163,232,.45);background:rgba(111,163,232,.06);box-shadow:0 0 0 3px rgba(111,163,232,.1)}
+  .bp{padding:11px 20px;background:var(--accent-grad,linear-gradient(135deg,#3A6FD4,#2550A8));border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
   .bp:hover:not(:disabled){background:linear-gradient(135deg,#4A7FE4,#3560B8);transform:translateY(-1px);box-shadow:0 6px 20px rgba(58,111,212,.3)}.bp:disabled{opacity:.5;cursor:not-allowed}.bp.full{width:100%;justify-content:center}
-  .bg{padding:9px 16px;background:transparent;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:rgba(255,255,255,.5);font-size:13px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
-  .bg:hover{border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.8)}
+  .bg{padding:9px 16px;background:transparent;border:1px solid var(--border,rgba(255,255,255,.12));border-radius:10px;color:var(--text-dim,rgba(255,255,255,.5));font-size:13px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+  .bg:hover{border-color:var(--text-dim,rgba(255,255,255,.25));color:var(--text,rgba(255,255,255,.8))}
   .bd{padding:8px 14px;background:rgba(192,80,80,.12);border:1px solid rgba(192,80,80,.25);border-radius:9px;color:#F5AAAA;font-size:12px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
   .bd:hover{background:rgba(192,80,80,.22)}
   .al{border-radius:10px;padding:10px 14px;font-size:12px;line-height:1.55;margin-bottom:16px}
@@ -56,11 +116,11 @@ const CSS = `
   .sb-p{background:rgba(200,120,74,.15);color:#F5C098;border:1px solid rgba(200,120,74,.25)}
   .sb-i{background:rgba(120,120,140,.15);color:#B0B8C8;border:1px solid rgba(120,120,140,.25)}
   .mo{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
-  .mb{background:#111D2E;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 40px 80px rgba(0,0,0,.6)}
+  .mb{background:var(--nav-bg,#111D2E);border:1px solid var(--border,rgba(255,255,255,.1));border-radius:20px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 40px 80px rgba(0,0,0,.4)}
   .es{text-align:center;padding:48px 20px}
   .es .ic{font-size:40px;margin-bottom:14px;opacity:.4}
   .es h3{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;margin-bottom:8px;opacity:.7}
-  .es p{font-size:12px;color:rgba(255,255,255,.3);line-height:1.6;margin-bottom:20px}
+  .es p{font-size:12px;color:var(--text-faint,rgba(255,255,255,.3));line-height:1.6;margin-bottom:20px}
   .note-card{padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);margin-bottom:8px}
   .chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:5px 11px;font-size:12px}
   ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
@@ -80,9 +140,9 @@ const CSS = `
 function Bg() {
   return (
     <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,overflow:"hidden"}}>
-      <div style={{position:"absolute",width:600,height:600,borderRadius:"50%",left:-200,top:-150,background:"radial-gradient(circle,rgba(30,70,140,.35) 0%,transparent 70%)",animation:"orb1 18s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",width:500,height:500,borderRadius:"50%",right:-150,bottom:-100,background:"radial-gradient(circle,rgba(20,90,80,.25) 0%,transparent 70%)",animation:"orb2 22s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(rgba(255,255,255,.05) 1px,transparent 1px)",backgroundSize:"32px 32px",maskImage:"radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%)",WebkitMaskImage:"radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%)"}}/>
+      <div style={{position:"absolute",width:600,height:600,borderRadius:"50%",left:-200,top:-150,background:"radial-gradient(circle,var(--orb1,rgba(30,70,140,.35)) 0%,transparent 70%)",animation:"orb1 18s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",width:500,height:500,borderRadius:"50%",right:-150,bottom:-100,background:"radial-gradient(circle,var(--orb2,rgba(20,90,80,.25)) 0%,transparent 70%)",animation:"orb2 22s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(var(--dot-color,rgba(255,255,255,.05)) 1px,transparent 1px)",backgroundSize:"32px 32px",maskImage:"radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%)",WebkitMaskImage:"radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%)"}}/>
     </div>
   );
 }
@@ -2343,16 +2403,106 @@ function ResetPasswordForm() {
   );
 }
 
+
+// ─── Theme Picker ─────────────────────────────────────────────────────────────
+function ThemePicker({currentTheme, onSelect}) {
+  const dark  = PALETTES.filter(p=>p.dark);
+  const light = PALETTES.filter(p=>!p.dark);
+  return (
+    <div>
+      <SectionLabel>Dark themes</SectionLabel>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:20}}>
+        {dark.map(p=>(
+          <button key={p.id} onClick={()=>onSelect(p.id)} style={{
+            border:`2px solid ${currentTheme===p.id?"var(--accent,#7BAAEE)":"rgba(255,255,255,.1)"}`,
+            borderRadius:12,padding:"10px 8px",cursor:"pointer",
+            background:p.body,transition:"all .2s",
+            boxShadow:currentTheme===p.id?"0 0 0 2px var(--accent,#7BAAEE)22":"none",
+            position:"relative",overflow:"hidden"
+          }}>
+            <div style={{width:"100%",height:28,borderRadius:6,background:p.accentGrad,marginBottom:6}}/>
+            <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,.7)",letterSpacing:".5px"}}>{p.name}</div>
+            {currentTheme===p.id&&<div style={{position:"absolute",top:6,right:6,width:14,height:14,borderRadius:"50%",background:"var(--accent,#7BAAEE)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8}}>✓</div>}
+          </button>
+        ))}
+      </div>
+      <SectionLabel>Light themes</SectionLabel>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+        {light.map(p=>(
+          <button key={p.id} onClick={()=>onSelect(p.id)} style={{
+            border:`2px solid ${currentTheme===p.id?"#666":"rgba(0,0,0,.12)"}`,
+            borderRadius:12,padding:"10px 8px",cursor:"pointer",
+            background:p.body,transition:"all .2s",
+            boxShadow:currentTheme===p.id?"0 0 0 2px #66666622":"none",
+            position:"relative",overflow:"hidden"
+          }}>
+            <div style={{width:"100%",height:28,borderRadius:6,background:p.accentGrad,marginBottom:6}}/>
+            <div style={{fontSize:10,fontWeight:600,color:"rgba(20,36,58,.6)",letterSpacing:".5px"}}>{p.name}</div>
+            {currentTheme===p.id&&<div style={{position:"absolute",top:6,right:6,width:14,height:14,borderRadius:"50%",background:p.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:"#fff"}}>✓</div>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Sitter Profile/Settings Tab ─────────────────────────────────────────────
+function SitterProfileTab({sitterId, sitterName}) {
+  const [theme, setTheme] = useState(localStorage.getItem('ll_theme')||'midnight');
+  const [saving, setSaving] = useState(false);
+  const [alert, setAlert]   = useState(null);
+
+  function selectTheme(id) {
+    setTheme(id);
+    applyTheme(id);
+    localStorage.setItem('ll_theme', id);
+    // Save to DB too
+    supabase.from('sitters').update({theme_id:id}).eq('id',sitterId);
+  }
+
+  return (
+    <div>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:20}}>Profile & Settings</div>
+      <div className="card" style={{padding:"20px 18px",marginBottom:14}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:16}}>🎨 App Theme</div>
+        <ThemePicker currentTheme={theme} onSelect={selectTheme}/>
+      </div>
+    </div>
+  );
+}
+
+// ─── Member Profile/Settings Tab ─────────────────────────────────────────────
+function MemberProfileTab({memberId}) {
+  const [theme, setTheme] = useState(localStorage.getItem('ll_theme')||'midnight');
+
+  function selectTheme(id) {
+    setTheme(id);
+    applyTheme(id);
+    localStorage.setItem('ll_theme', id);
+    if(memberId) supabase.from('members').update({theme_id:id}).eq('id',memberId);
+  }
+
+  return (
+    <div>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:20}}>Profile & Settings</div>
+      <div className="card" style={{padding:"20px 18px",marginBottom:14}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:16}}>🎨 App Theme</div>
+        <ThemePicker currentTheme={theme} onSelect={selectTheme}/>
+      </div>
+    </div>
+  );
+}
+
 // ─── Sitter Dashboard ─────────────────────────────────────────────────────────
 function SitterDashboard({session,onSignOut}) {
   const [tab,setTab]=useState("families");
   const sitterId=session.user.id;
   const name=session.user.user_metadata?.name||session.user.email.split("@")[0];
-  const NAV=[{id:"families",icon:"👨‍👩‍👧",label:"Families"},{id:"feed",icon:"🌸",label:"Feed"},{id:"invoices",icon:"💰",label:"Invoices"},{id:"messages",icon:"💬",label:"Messages"}];
+  const NAV=[{id:"families",icon:"👨‍👩‍👧",label:"Families"},{id:"feed",icon:"🌸",label:"Feed"},{id:"invoices",icon:"💰",label:"Invoices"},{id:"messages",icon:"💬",label:"Messages"},{id:"profile",icon:"⚙️",label:"Profile"}];
 
   return (
     <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
-      <div style={{padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,.06)",background:"rgba(0,0,0,.2)",backdropFilter:"blur(20px)",position:"sticky",top:0,zIndex:10}}>
+      <div style={{padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,.06)",background:"var(--nav-bg,rgba(0,0,0,.2))",backdropFilter:"blur(20px)",position:"sticky",top:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div className="leaf" style={{fontSize:22,filter:"drop-shadow(0 0 10px rgba(58,158,122,.4))"}}>🌿</div>
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
@@ -2362,7 +2512,7 @@ function SitterDashboard({session,onSignOut}) {
           <button className="bg" style={{padding:"6px 12px",fontSize:12}} onClick={onSignOut}>Sign out</button>
         </div>
       </div>
-      <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,.06)",background:"rgba(0,0,0,.15)"}}>
+      <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,.06)",background:"var(--nav-bg,rgba(0,0,0,.15))"}}>
         {NAV.map(n=><div key={n.id} className={`nav-tab ${tab===n.id?"active":""}`} onClick={()=>setTab(n.id)}><span style={{fontSize:18}}>{n.icon}</span><span>{n.label}</span></div>)}
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"16px 14px",maxWidth:800,width:"100%",margin:"0 auto"}}>
@@ -2370,6 +2520,7 @@ function SitterDashboard({session,onSignOut}) {
         {tab==="feed"&&<SitterFeedWrapper sitterId={sitterId}/>}
         {tab==="invoices"&&<SitterInvoicesTab sitterId={sitterId}/>}
         {tab==="messages"&&<SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
+        {tab==="profile"&&<SitterProfileTab sitterId={sitterId} sitterName={name}/>}
       </div>
     </div>
   );
@@ -2418,6 +2569,7 @@ function ParentDashboard({session,onSignOut}) {
     {id:"feed",icon:"🌸",label:"Feed",badge:0},
     ...(canView||isAdmin?[{id:"invoices",icon:"💰",label:"Invoices"}]:[]),
     {id:"messages",icon:"💬",label:"Messages"},
+    {id:"profile",icon:"⚙️",label:"Profile"},
   ];
 
   // Default tab based on role
@@ -2430,7 +2582,7 @@ function ParentDashboard({session,onSignOut}) {
 
   return (
     <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
-      <div style={{padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,.06)",background:"rgba(0,0,0,.2)",backdropFilter:"blur(20px)",position:"sticky",top:0,zIndex:10}}>
+      <div style={{padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,.06)",background:"var(--nav-bg,rgba(0,0,0,.2))",backdropFilter:"blur(20px)",position:"sticky",top:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div className="leaf" style={{fontSize:22,filter:"drop-shadow(0 0 10px rgba(58,158,122,.4))"}}>🌿</div>
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
@@ -2441,7 +2593,7 @@ function ParentDashboard({session,onSignOut}) {
         </div>
       </div>
 
-      <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,.06)",background:"rgba(0,0,0,.15)"}}>
+      <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,.06)",background:"var(--nav-bg,rgba(0,0,0,.15))"}}>
         {NAV.map(n=>(
           <div key={n.id} className={`nav-tab ${tab===n.id?"active":""}`} onClick={()=>setTab(n.id)}>
             <span style={{position:"relative",display:"inline-block"}}>
@@ -2527,6 +2679,7 @@ function ParentDashboard({session,onSignOut}) {
         {tab==="feed"&&!family&&<div className="es"><div className="ic">🌸</div><h3>Not connected</h3><p>No family connected yet.</p></div>}
         {tab==="messages"&&member&&<MessagesTabWrapper currentUserId={session.user.id} member={member} family={family} memberName={name} memberAvatar={member?.avatar||"👤"}/>}
         {tab==="invoices"&&family&&<FamilyInvoicesTab familyId={family.id} currentUserId={session.user.id}/>}
+        {tab==="profile"&&<MemberProfileTab memberId={member?.id}/>}
       </div>
 
       {/* Modals */}
@@ -2547,6 +2700,9 @@ export default function App() {
     const tag=document.createElement("style");
     tag.textContent=CSS;
     document.head.appendChild(tag);
+    // Apply saved theme
+    const saved=localStorage.getItem('ll_theme')||'midnight';
+    applyTheme(saved);
     return()=>document.head.removeChild(tag);
   },[]);
 
