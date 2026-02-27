@@ -1621,7 +1621,7 @@ function MessagesTabWrapper({currentUserId, member, family, memberName, memberAv
 // ─── Invoices ──────────────────────────────────────────────────────────────────
 
 const PAYMENT_TYPES = [
-  {id:"venmo",    label:"Venmo",        icon:"💜", placeholder:"@username",    deeplink:(handle,amount,note)=>`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(handle.replace('@',''))}&amount=${amount}&note=${encodeURIComponent(note)}`},
+  {id:"venmo",    label:"Venmo",        icon:"💜", placeholder:"@username",    deeplink:(handle,amount,note)=>`https://venmo.com/${handle.replace('@','')}?txn=pay&amount=${amount}&note=${encodeURIComponent(note)}`},
   {id:"paypal",   label:"PayPal",       icon:"💙", placeholder:"username",     deeplink:(handle,amount,note)=>`https://paypal.me/${handle}/${amount}`},
   {id:"zelle",    label:"Zelle",        icon:"💛", placeholder:"email or phone",deeplink:null},
   {id:"cash",     label:"Cash",         icon:"💵", placeholder:"(no handle needed)",deeplink:null},
@@ -1969,6 +1969,17 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
   .footer{margin-top:32px;padding-top:20px;border-top:1px solid #EEF3FA;font-size:11px;color:#aaa;text-align:center}
   .purpose{background:#F4F8FF;border-left:3px solid #3A6FD4;padding:10px 14px;border-radius:0 8px 8px 0;font-size:12px;color:#3A5070;margin-bottom:24px}
   @media print{body{padding:20px}.no-print{display:none!important}a{color:#2550A8!important}}
+  @media(max-width:600px){
+    body{padding:16px}
+    .header{flex-direction:column;gap:12px}
+    .header>div:last-child{text-align:left}
+    .inv-num{font-size:22px}
+    .parties{grid-template-columns:1fr}
+    table{font-size:11px}
+    th,td{padding:6px 8px}
+    .totals{width:100%}
+    .payment-section a,.payment-section div{display:block!important;width:100%;text-align:center;margin:4px 0!important;box-sizing:border-box}
+  }
 </style>
 </head>
 <body>
@@ -1999,12 +2010,13 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
   </div>
 </div>
 
-<div class="purpose">
+<div class="purpose" style="word-wrap:break-word">
   <strong>Purpose of care:</strong> Childcare services · Service period: ${dateRange}
   ${totalHours>0?` · Total hours: ${totalHours.toFixed(2)}`:""}
 </div>
 
 <div class="section-title">Services Rendered</div>
+<div style="overflow-x:auto">
 <table>
   <thead>
     <tr>
@@ -2030,6 +2042,7 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
     </tr>`).join("")}
   </tbody>
 </table>
+</div>
 
 <div class="totals">
   ${totalHours>0?`<div class="totals-row"><span>Total hours</span><span>${totalHours.toFixed(2)}</span></div>`:""}
