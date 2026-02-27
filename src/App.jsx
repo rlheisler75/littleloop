@@ -2600,14 +2600,15 @@ function SitterProfileTab({sitterId, sitterName, onNameChange}) {
   async function deleteAccount(){
     setDeleting(true);
     try{
-      // Delete sitter row (cascades to families, invoices etc via FK)
-      await supabase.from('sitters').delete().eq('id',sitterId);
-      // Delete auth user via admin — use signOut as fallback since we can't call admin API from client
-      await supabase.auth.signOut();
+      // Call edge function which uses service role to fully delete auth user
+      const {error} = await supabase.functions.invoke('delete-account');
+      if(error) throw error;
       // Clear local storage
       Object.keys(localStorage).filter(k=>k.startsWith('ll_')).forEach(k=>localStorage.removeItem(k));
+      await supabase.auth.signOut();
       window.location.href = '/';
     }catch(err){
+      alert('Error deleting account: ' + err.message);
       setDeleting(false);
       setShowDeleteConfirm(false);
       setDeleteConfirmText('');
