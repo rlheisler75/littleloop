@@ -2930,7 +2930,7 @@ function SitterDashboard({session,onSignOut}) {
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"16px 14px",maxWidth:800,width:"100%",margin:"0 auto"}}>
         {tab==="families"&&<FamiliesTab sitterId={sitterId} sitterName={name}/>}
-        {tab==="feed"&&<SitterFeedWrapper sitterId={sitterId}/>}
+        {tab==="feed"&&<SitterFeedWrapper sitterId={sitterId} sitterName={name}/>}
         {tab==="invoices"&&<SitterInvoicesTab sitterId={sitterId}/>}
         {tab==="messages"&&<SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
         {tab==="profile"&&<SitterProfileTab sitterId={sitterId} sitterName={name} onNameChange={setName}/>}
