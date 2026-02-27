@@ -2856,7 +2856,54 @@ function SitterDashboard({session,onSignOut}) {
   const [tab,setTab]=useState("families");
   const sitterId=session.user.id;
   const [name,setName]=useState(session.user.user_metadata?.name||session.user.email.split("@")[0]);
-  const NAV=[{id:"families",icon:"👨‍👩‍👧",label:"Families"},{id:"feed",icon:"🌸",label:"Feed"},{id:"invoices",icon:"💰",label:"Invoices"},{id:"messages",icon:"💬",label:"Messages"},{id:"profile",icon:"⚙️",label:"Profile"}];
+  const [unread,setUnread]=useState({messages:0,feed:0});
+
+  useEffect(()=>{
+    async function checkUnread(){
+      const lastSeenMsg=localStorage.getItem(`ll_seen_msg_${sitterId}`)||'1970-01-01';
+      const {count:msgCount} = await supabase.from('messages')
+        .select('id',{count:'exact',head:true})
+        .neq('sender_id',sitterId)
+        .gt('created_at',lastSeenMsg);
+      // Feed: comments from non-sitter users
+      const lastSeenFeed=localStorage.getItem(`ll_seen_feed_comments_${sitterId}`)||'1970-01-01';
+      const {count:feedCount} = await supabase.from('post_comments')
+        .select('id',{count:'exact',head:true})
+        .neq('author_id',sitterId)
+        .gt('created_at',lastSeenFeed);
+      setUnread({messages:msgCount||0,feed:feedCount||0});
+    }
+    checkUnread();
+    // Real-time updates
+    const ch=supabase.channel('sitter-unread')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},(p)=>{
+        if(p.new.sender_id!==sitterId) setUnread(u=>({...u,messages:u.messages+1}));
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'post_comments'},(p)=>{
+        if(p.new.author_id!==sitterId) setUnread(u=>({...u,feed:u.feed+1}));
+      }).subscribe();
+    return()=>supabase.removeChannel(ch);
+  },[sitterId]);
+
+  // Clear badge when tab is opened
+  useEffect(()=>{
+    if(tab==='messages'){
+      localStorage.setItem(`ll_seen_msg_${sitterId}`,new Date().toISOString());
+      setUnread(u=>({...u,messages:0}));
+    }
+    if(tab==='feed'){
+      localStorage.setItem(`ll_seen_feed_comments_${sitterId}`,new Date().toISOString());
+      setUnread(u=>({...u,feed:0}));
+    }
+  },[tab]);
+
+  const NAV=[
+    {id:"families",icon:"👨‍👩‍👧",label:"Families"},
+    {id:"feed",icon:"🌸",label:"Feed",badge:unread.feed},
+    {id:"invoices",icon:"💰",label:"Invoices"},
+    {id:"messages",icon:"💬",label:"Messages",badge:unread.messages},
+    {id:"profile",icon:"⚙️",label:"Profile"},
+  ];
 
   return (
     <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
@@ -2871,7 +2918,15 @@ function SitterDashboard({session,onSignOut}) {
         </div>
       </div>
       <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,.06)",background:"var(--nav-bg,rgba(0,0,0,.15))"}}>
-        {NAV.map(n=><div key={n.id} className={`nav-tab ${tab===n.id?"active":""}`} onClick={()=>setTab(n.id)}><span style={{fontSize:18}}>{n.icon}</span><span>{n.label}</span></div>)}
+        {NAV.map(n=>(
+          <div key={n.id} className={`nav-tab ${tab===n.id?"active":""}`} onClick={()=>setTab(n.id)}>
+            <span style={{position:"relative",display:"inline-block"}}>
+              <span style={{fontSize:18}}>{n.icon}</span>
+              {n.badge>0&&<span style={{position:"absolute",top:-3,right:-5,width:8,height:8,borderRadius:"50%",background:"#E05A5A",boxShadow:"0 0 0 2px var(--body-bg,#0C1420)"}}/>}
+            </span>
+            <span>{n.label}</span>
+          </div>
+        ))}
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"16px 14px",maxWidth:800,width:"100%",margin:"0 auto"}}>
         {tab==="families"&&<FamiliesTab sitterId={sitterId} sitterName={name}/>}
@@ -2922,11 +2977,70 @@ function ParentDashboard({session,onSignOut}) {
   const pickup   = member?.role==="pickup";
 
   // Build nav based on role
+  const [unread,setUnread]=useState({messages:0,invoices:0,feed:0});
+
+  useEffect(()=>{
+    if(!member||!family) return;
+    async function checkUnread(){
+      const userId=session.user.id;
+      // Messages unread
+      const lastSeenMsg=localStorage.getItem(`ll_seen_msg_${userId}`)||'1970-01-01';
+      const {count:msgCount} = await supabase.from('messages')
+        .select('id',{count:'exact',head:true})
+        .neq('sender_id',userId)
+        .gt('created_at',lastSeenMsg);
+      // Invoices unread (sent invoices not yet seen)
+      const lastSeenInv=localStorage.getItem(`ll_seen_inv_${family.id}_${userId}`)||'1970-01-01';
+      const {count:invCount} = await supabase.from('invoices')
+        .select('id',{count:'exact',head:true})
+        .eq('family_id',family.id)
+        .in('status',['sent'])
+        .gt('created_at',lastSeenInv);
+      // Feed unread
+      const lastSeenFeed=localStorage.getItem(`ll_seen_feed_${family.id}_${userId}`)||'1970-01-01';
+      const {count:feedCount} = await supabase.from('posts')
+        .select('id',{count:'exact',head:true})
+        .eq('family_id',family.id)
+        .gt('created_at',lastSeenFeed);
+      setUnread({messages:msgCount||0,invoices:invCount||0,feed:feedCount||0});
+    }
+    checkUnread();
+    const ch=supabase.channel('parent-unread')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},(p)=>{
+        if(p.new.sender_id!==session.user.id) setUnread(u=>({...u,messages:u.messages+1}));
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'posts',filter:`family_id=eq.${family?.id}`},()=>{
+        setUnread(u=>({...u,feed:u.feed+1}));
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'invoices',filter:`family_id=eq.${family?.id}`},()=>{
+        setUnread(u=>({...u,invoices:u.invoices+1}));
+      })
+      .subscribe();
+    return()=>supabase.removeChannel(ch);
+  },[member,family]);
+
+  // Clear badges when tabs opened
+  useEffect(()=>{
+    const userId=session.user.id;
+    if(tab==='messages'){
+      localStorage.setItem(`ll_seen_msg_${userId}`,new Date().toISOString());
+      setUnread(u=>({...u,messages:0}));
+    }
+    if(tab==='invoices'&&family){
+      localStorage.setItem(`ll_seen_inv_${family.id}_${userId}`,new Date().toISOString());
+      setUnread(u=>({...u,invoices:0}));
+    }
+    if(tab==='feed'&&family){
+      localStorage.setItem(`ll_seen_feed_${family.id}_${userId}`,new Date().toISOString());
+      setUnread(u=>({...u,feed:0}));
+    }
+  },[tab,family]);
+
   const NAV=[
     ...(!feedOnly&&!pickup?[{id:"home",icon:"🏠",label:"Home"}]:[]),
-    {id:"feed",icon:"🌸",label:"Feed",badge:0},
-    ...(canView||isAdmin?[{id:"invoices",icon:"💰",label:"Invoices"}]:[]),
-    {id:"messages",icon:"💬",label:"Messages"},
+    {id:"feed",icon:"🌸",label:"Feed",badge:unread.feed},
+    ...(canView||isAdmin?[{id:"invoices",icon:"💰",label:"Invoices",badge:unread.invoices}]:[]),
+    {id:"messages",icon:"💬",label:"Messages",badge:unread.messages},
     {id:"profile",icon:"⚙️",label:"Profile"},
   ];
 
@@ -2956,7 +3070,7 @@ function ParentDashboard({session,onSignOut}) {
           <div key={n.id} className={`nav-tab ${tab===n.id?"active":""}`} onClick={()=>setTab(n.id)}>
             <span style={{position:"relative",display:"inline-block"}}>
               <span style={{fontSize:18}}>{n.icon}</span>
-              {n.badge>0&&<span style={{position:"absolute",top:-4,right:-6,background:"#3A6FD4",borderRadius:"50%",width:14,height:14,fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{n.badge}</span>}
+              {n.badge>0&&<span style={{position:"absolute",top:-3,right:-5,width:8,height:8,borderRadius:"50%",background:"#E05A5A",boxShadow:"0 0 0 2px var(--body-bg,#0C1420)"}}/>}
             </span>
             <span>{n.label}</span>
           </div>
