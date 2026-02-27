@@ -2066,9 +2066,9 @@ ${enabledMethods.length>0?`
 </body>
 </html>`;
 
-  const w=window.open("","_blank");
-  w.document.write(html);
-  w.document.close();
+  const blob = new Blob([html], {type: 'text/html'});
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
 }
 
 // ─── Invoices Tab (Sitter) ────────────────────────────────────────────────────
