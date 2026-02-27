@@ -3061,17 +3061,14 @@ function SitterOnboarding({session, onComplete}) {
 
 // ─── Sitter Dashboard ─────────────────────────────────────────────────────────
 function SitterDashboard({session,onSignOut}) {
-  const [tab,setTab]=useState("families");
   const sitterId=session.user.id;
   const [name,setName]=useState(session.user.user_metadata?.name||session.user.email.split("@")[0]);
-  const [onboarded,setOnboarded]=useState(()=>{
-    // Check localStorage first (instant), then verify against DB
-    return !!localStorage.getItem(`ll_onboarded_${session.user.id}`);
-  });
+  const [onboarded,setOnboarded]=useState(!!localStorage.getItem(`ll_onboarded_${session.user.id}`));
+  const [tab,setTab]=useState("families");
+  const [unread,setUnread]=useState({messages:0,feed:0});
 
   useEffect(()=>{
     if(onboarded) return;
-    // Double-check DB in case they completed on another device
     supabase.from('sitters').select('onboarded').eq('id',sitterId).single()
       .then(({data})=>{
         if(data?.onboarded){
@@ -3080,12 +3077,6 @@ function SitterDashboard({session,onSignOut}) {
         }
       });
   },[]);
-
-  if(!onboarded) return (
-    <><Bg/><SitterOnboarding session={session} onComplete={n=>{setName(n);setOnboarded(true);}}/></>
-  );
-  const [unread,setUnread]=useState({messages:0,feed:0});
-
   useEffect(()=>{
     async function checkUnread(){
       const lastSeenMsg=localStorage.getItem(`ll_seen_msg_${sitterId}`)||'1970-01-01';
@@ -3132,6 +3123,10 @@ function SitterDashboard({session,onSignOut}) {
     {id:"messages",icon:"💬",label:"Messages",badge:unread.messages},
     {id:"profile",icon:"⚙️",label:"Profile"},
   ];
+
+  if(!onboarded) return (
+    <><Bg/><SitterOnboarding session={session} onComplete={n=>{setName(n);setOnboarded(true);}}/></>
+  );
 
   return (
     <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
