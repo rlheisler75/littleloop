@@ -1621,7 +1621,7 @@ function MessagesTabWrapper({currentUserId, member, family, memberName, memberAv
 // ─── Invoices ──────────────────────────────────────────────────────────────────
 
 const PAYMENT_TYPES = [
-  {id:"venmo",    label:"Venmo",        icon:"💜", placeholder:"@username",    deeplink:(handle,amount,note)=>`https://venmo.com/${handle.replace('@','')}?txn=pay&amount=${amount}&note=${encodeURIComponent(note)}`},
+  {id:"venmo",    label:"Venmo",        icon:"💜", placeholder:"@username",    deeplink:(handle,amount,note)=>`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(handle.replace('@',''))}&amount=${amount}&note=${encodeURIComponent(note)}`, weblink:(handle,amount,note)=>`https://venmo.com/${handle.replace('@','')}`},
   {id:"paypal",   label:"PayPal",       icon:"💙", placeholder:"username",     deeplink:(handle,amount,note)=>`https://paypal.me/${handle}/${amount}`},
   {id:"zelle",    label:"Zelle",        icon:"💛", placeholder:"email or phone",deeplink:null},
   {id:"cash",     label:"Cash",         icon:"💵", placeholder:"(no handle needed)",deeplink:null},
@@ -1930,32 +1930,34 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
     if(!pt) return "";
     const link=pt.deeplink?pt.deeplink(m.handle,total.toFixed(2),invoice.invoice_number):"";
     if(link){
-      return `<a href="${link}" style="display:inline-block;padding:10px 20px;background:#1a2a3a;border:1px solid #3A6FD4;border-radius:8px;color:#7BAAEE;text-decoration:none;font-size:13px;margin:4px">${pt.icon} Pay with ${pt.label}${m.handle?" ("+m.handle+")":""}</a>`;
+      return `<a href="${link}" style="display:inline-block;padding:12px 20px;background:#1a2a3a;border:1px solid #3A6FD4;border-radius:10px;color:#7BAAEE;text-decoration:none;font-size:14px;font-weight:600;margin:4px">${pt.icon} Pay with ${pt.label}${m.handle?" · "+m.handle:""}</a>`;
     }
-    return `<div style="display:inline-block;padding:10px 20px;background:#1a2a3a;border:1px solid #444;border-radius:8px;color:#aaa;font-size:13px;margin:4px">${pt.icon} ${pt.label}${m.handle?": "+m.handle:""}</div>`;
+    return `<div style="display:inline-block;padding:12px 20px;background:#1a2a3a;border:1px solid #444;border-radius:10px;color:#aaa;font-size:14px;margin:4px">${pt.icon} ${pt.label}${m.handle?" · "+m.handle:""}</div>`;
   }).join("\n");
 
   const html=`<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${invoice.invoice_number} - littleloop</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#14243A;padding:40px;max-width:760px;margin:0 auto}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #E8F0FA}
+  *{box-sizing:border-box}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#14243A;padding:24px 16px;max-width:760px;margin:0 auto;font-size:14px}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #E8F0FA;flex-wrap:wrap;gap:12px}
   .logo{font-size:24px;font-weight:700;color:#2550A8;letter-spacing:-0.5px}
   .logo span{font-size:13px;display:block;color:#888;font-weight:400;margin-top:2px}
   .inv-num{font-size:28px;font-weight:700;color:#2550A8}
   .inv-meta{font-size:12px;color:#666;margin-top:4px}
-  .parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px}
+  .parties{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
   .party h3{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:8px}
   .party p{font-size:13px;line-height:1.7;color:#333}
   .party strong{color:#14243A}
   .section-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:10px}
-  table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px}
-  th{background:#F4F8FF;padding:8px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#666;border-bottom:1px solid #DDE8F5}
-  td{padding:10px 12px;border-bottom:1px solid #EEF3FA;color:#333;vertical-align:top}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:12px;min-width:480px}
+  th{background:#F4F8FF;padding:6px 8px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#666;border-bottom:1px solid #DDE8F5}
+  td{padding:8px;border-bottom:1px solid #EEF3FA;color:#333;vertical-align:top}
   tr:last-child td{border-bottom:none}
   .amount{text-align:right}
   .totals{margin-left:auto;width:240px;margin-bottom:28px}
@@ -1970,15 +1972,13 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
   .purpose{background:#F4F8FF;border-left:3px solid #3A6FD4;padding:10px 14px;border-radius:0 8px 8px 0;font-size:12px;color:#3A5070;margin-bottom:24px}
   @media print{body{padding:20px}.no-print{display:none!important}a{color:#2550A8!important}}
   @media(max-width:600px){
-    body{padding:16px}
-    .header{flex-direction:column;gap:12px}
+    body{padding:16px 12px;font-size:13px}
     .header>div:last-child{text-align:left}
-    .inv-num{font-size:22px}
+    .inv-num{font-size:20px}
     .parties{grid-template-columns:1fr}
-    table{font-size:11px}
-    th,td{padding:6px 8px}
     .totals{width:100%}
-    .payment-section a,.payment-section div{display:block!important;width:100%;text-align:center;margin:4px 0!important;box-sizing:border-box}
+    .payment-section a,.payment-section div{display:block!important;width:100%;text-align:center;margin:6px 0!important;box-sizing:border-box;padding:12px!important}
+    .purpose{font-size:11px}
   }
 </style>
 </head>
@@ -2279,11 +2279,15 @@ function PayButtons({sitter, invoice}) {
           const pt=PAYMENT_TYPES.find(p=>p.id===m.type);
           if(!pt) return null;
           const link=pt.deeplink?pt.deeplink(m.handle,total.toFixed(2),invoice.invoice_number):null;
+          const weblink=pt.weblink?pt.weblink(m.handle,total.toFixed(2),invoice.invoice_number):link;
           return link
-            ?<a key={m.type} href={link} target="_blank" rel="noopener noreferrer"
-                style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.12)",color:"rgba(255,255,255,.8)",textDecoration:"none",fontSize:12,fontWeight:500}}>
-                {pt.icon} {pt.label}
-              </a>
+            ?<div key={m.type} style={{display:"inline-flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                <a href={link} target="_blank" rel="noopener noreferrer"
+                  style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.12)",color:"rgba(255,255,255,.8)",textDecoration:"none",fontSize:12,fontWeight:500}}>
+                  {pt.icon} {pt.label}{m.handle?` (${m.handle})`:""}
+                </a>
+                {pt.weblink&&<a href={weblink} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:"rgba(255,255,255,.35)",textDecoration:"none"}}>open profile ↗</a>}
+              </div>
             :<div key={m.type} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.12)",color:"rgba(255,255,255,.6)",fontSize:12}}>
                 {pt.icon} {pt.label}{m.handle?`: ${m.handle}`:""}
               </div>;
