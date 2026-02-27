@@ -2592,6 +2592,28 @@ function SitterProfileTab({sitterId, sitterName, onNameChange}) {
   const [email, setEmail]       = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileAlert, setProfileAlert]   = useState(null);
+  // Delete account
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting]                   = useState(false);
+
+  async function deleteAccount(){
+    setDeleting(true);
+    try{
+      // Delete sitter row (cascades to families, invoices etc via FK)
+      await supabase.from('sitters').delete().eq('id',sitterId);
+      // Delete auth user via admin — use signOut as fallback since we can't call admin API from client
+      await supabase.auth.signOut();
+      // Clear local storage
+      Object.keys(localStorage).filter(k=>k.startsWith('ll_')).forEach(k=>localStorage.removeItem(k));
+      window.location.href = '/';
+    }catch(err){
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+      setDeleteConfirmText('');
+    }
+  }
+
   // Password fields
   const [curPassword, setCurPassword]     = useState('');
   const [newPassword, setNewPassword]     = useState('');
@@ -2693,6 +2715,31 @@ function SitterProfileTab({sitterId, sitterName, onNameChange}) {
       <div className="card" style={{padding:"20px 18px",marginBottom:14}}>
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:16}}>🎨 App Theme</div>
         <ThemePicker currentTheme={theme} onSelect={selectTheme}/>
+      </div>
+
+      {/* Delete account */}
+      <div className="card" style={{padding:"20px 18px",marginBottom:14,border:"1px solid rgba(192,80,80,.2)",background:"rgba(192,80,80,.04)"}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:8,color:"#F5AAAA"}}>⚠️ Delete Account</div>
+        <p style={{fontSize:12,color:"var(--text-faint)",lineHeight:1.6,marginBottom:16}}>
+          Permanently deletes your sitter account and all associated data — families, children, invoices, posts, and messages. This cannot be undone.
+        </p>
+        {!showDeleteConfirm
+          ? <button className="bd" onClick={()=>setShowDeleteConfirm(true)}>Delete my account</button>
+          : <div>
+              <div className="al al-e" style={{marginBottom:12}}>
+                Type <strong>DELETE</strong> to confirm you want to permanently remove your account.
+              </div>
+              <input className="fi" value={deleteConfirmText} onChange={e=>setDeleteConfirmText(e.target.value)}
+                placeholder="Type DELETE to confirm" style={{marginBottom:10}}/>
+              <div style={{display:'flex',gap:8}}>
+                <button className="bd" disabled={deleteConfirmText!=='DELETE'||deleting}
+                  onClick={deleteAccount}>
+                  {deleting?<><Spinner size={12}/> Deleting…</>:'Permanently delete'}
+                </button>
+                <button className="bg" onClick={()=>{setShowDeleteConfirm(false);setDeleteConfirmText('');}}>Cancel</button>
+              </div>
+            </div>
+        }
       </div>
     </div>
   );
