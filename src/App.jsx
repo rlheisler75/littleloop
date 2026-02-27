@@ -11,6 +11,11 @@ function getPortal() {
   return p.get("portal") || "sitter";
 }
 
+function getInviteToken() {
+  const p = new URLSearchParams(window.location.search);
+  return p.get("invite") || null;
+}
+
 
 // ─── Themes ───────────────────────────────────────────────────────────────────
 const PALETTES = [
@@ -191,7 +196,7 @@ function SectionLabel({children}) {
 }
 
 // ─── Auth Form ────────────────────────────────────────────────────────────────
-function AuthForm({portal}) {
+function AuthForm({portal, inviteData}) {
   const isParent = portal==="parent";
   const [mode,setMode]         = useState("login");
   const [name,setName]         = useState("");
@@ -265,7 +270,8 @@ function AuthForm({portal}) {
             </div>
           )}
           {alert && <div className={`al al-${alert.t} fade-up`}>{alert.m}</div>}
-          {isParent&&mode==="signup"&&<div className="al al-i" style={{marginBottom:16}}>💡 Sign up with the email your sitter used to invite you and you'll be automatically connected to your family.</div>}
+          {isParent&&mode==="signup"&&!inviteData&&<div className="al al-i" style={{marginBottom:16}}>💡 Sign up with the email your sitter used to invite you and you'll be automatically connected to your family.</div>}
+          {inviteData&&<div className="al al-s" style={{marginBottom:16}}>🌿 Creating your account for <strong>{inviteData.family_name}</strong>. Use {inviteData.admin_email} to auto-connect.</div>}
           <form onSubmit={submit}>
             {mode==="signup"&&<div className="fade-up d2"><Field label="Your name" value={name} onChange={e=>setName(e.target.value)} placeholder={isParent?"Sarah Chen":"Maya Rodriguez"} autoComplete="name"/></div>}
             <div className="fade-up d3"><Field label="Email address" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email"/></div>
@@ -677,7 +683,7 @@ function InviteFamilyModal({open,onClose,sitterId,sitterName,onInvited}) {
         const {error:kidErr}=await supabase.from("children").insert(childNames.map(n=>({family_id:family.id,name:n,avatar:"🌟",color:"#8B78D4"})));
         if(kidErr) throw kidErr;
       }
-      await supabase.functions.invoke("send-invite",{body:{familyName,parentEmail:adminEmail,sitterName}});
+      await supabase.functions.invoke("send-invite",{body:{familyName,parentEmail:adminEmail,sitterName,sitterId}});
       setAlert({t:"s",m:`${familyName} invited! An email is on its way to ${adminEmail}.`});
       setTimeout(()=>{onInvited();onClose();setFamilyName("");setAdminEmail("");setChildrenStr("");setAlert(null);},1800);
     } catch(err){
@@ -2395,6 +2401,98 @@ function PayButtons({sitter, invoice}) {
   );
 }
 
+
+// ─── Invite Welcome Page ──────────────────────────────────────────────────────
+function InviteWelcome({token, onContinue}) {
+  const [invite, setInvite] = useState(null);
+  const [sitter, setSitter] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState(null);
+
+  useEffect(()=>{
+    async function load(){
+      const {data, error} = await supabase
+        .from('invite_tokens')
+        .select('*, sitters(name, avatar_url, city, state)')
+        .eq('token', token)
+        .gt('expires_at', new Date().toISOString())
+        .is('used_at', null)
+        .single();
+      if(error || !data){ setError('This invite link has expired or already been used.'); setLoading(false); return; }
+      setInvite(data);
+      setSitter(data.sitters);
+      setLoading(false);
+    }
+    load();
+  },[token]);
+
+  if(loading) return (
+    <div style={{position:'relative',zIndex:1,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <Spinner size={24}/>
+    </div>
+  );
+
+  if(error) return (
+    <div style={{position:'relative',zIndex:1,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+      <div style={{textAlign:'center',maxWidth:360}}>
+        <div style={{fontSize:40,marginBottom:16}}>😕</div>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:8}}>Invite not found</div>
+        <p style={{fontSize:13,color:'var(--text-faint)',lineHeight:1.6,marginBottom:24}}>{error}</p>
+        <button className="bp" onClick={()=>window.location.href='/?portal=parent'}>Go to sign up</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{position:'relative',zIndex:1,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+      <div style={{width:'100%',maxWidth:460}} className="fade-up">
+
+        {/* Logo */}
+        <div style={{textAlign:'center',marginBottom:28}}>
+          <div className="leaf" style={{fontSize:36,marginBottom:8}}>🌿</div>
+          <div className="logo-text" style={{fontSize:28}}>littleloop</div>
+        </div>
+
+        {/* Welcome card */}
+        <div className="card" style={{padding:'28px 24px',marginBottom:16,textAlign:'center'}}>
+          <div style={{fontSize:48,marginBottom:12}}>{sitter?.avatar_url||'🌿'}</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:6}}>
+            You're invited!
+          </div>
+          <p style={{fontSize:14,color:'var(--text-dim)',lineHeight:1.6,marginBottom:20}}>
+            <strong>{sitter?.name||'Your sitter'}</strong> has invited <strong>{invite.family_name}</strong> to join littleloop
+            {sitter?.city ? ` · ${sitter.city}${sitter.state?', '+sitter.state:''}` : ''}.
+          </p>
+
+          {/* Features */}
+          <div style={{textAlign:'left',marginBottom:24}}>
+            {[['🌸','Daily updates','Photos and notes from your sitter'],
+              ['💬','Messaging','Private chat, always in reach'],
+              ['✅','Check in/out','See when your kids arrive and leave'],
+              ['💳','Invoices','View and pay in one place']].map(([icon,title,desc])=>(
+              <div key={title} style={{display:'flex',gap:12,marginBottom:12,alignItems:'flex-start'}}>
+                <span style={{fontSize:20,flexShrink:0}}>{icon}</span>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600}}>{title}</div>
+                  <div style={{fontSize:12,color:'var(--text-faint)'}}>{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button className="bp full" onClick={()=>onContinue(invite)}>
+            Create your account →
+          </button>
+          <div style={{fontSize:11,color:'var(--text-faint)',marginTop:10}}>
+            Sign up with {invite.admin_email} to auto-connect to {invite.family_name}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 // ─── Reset Password Form ──────────────────────────────────────────────────────
 function ResetPasswordForm() {
   const [password, setPassword] = useState("");
@@ -3399,6 +3497,8 @@ export default function App() {
   const [session,setSession]   = useState(undefined);
   const [userRole,setUserRole] = useState(null);
   const portal = getPortal();
+  const inviteToken = getInviteToken();
+  const [inviteData, setInviteData] = useState(null); // set after welcome page
 
   useEffect(()=>{
     const tag=document.createElement("style");
@@ -3448,7 +3548,11 @@ export default function App() {
   const signOut=()=>supabase.auth.signOut();
 
   if(userRole==="__reset__") return <><Bg/><ResetPasswordForm/></>;
-  if(!session) return <><Bg/><AuthForm portal={portal}/></>;
+  // Invite flow — show welcome page, then pre-fill signup
+  if(inviteToken && !inviteData && !session) return (
+    <><Bg/><InviteWelcome token={inviteToken} onContinue={inv=>setInviteData(inv)}/></>
+  );
+  if(!session) return <><Bg/><AuthForm portal="parent" inviteData={inviteData}/></>;
   if(userRole==="parent") return <><Bg/><ParentDashboard session={session} onSignOut={signOut}/></>;
   return <><Bg/><SitterDashboard session={session} onSignOut={signOut}/></>;
 }
