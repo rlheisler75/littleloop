@@ -3600,7 +3600,7 @@ export default function App() {
   if(inviteToken && !inviteData && !session) return (
     <><Bg/><InviteWelcome token={inviteToken} onContinue={inv=>setInviteData(inv)}/></>
   );
-  if(!session) return <><Bg/><AuthForm portal="parent" inviteData={inviteData}/></>;
+  if(!session) return <><Bg/><AuthForm portal={portal} inviteData={inviteData}/></>;
   if(userRole==="parent") return <><Bg/><ParentDashboard session={session} onSignOut={signOut}/></>;
   return <><Bg/><SitterDashboard session={session} onSignOut={signOut}/></>;
 }
