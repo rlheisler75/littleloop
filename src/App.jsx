@@ -768,13 +768,19 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
   async function saveEmailAndResend(){
     if(!newEmail.trim()||newEmail.trim()===family.admin_email){setEditEmail(false);return;}
     setEmailSaving(true);
+    const trimmed=newEmail.trim();
     // Update admin_email on family
-    const {error:upErr}=await supabase.from('families').update({admin_email:newEmail.trim()}).eq('id',family.id);
+    const {error:upErr}=await supabase.from('families').update({admin_email:trimmed}).eq('id',family.id);
     if(upErr){setAlert({t:'e',m:upErr.message});setEmailSaving(false);return;}
-    family.admin_email=newEmail.trim();
-    // Resend invite email via edge function
+    // Update the pending member record email + name
+    await supabase.from('members')
+      .update({email:trimmed, name:trimmed.split('@')[0]})
+      .eq('family_id',family.id)
+      .eq('status','pending');
+    family.admin_email=trimmed;
+    // Resend invite via edge function
     const {error:fnErr}=await supabase.functions.invoke('send-invite',{
-      body:{familyName:family.name,parentEmail:newEmail.trim(),sitterName,sitterId}
+      body:{familyName:family.name,parentEmail:trimmed,sitterName,sitterId}
     });
     setEmailSaving(false);
     setEditEmail(false);
