@@ -658,24 +658,25 @@ function InviteFamilyModal({open,onClose,sitterId,sitterName,onInvited}) {
   async function submit(e){
     e.preventDefault();setAlert(null);setLoading(true);
     try{
-      const {data:existing}=await supabase.from("families").select("id,sitter_id,name,status").eq("admin_email",adminEmail).maybeSingle();
+      const {data:existing}=await supabase.from("families").select("id,name,status").eq("admin_email",adminEmail).maybeSingle();
       if(existing){
-        if(existing.sitter_id&&existing.sitter_id!==sitterId&&existing.status!=="inactive"){
-          setAlert({t:"w",m:"This family already has a sitter. The family admin or current sitter must remove them first."});
-          setLoading(false);return;
-        }
-        if(existing.sitter_id===sitterId&&existing.status!=="inactive"){
+        const {data:existingConn}=await supabase.from("family_sitters").select("id,status").eq("family_id",existing.id).eq("sitter_id",sitterId).maybeSingle();
+        if(existingConn&&existingConn.status!=="inactive"){
           setAlert({t:"i",m:"You're already connected to this family."});
           setLoading(false);return;
         }
-        const {error}=await supabase.from("families").update({sitter_id:sitterId,status:"active"}).eq("id",existing.id);
-        if(error) throw error;
-        setAlert({t:"s",m:`You've been reconnected to the ${existing.name} family!`});
+        if(existingConn){
+          await supabase.from("family_sitters").update({status:"active"}).eq("id",existingConn.id);
+        } else {
+          await supabase.from("family_sitters").insert({family_id:existing.id,sitter_id:sitterId,status:"pending"});
+        }
+        setAlert({t:"s",m:`You've been connected to the ${existing.name} family!`});
         setTimeout(()=>{onInvited();onClose();setFamilyName("");setAdminEmail("");setChildrenStr("");setAlert(null);},1800);
         return;
       }
-      const {data:family,error:famErr}=await supabase.from("families").insert({sitter_id:sitterId,name:familyName,admin_email:adminEmail,status:"pending"}).select().single();
+      const {data:family,error:famErr}=await supabase.from("families").insert({name:familyName,admin_email:adminEmail,status:"pending"}).select().single();
       if(famErr) throw famErr;
+      await supabase.from("family_sitters").insert({family_id:family.id,sitter_id:sitterId,status:"pending"});
       const {error:memErr}=await supabase.from("members").insert({family_id:family.id,name:adminEmail.split("@")[0],email:adminEmail,role:"admin",status:"pending"});
       if(memErr) throw memErr;
       const childNames=childrenStr.split(",").map(s=>s.trim()).filter(Boolean);
@@ -815,7 +816,8 @@ function FamiliesTab({sitterId,sitterName}) {
 
   const load = useCallback(async()=>{
     setLoading(true);
-    const {data:fams}=await supabase.from("families").select("*").eq("sitter_id",sitterId).neq("status","inactive").order("created_at",{ascending:false});
+    const {data:fsRows}=await supabase.from("family_sitters").select("status,families(*)").eq("sitter_id",sitterId).neq("status","inactive").order("joined_at",{ascending:false});
+    const fams=(fsRows||[]).map(r=>r.families).filter(Boolean);
     setFamilies(fams||[]);
     if(fams?.length){
       const {data:kds}=await supabase.from("children").select("*").in("family_id",fams.map(f=>f.id));
@@ -1215,7 +1217,8 @@ function SitterFeedWrapper({sitterId, sitterName}) {
 
   useEffect(()=>{
     async function load(){
-      const {data:fams}=await supabase.from("families").select("*").eq("sitter_id",sitterId).neq("status","inactive").order("created_at",{ascending:false});
+      const {data:fsRows}=await supabase.from("family_sitters").select("status,families(*)").eq("sitter_id",sitterId).neq("status","inactive").order("joined_at",{ascending:false});
+      const fams=(fsRows||[]).map(r=>r.families).filter(Boolean);
       setFamilies(fams||[]);
       if(fams?.length){
         setSelected(fams[0].id);
@@ -1298,9 +1301,9 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
       ];
       // If family member starting, also add sitter
       if(!isSitter){
-        const {data:fam}=await supabase.from("families").select("sitter_id, sitters(name)").eq("id",selectedFamily||familyId).single();
-        if(fam?.sitter_id){
-          participants.push({conversation_id:conv.id, user_id:fam.sitter_id, participant_name:fam.sitters?.name||"Sitter", participant_avatar:"🌿", is_sitter:true});
+        const {data:fsRows}=await supabase.from("family_sitters").select("sitter_id, sitters(name,avatar_url)").eq("family_id",selectedFamily||familyId).eq("status","active");
+        for(const fs of (fsRows||[])){
+          participants.push({conversation_id:conv.id, user_id:fs.sitter_id, participant_name:fs.sitters?.name||"Sitter", participant_avatar:fs.sitters?.avatar_url||"🌿", is_sitter:true});
         }
       }
       const {error:partErr}=await supabase.from("conversation_participants").insert(participants);
@@ -1699,7 +1702,8 @@ function SitterMessagesWrapper({sitterId, sitterName}) {
 
   useEffect(()=>{
     async function load(){
-      const {data:fams}=await supabase.from("families").select("*").eq("sitter_id",sitterId).neq("status","inactive");
+      const {data:fsRows}=await supabase.from("family_sitters").select("status,families(*)").eq("sitter_id",sitterId).neq("status","inactive");
+      const fams=(fsRows||[]).map(r=>r.families).filter(Boolean);
       setFamilies(fams||[]);
       if(fams?.length){
         const {data:mems}=await supabase.from("members").select("*").in("family_id",fams.map(f=>f.id));
@@ -2194,7 +2198,7 @@ function SitterInvoicesTab({sitterId}) {
   const load=useCallback(async()=>{
     setLoading(true);
     const [{data:fams},{data:invs},{data:sit}]=await Promise.all([
-      supabase.from("families").select("*").eq("sitter_id",sitterId).neq("status","inactive"),
+      supabase.from("family_sitters").select("status,families(*)").eq("sitter_id",sitterId).neq("status","inactive"),
       supabase.from("invoices").select("*").eq("sitter_id",sitterId).order("created_at",{ascending:false}),
       supabase.from("sitters").select("*").eq("id",sitterId).single(),
     ]);
@@ -3328,13 +3332,15 @@ function ParentDashboard({session,onSignOut}) {
     const {data:mem}=await supabase.from("members").select("*").eq("user_id",session.user.id).maybeSingle();
     if(!mem){setLoading(false);return;}
     setMember(mem);
-    const [{data:fam},{data:kids},{data:mems}]=await Promise.all([
-      supabase.from("families").select("*, sitters(name)").eq("id",mem.family_id).single(),
+    const [{data:fam},{data:kids},{data:mems},{data:fsRows}]=await Promise.all([
+      supabase.from("families").select("*").eq("id",mem.family_id).single(),
       supabase.from("children").select("*").eq("family_id",mem.family_id),
       supabase.from("members").select("*").eq("family_id",mem.family_id),
+      supabase.from("family_sitters").select("status,sitters(id,name,avatar_url)").eq("family_id",mem.family_id).neq("status","inactive"),
     ]);
-    const famWithSitter = fam ? {...fam, sitter_name: fam.sitters?.name||'Sitter'} : fam;
-    setFamily(famWithSitter);setChildren(kids||[]);setMembers(mems||[]);
+    const sittersList=(fsRows||[]).map(r=>({...r.sitters,connection_status:r.status})).filter(Boolean);
+    const famWithSitters = fam ? {...fam, sitters_list:sittersList, sitter_name:sittersList[0]?.name||'Sitter'} : fam;
+    setFamily(famWithSitters);setChildren(kids||[]);setMembers(mems||[]);
     setLoading(false);
   },[session.user.id]);
 
@@ -3487,6 +3493,29 @@ function ParentDashboard({session,onSignOut}) {
                               <CheckInButton child={c} familyId={family.id} currentUserId={session.user.id}
                                 checkerName={name} isSitter={false}/>
                             )}
+                          </div>
+                        ))}
+                      </div>
+                    }
+                  </div>
+
+                  {/* Sitters */}
+                  <div style={{marginBottom:20}}>
+                    <SectionLabel>Sitters</SectionLabel>
+                    {(family?.sitters_list||[]).length===0
+                      ?<div style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>No sitters connected yet.</div>
+                      :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+                        {(family.sitters_list||[]).map(s=>(
+                          <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",
+                            background:"var(--input-bg,rgba(255,255,255,.03))",borderRadius:12,
+                            border:"1px solid var(--border,rgba(255,255,255,.06))"}}>
+                            <span style={{fontSize:22}}>{s.avatar_url||"🌿"}</span>
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:13,fontWeight:500}}>{s.name}</div>
+                            </div>
+                            <span className={`sb sb-${s.connection_status==="active"?"a":"p"}`} style={{fontSize:9}}>
+                              {s.connection_status==="active"?"Active":"Pending"}
+                            </span>
                           </div>
                         ))}
                       </div>
