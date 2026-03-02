@@ -753,13 +753,44 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
   const [confirmRemove,setConfirmRemove] = useState(false);
   const [loading,setLoading]             = useState(false);
   const [alert,setAlert]                 = useState(null);
+  const [editEmail,setEditEmail]         = useState(false);
+  const [newEmail,setNewEmail]           = useState(family.admin_email||'');
+  const [emailSaving,setEmailSaving]     = useState(false);
 
   async function deactivate(){
     setLoading(true);
-    const {error}=await supabase.from("families").update({status:"inactive"}).eq("id",family.id);
+    const {error}=await supabase.from("family_sitters").update({status:"inactive"}).eq("family_id",family.id).eq("sitter_id",sitterId);
     setLoading(false);setConfirmRemove(false);
     if(error){setAlert({t:"e",m:error.message});return;}
     onDeactivate();
+  }
+
+  async function saveEmailAndResend(){
+    if(!newEmail.trim()||newEmail.trim()===family.admin_email){setEditEmail(false);return;}
+    setEmailSaving(true);
+    // Update admin_email on family
+    const {error:upErr}=await supabase.from('families').update({admin_email:newEmail.trim()}).eq('id',family.id);
+    if(upErr){setAlert({t:'e',m:upErr.message});setEmailSaving(false);return;}
+    family.admin_email=newEmail.trim();
+    // Resend invite email via edge function
+    const {error:fnErr}=await supabase.functions.invoke('send-invite',{
+      body:{familyName:family.name,parentEmail:newEmail.trim(),sitterName,sitterId}
+    });
+    setEmailSaving(false);
+    setEditEmail(false);
+    if(fnErr) setAlert({t:'w',m:'Email updated but invite failed to send. Try resending.'});
+    else setAlert({t:'s',m:'Email updated and invite resent!'});
+    setTimeout(()=>setAlert(null),3000);
+  }
+
+  async function resendInvite(){
+    setLoading(true);
+    const {error}=await supabase.functions.invoke('send-invite',{
+      body:{familyName:family.name,parentEmail:family.admin_email,sitterName,sitterId}
+    });
+    setLoading(false);
+    setAlert(error?{t:'e',m:'Failed to resend invite.'}:{t:'s',m:'Invite resent!'});
+    setTimeout(()=>setAlert(null),3000);
   }
 
   return (
@@ -768,7 +799,29 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20}}>
         <div style={{flex:1,minWidth:0}}>
           <FamilyNameEditor familyId={family.id} name={family.name} onSaved={n=>{family.name=n;setAlert({t:'s',m:'Family name updated!'});setTimeout(()=>setAlert(null),2000);}}/>
-          <div style={{fontSize:11,color:"var(--text-faint,rgba(255,255,255,.3))",marginTop:2}}>{family.admin_email}</div>
+          {/* Email — editable when pending */}
+          {editEmail
+            ? <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4}}>
+                <input className="fi" value={newEmail} onChange={e=>setNewEmail(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter')saveEmailAndResend();if(e.key==='Escape')setEditEmail(false);}}
+                  style={{marginBottom:0,padding:'4px 8px',fontSize:12}} autoFocus/>
+                <button className="bp" style={{padding:'4px 10px',fontSize:11,flexShrink:0}} onClick={saveEmailAndResend} disabled={emailSaving}>
+                  {emailSaving?<Spinner size={10}/>:'Save & Resend'}
+                </button>
+                <button className="bg" style={{padding:'4px 8px',fontSize:11,flexShrink:0}} onClick={()=>{setNewEmail(family.admin_email);setEditEmail(false);}}>✕</button>
+              </div>
+            : <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2,flexWrap:'wrap'}}>
+                <span style={{fontSize:11,color:"var(--text-faint)"}}>{family.admin_email}</span>
+                {family.status==='pending'&&<>
+                  <button onClick={()=>setEditEmail(true)}
+                    style={{background:'none',border:'none',fontSize:10,color:'var(--accent,#7BAAEE)',cursor:'pointer',padding:0,textDecoration:'underline'}}>edit</button>
+                  <button onClick={resendInvite} disabled={loading}
+                    style={{background:'none',border:'none',fontSize:10,color:'var(--accent,#7BAAEE)',cursor:'pointer',padding:0,textDecoration:'underline'}}>
+                    {loading?'sending…':'resend invite'}
+                  </button>
+                </>}
+              </div>
+          }
         </div>
         <span className={`sb sb-${family.status==="active"?"a":family.status==="pending"?"p":"i"}`} style={{flexShrink:0,marginLeft:8}}>
           {family.status==="active"?"✅ Active":family.status==="pending"?"⏳ Pending":"⬜ Inactive"}
