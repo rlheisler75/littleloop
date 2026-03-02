@@ -248,13 +248,13 @@ function AuthForm({portal, inviteData}) {
     <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 16px"}}>
       <div style={{width:"100%",maxWidth:400}}>
         <div className="fade-up" style={{textAlign:"center",marginBottom:36}}>
-          <div className="leaf" style={{fontSize:46,marginBottom:10,filter:"drop-shadow(0 0 20px rgba(58,158,122,.45))"}}>🌿</div>
+          <div className="leaf" style={{fontSize:46,marginBottom:10,filter:"drop-shadow(0 0 20px rgba(58,158,122,.45))"}}>➿</div>
           <div className="logo-text">littleloop</div>
           <p style={{fontSize:12,color:"var(--text-faint,rgba(255,255,255,.28))",marginTop:8,letterSpacing:".04em"}}>Independent childcare, thoughtfully connected.</p>
         </div>
         <div className="card fade-up d1" style={{padding:"32px 28px"}}>
           <div className="fade-up d2" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:22}}>
-            <div style={{width:28,height:28,borderRadius:8,background:isParent?"linear-gradient(135deg,#3A9E7A,#2A7A5A)":"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>{isParent?"👨‍👩‍👧":"🌿"}</div>
+            <div style={{width:28,height:28,borderRadius:8,background:isParent?"linear-gradient(135deg,#3A9E7A,#2A7A5A)":"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>{isParent?"👨‍👩‍👧":"➿"}</div>
             <span style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,.35)",letterSpacing:"1.2px",textTransform:"uppercase"}}>{isParent?"Family Portal":"Sitter Portal"}</span>
           </div>
           {mode!=="forgot" && (
@@ -271,7 +271,7 @@ function AuthForm({portal, inviteData}) {
           )}
           {alert && <div className={`al al-${alert.t} fade-up`}>{alert.m}</div>}
           {isParent&&mode==="signup"&&!inviteData&&<div className="al al-i" style={{marginBottom:16}}>💡 Sign up with the email your sitter used to invite you and you'll be automatically connected to your family.</div>}
-          {inviteData&&<div className="al al-s" style={{marginBottom:16}}>🌿 Creating your account for <strong>{inviteData.family_name}</strong>. Use {inviteData.admin_email} to auto-connect.</div>}
+          {inviteData&&<div className="al al-s" style={{marginBottom:16}}>➿ Creating your account for <strong>{inviteData.family_name}</strong>. Use {inviteData.admin_email} to auto-connect.</div>}
           <form onSubmit={submit}>
             {mode==="signup"&&<div className="fade-up d2"><Field label="Your name" value={name} onChange={e=>setName(e.target.value)} placeholder={isParent?"Sarah Chen":"Maya Rodriguez"} autoComplete="name"/></div>}
             <div className="fade-up d3"><Field label="Email address" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email"/></div>
@@ -1055,7 +1055,7 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
       author_id:currentUserId,
       author_role:isSitter?"sitter":"parent",
       author_name:isSitter?sitterName:currentUserName,
-      author_avatar:isSitter?"🌿":currentUserAvatar,
+      author_avatar:isSitter?"➿":currentUserAvatar,
       text:newComment.trim(),
     });
     setNewComment("");setSubmitting(false);loadComments();
@@ -1071,7 +1071,7 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
       <div style={{padding:"14px 16px"}}>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:36,height:36,borderRadius:12,background:"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🌿</div>
+            <div style={{width:36,height:36,borderRadius:12,background:"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>➿</div>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <span style={{fontSize:13,fontWeight:600}}>{sitterName}</span>
@@ -1257,7 +1257,7 @@ function SitterFeedWrapper({sitterId, sitterName}) {
           onMarkSeen={null}
           sitterName={sitterName}
           currentUserName={sitterName}
-          currentUserAvatar="🌿"
+          currentUserAvatar="➿"
         />
       )}
     </div>
@@ -1296,14 +1296,14 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
 
       // Add all participants (current user + selected)
       const participants=[
-        {conversation_id:conv.id, user_id:currentUserId, participant_name:isSitter?sitterName:"You", participant_avatar:isSitter?"🌿":sitterAvatar||"👤", is_sitter:isSitter},
+        {conversation_id:conv.id, user_id:currentUserId, participant_name:isSitter?sitterName:"You", participant_avatar:isSitter?"➿":sitterAvatar||"👤", is_sitter:isSitter},
         ...selected.map(m=>({conversation_id:conv.id, user_id:m.user_id, participant_name:m.name, participant_avatar:m.avatar||"👤", is_sitter:false})),
       ];
       // If family member starting, also add sitter
       if(!isSitter){
         const {data:fsRows}=await supabase.from("family_sitters").select("sitter_id, sitters(name,avatar_url)").eq("family_id",selectedFamily||familyId).eq("status","active");
         for(const fs of (fsRows||[])){
-          participants.push({conversation_id:conv.id, user_id:fs.sitter_id, participant_name:fs.sitters?.name||"Sitter", participant_avatar:fs.sitters?.avatar_url||"🌿", is_sitter:true});
+          participants.push({conversation_id:conv.id, user_id:fs.sitter_id, participant_name:fs.sitters?.name||"Sitter", participant_avatar:fs.sitters?.avatar_url||"➿", is_sitter:true});
         }
       }
       const {error:partErr}=await supabase.from("conversation_participants").insert(participants);
@@ -1454,7 +1454,7 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
   const [loading, setLoading]       = useState(true);
   const bottomRef                   = useRef(null);
   const senderName                  = isSitter ? "Your Sitter" : (participants.find(p=>p.user_id===currentUserId)?.participant_name||"You");
-  const senderAvatar                = isSitter ? "🌿" : (participants.find(p=>p.user_id===currentUserId)?.participant_avatar||"👤");
+  const senderAvatar                = isSitter ? "➿" : (participants.find(p=>p.user_id===currentUserId)?.participant_avatar||"👤");
 
   const load = useCallback(async()=>{
     const {data}=await supabase.from("messages").select("*").eq("conversation_id",conv.id).order("created_at",{ascending:true});
@@ -1687,7 +1687,7 @@ function MessagesTab({currentUserId, isSitter, families=[], memberInfo, allMembe
         families={familyList}
         members={[]}
         sitterName={sitterName}
-        sitterAvatar="🌿"
+        sitterAvatar="➿"
         onCreated={(id)=>{setSelectedConv(id);load();}}
       />
     </div>
@@ -2095,7 +2095,7 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
 <body>
 <div class="header">
   <div>
-    <div class="logo">🌿 littleloop<span>Independent Childcare</span></div>
+    <div class="logo">➿ littleloop<span>Independent Childcare</span></div>
   </div>
   <div style="text-align:right">
     <div class="inv-num">${invoice.invoice_number}</div>
@@ -2453,13 +2453,13 @@ function InviteWelcome({token, onContinue}) {
 
         {/* Logo */}
         <div style={{textAlign:'center',marginBottom:28}}>
-          <div className="leaf" style={{fontSize:36,marginBottom:8}}>🌿</div>
+          <div className="leaf" style={{fontSize:36,marginBottom:8}}>➿</div>
           <div className="logo-text" style={{fontSize:28}}>littleloop</div>
         </div>
 
         {/* Welcome card */}
         <div className="card" style={{padding:'28px 24px',marginBottom:16,textAlign:'center'}}>
-          <div style={{fontSize:48,marginBottom:12}}>{sitter?.avatar_url||'🌿'}</div>
+          <div style={{fontSize:48,marginBottom:12}}>{sitter?.avatar_url||'➿'}</div>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:6}}>
             You're invited!
           </div>
@@ -2525,7 +2525,7 @@ function ResetPasswordForm() {
     <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div className="mb" style={{maxWidth:420,width:"100%",padding:32}}>
         <div style={{textAlign:"center",marginBottom:24}}>
-          <div className="leaf" style={{fontSize:36,marginBottom:8}}>🌿</div>
+          <div className="leaf" style={{fontSize:36,marginBottom:8}}>➿</div>
           <div className="logo-text" style={{fontSize:26,marginBottom:6}}>littleloop</div>
           <p style={{fontSize:13,color:"var(--text-dim,rgba(255,255,255,.4))"}}>Set your new password</p>
         </div>
@@ -3003,7 +3003,7 @@ function CheckinLog({familyId}) {
 }
 
 // ─── Sitter Onboarding ────────────────────────────────────────────────────────
-const SITTER_AVATARS = ["🌿","🌻","🌸","🦋","🌙","⭐","🌈","🎨","🎵","🌊","🍀","🦄"];
+const SITTER_AVATARS = ["➿","🌻","🌸","🦋","🌙","⭐","🌈","🎨","🎵","🌊","🍀","🦄"];
 
 function SitterOnboarding({session, onComplete}) {
   const sitterId = session.user.id;
@@ -3013,7 +3013,7 @@ function SitterOnboarding({session, onComplete}) {
 
   // Step 0 — Profile
   const [name, setName]         = useState(session.user.user_metadata?.name || session.user.email.split('@')[0]);
-  const [avatar, setAvatar]     = useState('🌿');
+  const [avatar, setAvatar]     = useState('➿');
 
   // Step 1 — Legal / address
   const [legalName, setLegalName]   = useState('');
@@ -3029,7 +3029,7 @@ function SitterOnboarding({session, onComplete}) {
   );
 
   const STEPS = [
-    {title:'Welcome to littleloop 🌿', sub:'Let\'s set up your sitter profile'},
+    {title:'Welcome to littleloop ➿', sub:'Let\'s set up your sitter profile'},
     {title:'Invoice details 🧾', sub:'Used on invoices — families need this for FSA reimbursement'},
     {title:'How you get paid 💰', sub:'Families will see these options when paying an invoice'},
   ];
@@ -3076,7 +3076,7 @@ function SitterOnboarding({session, onComplete}) {
 
         {/* Header */}
         <div style={{textAlign:'center',marginBottom:28}}>
-          <div className="leaf" style={{fontSize:36,marginBottom:8}}>🌿</div>
+          <div className="leaf" style={{fontSize:36,marginBottom:8}}>➿</div>
           <div className="logo-text" style={{fontSize:28,marginBottom:4}}>littleloop</div>
           <div style={{fontSize:13,color:'var(--text-faint)'}}>Sitter Setup</div>
         </div>
@@ -3282,7 +3282,7 @@ function SitterDashboard({session,onSignOut}) {
     <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
       <div style={{padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,.06)",background:"var(--nav-bg,rgba(0,0,0,.2))",backdropFilter:"blur(20px)",position:"sticky",top:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div className="leaf" style={{fontSize:22,filter:"drop-shadow(0 0 10px rgba(58,158,122,.4))"}}>🌿</div>
+          <div className="leaf" style={{fontSize:22,filter:"drop-shadow(0 0 10px rgba(58,158,122,.4))"}}>➿</div>
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -3431,7 +3431,7 @@ function ParentDashboard({session,onSignOut}) {
     <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
       <div style={{padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,.06)",background:"var(--nav-bg,rgba(0,0,0,.2))",backdropFilter:"blur(20px)",position:"sticky",top:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div className="leaf" style={{fontSize:22,filter:"drop-shadow(0 0 10px rgba(58,158,122,.4))"}}>🌿</div>
+          <div className="leaf" style={{fontSize:22,filter:"drop-shadow(0 0 10px rgba(58,158,122,.4))"}}>➿</div>
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -3509,7 +3509,7 @@ function ParentDashboard({session,onSignOut}) {
                           <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",
                             background:"var(--input-bg,rgba(255,255,255,.03))",borderRadius:12,
                             border:"1px solid var(--border,rgba(255,255,255,.06))"}}>
-                            <span style={{fontSize:22}}>{s.avatar_url||"🌿"}</span>
+                            <span style={{fontSize:22}}>{s.avatar_url||"➿"}</span>
                             <div style={{flex:1}}>
                               <div style={{fontSize:13,fontWeight:500}}>{s.name}</div>
                             </div>
@@ -3615,7 +3615,7 @@ export default function App() {
     <><Bg/>
       <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
         <div style={{textAlign:"center"}}>
-          <div className="leaf" style={{fontSize:40,marginBottom:12}}>🌿</div>
+          <div className="leaf" style={{fontSize:40,marginBottom:12}}>➿</div>
           <Spinner size={20}/>
         </div>
       </div>
