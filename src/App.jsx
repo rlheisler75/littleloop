@@ -959,7 +959,7 @@ const timeAgo = ts => {
 };
 
 // ─── New Post Modal ───────────────────────────────────────────────────────────
-function NewPostModal({open,onClose,familyId,sitterId,children,onPosted}) {
+function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,children,onPosted}) {
   const [type,setType]         = useState("note");
   const [mood,setMood]         = useState("");
   const [text,setText]         = useState("");
@@ -1003,6 +1003,11 @@ function NewPostModal({open,onClose,familyId,sitterId,children,onPosted}) {
       if(tagged.length>0){
         await supabase.from("post_children").insert(tagged.map(child_id=>({post_id:post.id,child_id})));
       }
+      // Send email notification to family (fire and forget)
+      supabase.functions.invoke("send-notification",{body:{
+        type:"new_post",
+        payload:{familyId,sitterName,familyName,postType:type,postContent:text.trim()}
+      }}).catch(console.error);
       reset();onPosted();onClose();
     }catch(err){setAlert({t:"e",m:err.message||"Something went wrong."});}
     finally{setLoading(false);}
@@ -1194,7 +1199,7 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
 }
 
 // ─── Feed Tab ─────────────────────────────────────────────────────────────────
-function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMarkSeen,sitterName='Sitter',currentUserName='',currentUserAvatar='👤'}) {
+function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMarkSeen,sitterName='Sitter',currentUserName='',currentUserAvatar='👤',familyName=''}) {
   const [posts,setPosts]       = useState([]);
   const [postKids,setPostKids] = useState({});
   const [loading,setLoading]   = useState(true);
@@ -1260,7 +1265,7 @@ function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMar
       }
       {isSitter&&(
         <NewPostModal open={showNew} onClose={()=>setShowNew(false)}
-          familyId={familyId} sitterId={sitterId} children={children} onPosted={load}/>
+          familyId={familyId} sitterId={sitterId} sitterName={sitterName} familyName={familyName||''} children={children} onPosted={load}/>
       )}
     </div>
   );
@@ -1317,6 +1322,7 @@ function SitterFeedWrapper({sitterId, sitterName}) {
           sitterName={sitterName}
           currentUserName={sitterName}
           currentUserAvatar="➿"
+          familyName={families.find(f=>f.id===selected)?.name||''}
         />
       )}
     </div>
@@ -1536,14 +1542,23 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
   async function send(){
     if(!newMsg.trim()) return;
     setSending(true);
+    const msgText=newMsg.trim();
     await supabase.from("messages").insert({
       conversation_id:conv.id,
       sender_id:currentUserId,
       sender_name:senderName,
       sender_avatar:senderAvatar,
       is_sitter:isSitter,
-      text:newMsg.trim(),
+      text:msgText,
     });
+    // Notify all other participants (fire and forget)
+    const others=participants.filter(p=>p.user_id!==currentUserId);
+    for(const p of others){
+      supabase.functions.invoke("send-notification",{body:{
+        type:"new_message",
+        payload:{recipientId:p.user_id,senderName,messagePreview:msgText,isSitter}
+      }}).catch(console.error);
+    }
     setNewMsg("");setSending(false);
   }
 
@@ -1970,7 +1985,7 @@ function LineItemRow({item, children, onChange, onRemove, index}) {
 }
 
 // ─── Create/Edit Invoice Modal ────────────────────────────────────────────────
-function InvoiceModal({open, onClose, sitterId, families, allFamilyChildren, onSaved, editInvoice}) {
+function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyChildren, onSaved, editInvoice}) {
   const isEdit = !!editInvoice;
   const [familyId, setFamilyId]   = useState("");
   const [notes, setNotes]         = useState("");
@@ -2026,6 +2041,14 @@ function InvoiceModal({open, onClose, sitterId, families, allFamilyChildren, onS
         }).select().single();
         if(invErr) throw invErr;
         invId=inv.id;
+        // Notify family about new invoice (fire and forget)
+        const total=items.reduce((s,it)=>s+(it.amount||0),0);
+        const fmt=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(total);
+        const selectedFam=families.find(f=>f.id===familyId);
+        supabase.functions.invoke("send-notification",{body:{
+          type:"new_invoice",
+          payload:{familyId,sitterName,invoiceNumber:numData,amount:fmt,familyName:selectedFam?.name||""}
+        }}).catch(console.error);
       } else {
         const {error}=await supabase.from("invoices").update({
           status,notes:notes||null,due_date:dueDate||null,
@@ -2241,7 +2264,7 @@ ${enabledMethods.length>0?`
 }
 
 // ─── Invoices Tab (Sitter) ────────────────────────────────────────────────────
-function SitterInvoicesTab({sitterId}) {
+function SitterInvoicesTab({sitterId, sitterName}) {
   const [invoices,setInvoices]   = useState([]);
   const [families,setFamilies]   = useState([]);
   const [familyChildren,setFamilyChildren] = useState({});
@@ -2349,7 +2372,7 @@ function SitterInvoicesTab({sitterId}) {
       }
 
       <InvoiceModal open={showNew||!!editInv} onClose={()=>{setShowNew(false);setEditInv(null);}}
-        sitterId={sitterId} families={families} allFamilyChildren={familyChildren} onSaved={load} editInvoice={editInv||null}/>
+        sitterId={sitterId} sitterName={sitterName||''} families={families} allFamilyChildren={familyChildren} onSaved={load} editInvoice={editInv||null}/>
       <PaymentSettingsModal open={showSettings} onClose={()=>setShowSettings(false)} sitterId={sitterId} onSaved={load}/>
       <Confirm open={!!confirmPaid} title="Mark as paid?" message={`Mark ${confirmPaid?.invoice_number} as paid today?`} onConfirm={()=>markPaid(confirmPaid)} onCancel={()=>setConfirmPaid(null)}/>
     </div>
@@ -3363,7 +3386,7 @@ function SitterDashboard({session,onSignOut}) {
       <div style={{flex:1,overflowY:"auto",padding:"16px 14px",maxWidth:800,width:"100%",margin:"0 auto"}}>
         {tab==="families"&&<FamiliesTab sitterId={sitterId} sitterName={name}/>}
         {tab==="feed"&&<SitterFeedWrapper sitterId={sitterId} sitterName={name}/>}
-        {tab==="invoices"&&<SitterInvoicesTab sitterId={sitterId}/>}
+        {tab==="invoices"&&<SitterInvoicesTab sitterId={sitterId} sitterName={name}/>}
         {tab==="messages"&&<SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
         {tab==="profile"&&<SitterProfileTab sitterId={sitterId} sitterName={name} onNameChange={setName}/>}
       </div>
