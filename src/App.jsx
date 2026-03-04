@@ -879,7 +879,10 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
       <div style={{marginBottom:20}}>
         <SectionLabel>Children</SectionLabel>
         {children.length===0
-          ?<div style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>No children added yet</div>
+          ?<div style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>
+  No children added yet.
+  {isAdmin&&<button className="bp" style={{marginLeft:10,padding:"4px 10px",fontSize:11}} onClick={()=>setShowAddChild(true)}>+ Add Child</button>}
+</div>
           :<div style={{display:"flex",flexDirection:"column",gap:8}}>
             {children.map(c=>(
               <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",
