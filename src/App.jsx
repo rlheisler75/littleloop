@@ -756,6 +756,25 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
   const [editEmail,setEditEmail]         = useState(false);
   const [newEmail,setNewEmail]           = useState(family.admin_email||'');
   const [emailSaving,setEmailSaving]     = useState(false);
+  const [etas,setEtas]                   = useState([]);
+
+  useEffect(()=>{
+    async function loadEtas(){
+      const {data}=await supabase.from('eta_notifications')
+        .select('*')
+        .eq('family_id',family.id)
+        .gt('expires_at',new Date().toISOString())
+        .order('created_at',{ascending:false});
+      setEtas(data||[]);
+    }
+    loadEtas();
+    // Real-time subscription
+    const ch=supabase.channel(`eta-${family.id}`)
+      .on('postgres_changes',{event:'*',schema:'public',table:'eta_notifications',
+        filter:`family_id=eq.${family.id}`},()=>loadEtas())
+      .subscribe();
+    return()=>supabase.removeChannel(ch);
+  },[family.id]);
 
   async function deactivate(){
     setLoading(true);
@@ -802,6 +821,29 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
   return (
     <div className="slide-in">
       {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
+
+      {/* ETA banners */}
+      {etas.map(eta=>{
+        const etaTime=new Date(eta.eta_time);
+        const minsLeft=Math.max(0,Math.round((etaTime-Date.now())/60000));
+        return (
+          <div key={eta.id} style={{marginBottom:12,padding:'10px 14px',borderRadius:12,
+            background:'rgba(58,158,122,.12)',border:'1px solid rgba(94,207,170,.3)',
+            display:'flex',alignItems:'center',gap:10,animation:'pulse 2s infinite'}}>
+            <span style={{fontSize:20}}>🚗</span>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:'#5ECFAA'}}>
+                {eta.member_name} is on the way!
+              </div>
+              <div style={{fontSize:11,color:'var(--text-faint)'}}>
+                {minsLeft>0?`~${minsLeft} min away · `:'Arriving soon · '}
+                {etaTime.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20}}>
         <div style={{flex:1,minWidth:0}}>
           <FamilyNameEditor familyId={family.id} name={family.name} onSaved={n=>{family.name=n;setAlert({t:'s',m:'Family name updated!'});setTimeout(()=>setAlert(null),2000);}}/>
@@ -3297,7 +3339,7 @@ function SitterDashboard({session,onSignOut}) {
   const [name,setName]=useState(session.user.user_metadata?.name||session.user.email.split("@")[0]);
   const [onboarded,setOnboarded]=useState(!!localStorage.getItem(`ll_onboarded_${session.user.id}`));
   const [tab,setTab]=useState("families");
-  const [unread,setUnread]=useState({messages:0,feed:0});
+  const [unread,setUnread]=useState({messages:0,feed:0,eta:0});
 
   useEffect(()=>{
     if(onboarded) return;
@@ -3332,6 +3374,9 @@ function SitterDashboard({session,onSignOut}) {
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'post_comments'},(p)=>{
         if(p.new.author_id!==sitterId) setUnread(u=>({...u,feed:u.feed+1}));
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'eta_notifications'},()=>{
+        if(tab!=='families') setUnread(u=>({...u,eta:u.eta+1}));
       }).subscribe();
     return()=>supabase.removeChannel(ch);
   },[sitterId]);
@@ -3346,10 +3391,13 @@ function SitterDashboard({session,onSignOut}) {
       localStorage.setItem(`ll_seen_feed_comments_${sitterId}`,new Date().toISOString());
       setUnread(u=>({...u,feed:0}));
     }
+    if(tab==='families'){
+      setUnread(u=>({...u,eta:0}));
+    }
   },[tab]);
 
   const NAV=[
-    {id:"families",icon:"👨‍👩‍👧",label:"Families"},
+    {id:"families",icon:"👨‍👩‍👧",label:"Families",badge:unread.eta},
     {id:"feed",icon:"🌸",label:"Feed",badge:unread.feed},
     {id:"invoices",icon:"💰",label:"Invoices"},
     {id:"messages",icon:"💬",label:"Messages",badge:unread.messages},
@@ -3580,6 +3628,11 @@ function ParentDashboard({session,onSignOut}) {
                       </div>
                     }
                   </div>
+
+                  {/* On My Way */}
+                  {(isAdmin||member?.role==='member')&&(
+                    <OnMyWayButton familyId={family.id} memberId={member?.id} memberName={name}/>
+                  )}
 
                   {/* Sitters */}
                   <div style={{marginBottom:20}}>
