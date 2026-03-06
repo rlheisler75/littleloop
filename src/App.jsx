@@ -198,9 +198,9 @@ function SectionLabel({children}) {
 // ─── Auth Form ────────────────────────────────────────────────────────────────
 function AuthForm({portal, inviteData}) {
   const isParent = portal==="parent";
-  const [mode,setMode]         = useState("login");
+  const [mode,setMode]         = useState(inviteData ? "signup" : "login");
   const [name,setName]         = useState("");
-  const [email,setEmail]       = useState("");
+  const [email,setEmail]       = useState(inviteData?.admin_email||"");
   const [password,setPassword] = useState("");
   const [confirm,setConfirm]   = useState("");
   const [loading,setLoading]   = useState(false);
@@ -879,10 +879,7 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
       <div style={{marginBottom:20}}>
         <SectionLabel>Children</SectionLabel>
         {children.length===0
-          ?<div style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>
-  No children added yet.
-  {isAdmin&&<button className="bp" style={{marginLeft:10,padding:"4px 10px",fontSize:11}} onClick={()=>setShowAddChild(true)}>+ Add Child</button>}
-</div>
+          ?<div style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>No children added yet</div>
           :<div style={{display:"flex",flexDirection:"column",gap:8}}>
             {children.map(c=>(
               <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",
@@ -3767,7 +3764,7 @@ export default function App() {
   if(inviteToken && !inviteData && !session) return (
     <><Bg/><InviteWelcome token={inviteToken} onContinue={inv=>setInviteData(inv)}/></>
   );
-  if(!session) return <><Bg/><AuthForm portal={portal} inviteData={inviteData}/></>;
+  if(!session) return <><Bg/><AuthForm portal={inviteData ? "parent" : portal} inviteData={inviteData}/></>;
   if(userRole==="parent") return <><Bg/><ParentDashboard session={session} onSignOut={signOut}/></>;
   return <><Bg/><SitterDashboard session={session} onSignOut={signOut}/></>;
 }
