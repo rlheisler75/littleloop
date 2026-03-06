@@ -156,7 +156,7 @@ const CSS = `
   .bp{padding:11px 20px;background:var(--accent-grad,linear-gradient(135deg,#3A6FD4,#2550A8));border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
   .bp:hover:not(:disabled){background:linear-gradient(135deg,#4A7FE4,#3560B8);transform:translateY(-1px);box-shadow:0 6px 20px rgba(58,111,212,.3)}.bp:disabled{opacity:.5;cursor:not-allowed}.bp.full{width:100%;justify-content:center}
   .bg{padding:9px 16px;background:transparent;border:1px solid var(--border,rgba(255,255,255,.12));border-radius:10px;color:var(--text-dim,rgba(255,255,255,.5));font-size:13px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
-  .bg:hover{border-color:var(--text-dim,rgba(255,255,255,.25));color:var(--text,rgba(255,255,255,.8))}
+  .bg:hover{border-color:var(--text-dim);color:var(--text)}
   .bd{padding:8px 14px;background:rgba(192,80,80,.12);border:1px solid rgba(192,80,80,.25);border-radius:9px;color:#F5AAAA;font-size:12px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
   .bd:hover{background:rgba(192,80,80,.22)}
   .al{border-radius:10px;padding:10px 14px;font-size:12px;line-height:1.55;margin-bottom:16px}
@@ -165,7 +165,7 @@ const CSS = `
   .al-i{background:rgba(58,111,212,.1);border:1px solid rgba(58,111,212,.25);color:#A8CCFF}
   .al-w{background:rgba(200,150,50,.1);border:1px solid rgba(200,150,50,.25);color:#F5D08A}
   .fc{padding:14px 16px;border-radius:14px;background:var(--input-bg,rgba(255,255,255,.03));border:1px solid var(--border,rgba(255,255,255,.07));transition:all .2s;cursor:pointer}
-  .fc:hover{background:rgba(255,255,255,.055);border-color:rgba(111,163,232,.25)}.fc.active{background:rgba(111,163,232,.08);border-color:rgba(111,163,232,.35)}
+  .fc:hover{background:var(--card-bg);border-color:rgba(111,163,232,.25)}.fc.active{background:rgba(111,163,232,.08);border-color:rgba(111,163,232,.35)}
   .sb{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600}
   .sb-a{background:rgba(58,158,122,.15);color:#88D8B8;border:1px solid rgba(58,158,122,.25)}
   .sb-p{background:rgba(200,120,74,.15);color:#F5C098;border:1px solid rgba(200,120,74,.25)}
@@ -227,7 +227,7 @@ function Confirm({open,title,message,onConfirm,onCancel,danger=false}) {
   return (
     <Modal open={open} onClose={onCancel}>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:8}}>{title}</div>
-      <p style={{fontSize:13,color:"var(--text-dim,rgba(255,255,255,.5))",marginBottom:24,lineHeight:1.6}}>{message}</p>
+      <p style={{fontSize:13,color:"var(--text-dim)",marginBottom:24,lineHeight:1.6}}>{message}</p>
       <div style={{display:"flex",gap:10}}>
         <button className={danger?"bd":"bp full"} style={danger?{padding:"11px 20px"}:{}} onClick={onConfirm}>Confirm</button>
         <button className="bg" onClick={onCancel}>Cancel</button>
@@ -242,7 +242,7 @@ const CHILD_AVATARS = ["🌟","🦋","🐻","🦄","🐸","🐼","🦊","🐯","
 
 // ─── Section header ───────────────────────────────────────────────────────────
 function SectionLabel({children}) {
-  return <div style={{fontSize:10,fontWeight:600,letterSpacing:"0.9px",textTransform:"uppercase",color:"var(--text-faint,rgba(255,255,255,.3))",marginBottom:10}}>{children}</div>;
+  return <div style={{fontSize:10,fontWeight:600,letterSpacing:"0.9px",textTransform:"uppercase",color:"var(--text-faint)",marginBottom:10}}>{children}</div>;
 }
 
 // ─── Auth Form ────────────────────────────────────────────────────────────────
@@ -300,12 +300,12 @@ function AuthForm({portal, inviteData}) {
         <div className="fade-up" style={{textAlign:"center",marginBottom:36}}>
           <div className="leaf" style={{fontSize:46,marginBottom:10,filter:"drop-shadow(0 0 20px rgba(58,158,122,.45))"}}>➿</div>
           <div className="logo-text">littleloop</div>
-          <p style={{fontSize:12,color:"var(--text-faint,rgba(255,255,255,.28))",marginTop:8,letterSpacing:".04em"}}>Independent childcare, thoughtfully connected.</p>
+          <p style={{fontSize:12,color:"var(--text-faint)",marginTop:8,letterSpacing:".04em"}}>Independent childcare, thoughtfully connected.</p>
         </div>
         <div className="card fade-up d1" style={{padding:"32px 28px"}}>
           <div className="fade-up d2" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:22}}>
             <div style={{width:28,height:28,borderRadius:8,background:isParent?"linear-gradient(135deg,#3A9E7A,#2A7A5A)":"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>{isParent?"👨‍👩‍👧":"➿"}</div>
-            <span style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,.35)",letterSpacing:"1.2px",textTransform:"uppercase"}}>{isParent?"Family Portal":"Sitter Portal"}</span>
+            <span style={{fontSize:11,fontWeight:600,color:"var(--text-faint)",letterSpacing:"1.2px",textTransform:"uppercase"}}>{isParent?"Family Portal":"Sitter Portal"}</span>
           </div>
           {mode!=="forgot" && (
             <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,.07)",marginBottom:26}} className="fade-up d2">
@@ -316,7 +316,7 @@ function AuthForm({portal, inviteData}) {
           {mode==="forgot" && (
             <div className="fade-up" style={{marginBottom:22}}>
               <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:4}}>Reset password</div>
-              <div style={{fontSize:12,color:"var(--text-faint,rgba(255,255,255,.3))"}}>We'll email you a link to choose a new one.</div>
+              <div style={{fontSize:12,color:"var(--text-faint)"}}>We'll email you a link to choose a new one.</div>
             </div>
           )}
           {alert && <div className={`al al-${alert.t} fade-up`}>{alert.m}</div>}
@@ -338,7 +338,7 @@ function AuthForm({portal, inviteData}) {
             {mode==="forgot"&&<span style={{fontSize:12,color:"rgba(111,163,232,.75)",cursor:"pointer"}} onClick={()=>sw("login")}>← Back to sign in</span>}
           </div>
         </div>
-        <p className="fade-up d6" style={{textAlign:"center",marginTop:24,fontSize:12,color:"var(--text-faint,rgba(255,255,255,.2))"}}>
+        <p className="fade-up d6" style={{textAlign:"center",marginTop:24,fontSize:12,color:"var(--text-faint)"}}>
           {isParent?<>Are you a sitter? <a href="/" style={{color:"rgba(111,163,232,.6)",textDecoration:"none"}}>Sitter sign in →</a></>
                    :<>Are you a family member? <a href="/?portal=parent" style={{color:"rgba(111,163,232,.6)",textDecoration:"none"}}>Family sign in →</a></>}
         </p>
@@ -413,7 +413,7 @@ function ChildProfileModal({open,onClose,child,sitterId,canEdit,isParent}) {
         <div style={{width:52,height:52,borderRadius:16,background:`${child.color||"#8B78D4"}22`,border:`2px solid ${child.color||"#8B78D4"}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>{child.avatar||"🌟"}</div>
         <div>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600}}>{child.name}</div>
-          {age!==null&&<div style={{fontSize:12,color:"rgba(255,255,255,.35)"}}>Age {age} · Born {dob.toLocaleDateString()}</div>}
+          {age!==null&&<div style={{fontSize:12,color:"var(--text-faint)"}}>Age {age} · Born {dob.toLocaleDateString()}</div>}
         </div>
       </div>
 
@@ -436,17 +436,17 @@ function ChildProfileModal({open,onClose,child,sitterId,canEdit,isParent}) {
           {child.dietary_restrictions&&(
             <div>
               <SectionLabel>Dietary Restrictions</SectionLabel>
-              <p style={{fontSize:13,color:"var(--text-dim,rgba(255,255,255,.7))",lineHeight:1.6}}>{child.dietary_restrictions}</p>
+              <p style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.6}}>{child.dietary_restrictions}</p>
             </div>
           )}
           {child.medical_notes&&(
             <div>
               <SectionLabel>Medical Notes</SectionLabel>
-              <p style={{fontSize:13,color:"rgba(255,255,255,.7)",lineHeight:1.6}}>{child.medical_notes}</p>
+              <p style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.6}}>{child.medical_notes}</p>
             </div>
           )}
           {!child.allergies?.length&&!child.dietary_restrictions&&!child.medical_notes&&(
-            <p style={{fontSize:12,color:"rgba(255,255,255,.25)",fontStyle:"italic"}}>No medical info added yet.</p>
+            <p style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>No medical info added yet.</p>
           )}
         </div>
       )}
@@ -457,7 +457,7 @@ function ChildProfileModal({open,onClose,child,sitterId,canEdit,isParent}) {
             <div style={{marginBottom:16}}>
               <Field label="Add a note" as="textarea" rows={3} value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="Write a note about this child…" required={false}/>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:-8}}>
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:12,color:"rgba(255,255,255,.45)"}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:12,color:"var(--text-dim)"}}>
                   <input type="checkbox" checked={visible} onChange={e=>setVisible(e.target.checked)} style={{accentColor:"#7BAAEE"}}/>
                   Visible to family
                 </label>
@@ -470,7 +470,7 @@ function ChildProfileModal({open,onClose,child,sitterId,canEdit,isParent}) {
 
           {loadingNotes?<div style={{textAlign:"center",padding:20}}><Spinner size={20}/></div>
             :notes.length===0
-              ?<p style={{fontSize:12,color:"rgba(255,255,255,.25)",fontStyle:"italic",textAlign:"center",padding:"20px 0"}}>
+              ?<p style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic",textAlign:"center",padding:"20px 0"}}>
                 {isParent?"No notes shared with your family yet.":"No notes yet."}
               </p>
               :<div>
@@ -489,7 +489,7 @@ function ChildProfileModal({open,onClose,child,sitterId,canEdit,isParent}) {
                       )}
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>
-                      <span style={{fontSize:10,color:"rgba(255,255,255,.25)"}}>{new Date(n.created_at).toLocaleString()}</span>
+                      <span style={{fontSize:10,color:"var(--text-faint)"}}>{new Date(n.created_at).toLocaleString()}</span>
                       {n.visible_to_family&&<span style={{fontSize:10,color:"#88D8B8"}}>👁️ Shared with family</span>}
                     </div>
                   </div>
@@ -680,8 +680,8 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved}
                 </button>
               ))}
             </div>
-            <div style={{fontSize:11,color:"var(--text-faint,rgba(255,255,255,.25))",marginTop:8,lineHeight:1.6}}>
-              <strong style={{color:"rgba(255,255,255,.4)"}}>Admin</strong> — full access · <strong style={{color:"rgba(255,255,255,.4)"}}>Member</strong> — view all · <strong style={{color:"rgba(255,255,255,.4)"}}>Feed Only</strong> — feed tab · <strong style={{color:"rgba(255,255,255,.4)"}}>Pickup</strong> — messages only
+            <div style={{fontSize:11,color:"var(--text-faint)",marginTop:8,lineHeight:1.6}}>
+              <strong style={{color:"var(--text-dim)"}}>Admin</strong> — full access · <strong style={{color:"var(--text-dim)"}}>Member</strong> — view all · <strong style={{color:"var(--text-dim)"}}>Feed Only</strong> — feed tab · <strong style={{color:"var(--text-dim)"}}>Pickup</strong> — messages only
             </div>
           </div>
 
@@ -747,7 +747,7 @@ function InviteFamilyModal({open,onClose,sitterId,sitterName,onInvited}) {
   return (
     <Modal open={open} onClose={close}>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:4}}>Invite a Family</div>
-      <p style={{fontSize:12,color:"var(--text-faint,rgba(255,255,255,.35))",marginBottom:22,lineHeight:1.6}}>The email you enter becomes the family admin.</p>
+      <p style={{fontSize:12,color:"var(--text-faint)",marginBottom:22,lineHeight:1.6}}>The email you enter becomes the family admin.</p>
       {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
       <form onSubmit={submit}>
         <Field label="Family name" value={familyName} onChange={e=>setFamilyName(e.target.value)} placeholder="The Johnson Family" autoComplete="off" required={false}/>
@@ -989,7 +989,7 @@ function FamiliesTab({sitterId,sitterName}) {
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600}}>
-          Families <span style={{fontSize:14,color:"var(--text-faint,rgba(255,255,255,.3))",fontFamily:"'DM Sans',sans-serif",fontWeight:400}}>({families.length})</span>
+          Families <span style={{fontSize:14,color:"var(--text-faint)",fontFamily:"'DM Sans',sans-serif",fontWeight:400}}>({families.length})</span>
         </div>
         <button className="bp" onClick={()=>setShowInvite(true)}>+ Invite Family</button>
       </div>
@@ -1012,7 +1012,7 @@ function FamiliesTab({sitterId,sitterName}) {
                       <div style={{fontWeight:600,fontSize:14}}>{f.name}</div>
                       <span className={`sb sb-${f.status==="active"?"a":"p"}`} style={{fontSize:9}}>{f.status}</span>
                     </div>
-                    <div style={{fontSize:12,color:"var(--text-faint,rgba(255,255,255,.3))",marginTop:3}}>{(kids[f.id]||[]).length} child{(kids[f.id]||[]).length!==1?"ren":""}</div>
+                    <div style={{fontSize:12,color:"var(--text-faint)",marginTop:3}}>{(kids[f.id]||[]).length} child{(kids[f.id]||[]).length!==1?"ren":""}</div>
                   </div>
                 ))}
               </div>
@@ -1114,7 +1114,7 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
   return (
     <Modal open={open} onClose={close}>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:4}}>New Post</div>
-      <p style={{fontSize:12,color:"var(--text-faint,rgba(255,255,255,.35))",marginBottom:20,lineHeight:1.6}}>Share an update with this family.</p>
+      <p style={{fontSize:12,color:"var(--text-faint)",marginBottom:20,lineHeight:1.6}}>Share an update with this family.</p>
       {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
       <form onSubmit={submit}>
         <div style={{marginBottom:14}}>
@@ -1145,7 +1145,7 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
             <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
               {children.map(c=>(
                 <button key={c.id} type="button" onClick={()=>toggleChild(c.id)}
-                  style={{display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:20,border:`1px solid ${tagged.includes(c.id)?c.color||"#7BAAEE":"rgba(255,255,255,.1)"}`,background:tagged.includes(c.id)?`${c.color||"#8B78D4"}22`:"rgba(255,255,255,.04)",color:"rgba(255,255,255,.7)",fontSize:12,cursor:"pointer"}}>
+                  style={{display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:20,border:`1px solid ${tagged.includes(c.id)?c.color||"#7BAAEE":"rgba(255,255,255,.1)"}`,background:tagged.includes(c.id)?`${c.color||"#8B78D4"}22`:"rgba(255,255,255,.04)",color:"var(--text-dim)",fontSize:12,cursor:"pointer"}}>
                   {c.avatar} {c.name}
                 </button>
               ))}
@@ -1160,11 +1160,11 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
           <SectionLabel>Photo (optional)</SectionLabel>
           {preview
             ?<div style={{position:"relative"}}>
-              <img src={preview} alt="preview" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:12,border:"1px solid rgba(255,255,255,.1)"}}/>
+              <img src={preview} alt="preview" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:12,border:"1px solid var(--border)"}}/>
               <button type="button" onClick={()=>{setPhoto(null);setPreview(null);}}
                 style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,.6)",border:"none",borderRadius:"50%",width:28,height:28,cursor:"pointer",color:"#fff",fontSize:14}}>✕</button>
             </div>
-            :<label style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderRadius:12,border:"1px dashed rgba(255,255,255,.15)",cursor:"pointer",color:"rgba(255,255,255,.4)",fontSize:13}}>
+            :<label style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderRadius:12,border:"1px dashed rgba(255,255,255,.15)",cursor:"pointer",color:"var(--text-dim)",fontSize:13}}>
               📷 Choose a photo
               <input type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
             </label>
@@ -1240,7 +1240,7 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
                 <span style={{fontSize:16}}>{getTypeIcon(post.type)}</span>
                 {post.mood&&<span style={{fontSize:16}}>{getMoodIcon(post.mood)}</span>}
               </div>
-              <div style={{fontSize:11,color:"var(--text-faint,rgba(255,255,255,.3))"}}>{timeAgo(post.created_at)}</div>
+              <div style={{fontSize:11,color:"var(--text-faint)"}}>{timeAgo(post.created_at)}</div>
             </div>
           </div>
           {isSitter&&<button onClick={()=>setConfirmDel(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,opacity:.4,padding:4}}>🗑️</button>}
@@ -1264,7 +1264,7 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
             <span style={{fontSize:16}}>💬</span>
             <span>{comments.length>0?comments.length:"Comment"}</span>
           </button>
-          <span style={{marginLeft:"auto",fontSize:11,color:"rgba(255,255,255,.2)",textTransform:"capitalize"}}>{post.type}</span>
+          <span style={{marginLeft:"auto",fontSize:11,color:"var(--text-faint)",textTransform:"capitalize"}}>{post.type}</span>
         </div>
         {showComments&&(
           <div style={{marginTop:12,borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:12}}>
@@ -1274,7 +1274,7 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
                     <span style={{fontSize:12,fontWeight:600}}>{c.author_name}</span>
-                    <span style={{fontSize:10,color:"var(--text-faint,rgba(255,255,255,.25))"}}>{timeAgo(c.created_at)}</span>
+                    <span style={{fontSize:10,color:"var(--text-faint)"}}>{timeAgo(c.created_at)}</span>
                   </div>
                   <p style={{fontSize:13,color:"var(--text-dim,rgba(255,255,255,.75))",lineHeight:1.5}}>{c.text}</p>
                 </div>
@@ -1504,7 +1504,7 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
   return (
     <Modal open={open} onClose={close}>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:4}}>New Conversation</div>
-      <p style={{fontSize:12,color:"rgba(255,255,255,.35)",marginBottom:20,lineHeight:1.6}}>
+      <p style={{fontSize:12,color:"var(--text-faint)",marginBottom:20,lineHeight:1.6}}>
         {isSitter?"Start a conversation with family members.":"Start a conversation with your sitter and family members."}
       </p>
       {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
@@ -1523,7 +1523,7 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
           <SectionLabel>{isSitter?"Add family members":"Add more family members (optional)"}</SectionLabel>
           {!isSitter&&<p style={{fontSize:11,color:"rgba(88,158,122,.8)",marginBottom:8}}>✓ Your sitter will be included automatically</p>}
           {available.length===0
-            ?<p style={{fontSize:12,color:"rgba(255,255,255,.3)",fontStyle:"italic"}}>{isSitter?"No family members available yet.":"No other members to add."}</p>
+            ?<p style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>{isSitter?"No family members available yet.":"No other members to add."}</p>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
               {available.map(m=>{
                 const sel=!!selected.find(x=>x.user_id===m.user_id);
@@ -1533,7 +1533,7 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
                     <span style={{fontSize:22}}>{m.avatar||"👤"}</span>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:500}}>{m.name}</div>
-                      <div style={{fontSize:11,color:"var(--text-faint,rgba(255,255,255,.3))"}}>{ROLE_LABELS[m.role]}</div>
+                      <div style={{fontSize:11,color:"var(--text-faint)"}}>{ROLE_LABELS[m.role]}</div>
                     </div>
                     <span style={{fontSize:16}}>{sel?"✅":"○"}</span>
                   </div>
@@ -1588,7 +1588,7 @@ function AddParticipantModal({open, onClose, convId, familyId, currentParticipan
     <Modal open={open} onClose={onClose}>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:16}}>Add People</div>
       {members.length===0
-        ?<p style={{fontSize:13,color:"rgba(255,255,255,.35)",marginBottom:20}}>Everyone is already in this conversation.</p>
+        ?<p style={{fontSize:13,color:"var(--text-faint)",marginBottom:20}}>Everyone is already in this conversation.</p>
         :<div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
           {members.map(m=>{
             const sel=!!selected.find(x=>x.user_id===m.user_id);
@@ -1673,7 +1673,7 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
         <button onClick={onBack} className="bg" style={{padding:"6px 10px",fontSize:12}}>← Back</button>
         <div style={{flex:1}}>
           <div style={{fontWeight:600,fontSize:14}}>{convTitle}</div>
-          <div style={{fontSize:11,color:"rgba(255,255,255,.3)"}}>
+          <div style={{fontSize:11,color:"var(--text-faint)"}}>
             {participants.map(p=>p.participant_name).join(", ")}
           </div>
         </div>
@@ -1685,7 +1685,7 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
         {loading
           ?<div style={{textAlign:"center",padding:40}}><Spinner size={20}/></div>
           :messages.length===0
-            ?<div style={{textAlign:"center",padding:40,color:"var(--text-faint,rgba(255,255,255,.25))",fontSize:13}}>No messages yet. Say hello! 👋</div>
+            ?<div style={{textAlign:"center",padding:40,color:"var(--text-faint)",fontSize:13}}>No messages yet. Say hello! 👋</div>
             :messages.map((m,i)=>{
               const isMe = m.sender_id===currentUserId;
               const showAvatar = i===0||messages[i-1].sender_id!==m.sender_id;
@@ -1694,11 +1694,11 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
                   {!isMe&&showAvatar&&<span style={{fontSize:22,flexShrink:0}}>{m.sender_avatar}</span>}
                   {!isMe&&!showAvatar&&<span style={{width:30,flexShrink:0}}/>}
                   <div style={{maxWidth:"80%"}}>
-                    {showAvatar&&!isMe&&<div style={{fontSize:10,color:"var(--text-faint,rgba(255,255,255,.3))",marginBottom:3,marginLeft:2}}>{m.sender_name}</div>}
+                    {showAvatar&&!isMe&&<div style={{fontSize:10,color:"var(--text-faint)",marginBottom:3,marginLeft:2}}>{m.sender_name}</div>}
                     <div style={{padding:"9px 13px",borderRadius:isMe?"16px 16px 4px 16px":"16px 16px 16px 4px",background:isMe?"linear-gradient(135deg,#3A6FD4,#2550A8)":"rgba(255,255,255,.08)",fontSize:13,lineHeight:1.5,color:"#E4EAF4",wordBreak:"break-word"}}>
                       {m.text}
                     </div>
-                    <div style={{fontSize:10,color:"var(--text-faint,rgba(255,255,255,.2))",marginTop:3,textAlign:isMe?"right":"left"}}>{timeAgo(m.created_at)}</div>
+                    <div style={{fontSize:10,color:"var(--text-faint)",marginTop:3,textAlign:isMe?"right":"left"}}>{timeAgo(m.created_at)}</div>
                   </div>
                 </div>
               );
@@ -1839,12 +1839,12 @@ function MessagesTab({currentUserId, isSitter, families=[], memberInfo, allMembe
                         {title}
                         {unseen>0&&<span style={{background:"#3A6FD4",borderRadius:"50%",width:18,height:18,fontSize:10,fontWeight:700,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{unseen}</span>}
                       </div>
-                      {last&&<div style={{fontSize:10,color:"var(--text-faint,rgba(255,255,255,.25))",flexShrink:0}}>{timeAgo(last.created_at)}</div>}
+                      {last&&<div style={{fontSize:10,color:"var(--text-faint)",flexShrink:0}}>{timeAgo(last.created_at)}</div>}
                     </div>
                     {isSitter&&fam&&<div style={{fontSize:10,color:"rgba(111,163,232,.6)",marginBottom:3}}>{fam.name}</div>}
                     {last
-                      ?<div style={{fontSize:12,color:"var(--text-dim,rgba(255,255,255,.4))",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><strong style={{color:"var(--text-dim,rgba(255,255,255,.55))"}}>{last.sender_id===currentUserId?"You":last.sender_name}:</strong> {last.text}</div>
-                      :<div style={{fontSize:12,color:"rgba(255,255,255,.25)",fontStyle:"italic"}}>No messages yet</div>
+                      ?<div style={{fontSize:12,color:"var(--text-dim)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><strong style={{color:"var(--text-dim,rgba(255,255,255,.55))"}}>{last.sender_id===currentUserId?"You":last.sender_name}:</strong> {last.text}</div>
+                      :<div style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>No messages yet</div>
                     }
                   </div>
                 </div>
@@ -1982,7 +1982,7 @@ function PaymentSettingsModal({open, onClose, sitterId, onSaved}) {
   return (
     <Modal open={open} onClose={onClose}>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:4}}>Invoice Settings</div>
-      <p style={{fontSize:12,color:"rgba(255,255,255,.35)",marginBottom:20,lineHeight:1.6}}>This info appears on your invoices for FSA reimbursement.</p>
+      <p style={{fontSize:12,color:"var(--text-faint)",marginBottom:20,lineHeight:1.6}}>This info appears on your invoices for FSA reimbursement.</p>
       {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
       <form onSubmit={save}>
         <Field label="Legal full name" value={legalName} onChange={e=>setLegalName(e.target.value)} placeholder="Jane Smith"/>
@@ -2032,7 +2032,7 @@ function PaymentSettingsModal({open, onClose, sitterId, onSaved}) {
 function LineItemRow({item, children, onChange, onRemove, index}) {
   const child = children.find(c=>c.id===item.child_id)||null;
   return (
-    <div style={{padding:"12px 14px",borderRadius:12,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",marginBottom:8}}>
+    <div style={{padding:"12px 14px",borderRadius:12,background:"var(--card-bg)",border:"1px solid var(--border)",marginBottom:8}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
         <div>
           <label className="fl">{item.rate_type==="flat"?"Start date":"Date"}</label>
@@ -2461,8 +2461,8 @@ function SitterInvoicesTab({sitterId, sitterName}) {
                       <span style={{fontWeight:700,fontSize:15}}>{inv.invoice_number}</span>
                       <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:`${statusColors[inv.status]}22`,color:statusColors[inv.status],textTransform:"capitalize"}}>{inv.status}</span>
                     </div>
-                    <div style={{fontSize:12,color:"var(--text-dim,rgba(255,255,255,.5))"}}>{fam?.name} · Issued {fmtDate(inv.issued_date)}</div>
-                    {inv.due_date&&<div style={{fontSize:11,color:"rgba(255,255,255,.3)"}}>Due {fmtDate(inv.due_date)}</div>}
+                    <div style={{fontSize:12,color:"var(--text-dim)"}}>{fam?.name} · Issued {fmtDate(inv.issued_date)}</div>
+                    {inv.due_date&&<div style={{fontSize:11,color:"var(--text-faint)"}}>Due {fmtDate(inv.due_date)}</div>}
                     {inv.paid_date&&<div style={{fontSize:11,color:"#88D8B8"}}>Paid {fmtDate(inv.paid_date)}</div>}
                   </div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
@@ -2533,8 +2533,8 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
                     <span style={{fontWeight:700,fontSize:15}}>{inv.invoice_number}</span>
                     <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:`${statusColors[inv.status]}22`,color:statusColors[inv.status],textTransform:"capitalize"}}>{inv.status}</span>
                   </div>
-                  <div style={{fontSize:12,color:"var(--text-dim,rgba(255,255,255,.5))"}}>Issued {fmtDate(inv.issued_date)}</div>
-                  {inv.due_date&&<div style={{fontSize:11,color:"rgba(255,255,255,.3)"}}>Due {fmtDate(inv.due_date)}</div>}
+                  <div style={{fontSize:12,color:"var(--text-dim)"}}>Issued {fmtDate(inv.issued_date)}</div>
+                  {inv.due_date&&<div style={{fontSize:11,color:"var(--text-faint)"}}>Due {fmtDate(inv.due_date)}</div>}
                   {inv.paid_date&&<div style={{fontSize:11,color:"#88D8B8"}}>Paid {fmtDate(inv.paid_date)}</div>}
                 </div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -2568,7 +2568,7 @@ function PayButtons({sitter, invoice}) {
 
   return (
     <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(255,255,255,.06)"}}>
-      <div style={{fontSize:10,fontWeight:600,letterSpacing:".9px",textTransform:"uppercase",color:"var(--text-faint,rgba(255,255,255,.3))",marginBottom:8}}>
+      <div style={{fontSize:10,fontWeight:600,letterSpacing:".9px",textTransform:"uppercase",color:"var(--text-faint)",marginBottom:8}}>
         Pay {fmt(total)}
       </div>
       <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
@@ -2580,12 +2580,12 @@ function PayButtons({sitter, invoice}) {
           return link
             ?<div key={m.type} style={{display:"inline-flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                 <a href={link} target="_blank" rel="noopener noreferrer"
-                  style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.12)",color:"rgba(255,255,255,.8)",textDecoration:"none",fontSize:12,fontWeight:500}}>
+                  style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"var(--card-bg)",border:"1px solid var(--border)",color:"rgba(255,255,255,.8)",textDecoration:"none",fontSize:12,fontWeight:500}}>
                   {pt.icon} {pt.label}{m.handle?` (${m.handle})`:""}
                 </a>
-                {pt.weblink&&<a href={weblink} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:"rgba(255,255,255,.35)",textDecoration:"none"}}>open profile ↗</a>}
+                {pt.weblink&&<a href={weblink} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:"var(--text-faint)",textDecoration:"none"}}>open profile ↗</a>}
               </div>
-            :<div key={m.type} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.12)",color:"rgba(255,255,255,.6)",fontSize:12}}>
+            :<div key={m.type} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"var(--card-bg)",border:"1px solid var(--border)",color:"var(--text-dim)",fontSize:12}}>
                 {pt.icon} {pt.label}{m.handle?`: ${m.handle}`:""}
               </div>;
         })}
@@ -2716,7 +2716,7 @@ function ResetPasswordForm() {
         <div style={{textAlign:"center",marginBottom:24}}>
           <div className="leaf" style={{fontSize:36,marginBottom:8}}>➿</div>
           <div className="logo-text" style={{fontSize:26,marginBottom:6}}>littleloop</div>
-          <p style={{fontSize:13,color:"var(--text-dim,rgba(255,255,255,.4))"}}>Set your new password</p>
+          <p style={{fontSize:13,color:"var(--text-dim)"}}>Set your new password</p>
         </div>
         {done
           ?<div className="al al-s">Password updated! Redirecting to login…</div>
@@ -2752,7 +2752,7 @@ function ThemePicker({currentTheme, onSelect}) {
             position:"relative",overflow:"hidden"
           }}>
             <div style={{width:"100%",height:28,borderRadius:6,background:p.accentGrad,marginBottom:6}}/>
-            <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,.7)",letterSpacing:".5px"}}>{p.name}</div>
+            <div style={{fontSize:10,fontWeight:600,color:"var(--text-dim)",letterSpacing:".5px"}}>{p.name}</div>
             {currentTheme===p.id&&<div style={{position:"absolute",top:6,right:6,width:14,height:14,borderRadius:"50%",background:"var(--accent,#7BAAEE)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8}}>✓</div>}
           </button>
         ))}
@@ -3579,7 +3579,7 @@ function SitterDashboard({session,onSignOut}) {
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{fontSize:12,color:"rgba(255,255,255,.35)",display:"none"}} className="hide-mobile-name">{name}</div>
+          <div style={{fontSize:12,color:"var(--text-faint)",display:"none"}} className="hide-mobile-name">{name}</div>
           <button className="bg" style={{padding:"6px 12px",fontSize:12}} onClick={onSignOut}>Sign out</button>
         </div>
       </div>
@@ -3731,7 +3731,7 @@ function ParentDashboard({session,onSignOut}) {
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{fontSize:12,color:"rgba(255,255,255,.35)",display:"none"}} className="hide-mobile-name">{name}</div>
+          <div style={{fontSize:12,color:"var(--text-faint)",display:"none"}} className="hide-mobile-name">{name}</div>
           <button className="bg" style={{padding:"6px 12px",fontSize:12}} onClick={onSignOut}>Sign out</button>
         </div>
       </div>
@@ -3831,12 +3831,12 @@ function ParentDashboard({session,onSignOut}) {
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
                       {members.map(m=>(
-                        <div key={m.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"rgba(255,255,255,.03)",borderRadius:12,border:"1px solid rgba(255,255,255,.06)"}}>
+                        <div key={m.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"var(--card-bg)",borderRadius:12,border:"1px solid rgba(255,255,255,.06)"}}>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
                             <span style={{fontSize:22}}>{m.avatar||"👤"}</span>
                             <div>
-                              <div style={{fontSize:13,fontWeight:500}}>{m.name}{m.user_id===session.user.id&&<span style={{fontSize:10,color:"var(--text-faint,rgba(255,255,255,.3))",marginLeft:6}}>(you)</span>}</div>
-                              <div style={{fontSize:11,color:"var(--text-faint,rgba(255,255,255,.3))"}}>{m.email}</div>
+                              <div style={{fontSize:13,fontWeight:500}}>{m.name}{m.user_id===session.user.id&&<span style={{fontSize:10,color:"var(--text-faint)",marginLeft:6}}>(you)</span>}</div>
+                              <div style={{fontSize:11,color:"var(--text-faint)"}}>{m.email}</div>
                             </div>
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
