@@ -1,6 +1,56 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+const VAPID_PUBLIC_KEY = 'E3MafgRHHKg-n_1zYn-H0kKPivN80g8DP4LxSwwU3cJoNfW1wsEI2oO_F5JUgRfcY1OjwUDFYNhu6-WSLDutjw';
+
+// ── Push Notifications ────────────────────────────────────────────────────────
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    return reg;
+  } catch (e) { console.warn('SW registration failed:', e); return null; }
+}
+
+function b64urlToUint8(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function subscribeToPush(userId) {
+  try {
+    const reg = await registerServiceWorker();
+    if (!reg) return;
+
+    // Check existing subscription
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: b64urlToUint8(VAPID_PUBLIC_KEY),
+      });
+    }
+
+    // Store in DB (upsert)
+    await supabase.from('push_subscriptions').upsert({
+      user_id: userId,
+      subscription: sub.toJSON(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  } catch (e) { console.warn('Push subscribe failed:', e); }
+}
+
+async function sendPushNotification(userIds, title, body, url, tag) {
+  if (!userIds?.length) return;
+  supabase.functions.invoke('send-push', {
+    body: { userIds, title, body, url, tag }
+  }).catch(console.error);
+}
+
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -1050,6 +1100,12 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
         type:"new_post",
         payload:{familyId,sitterName,familyName,postType:type,postContent:text.trim()}
       }}).catch(console.error);
+      // Send push notification to family members
+      supabase.from("members").select("user_id").eq("family_id",familyId).in("role",["admin","member"]).eq("status","active")
+        .then(({data:mems})=>{
+          const ids=(mems||[]).map(m=>m.user_id).filter(Boolean);
+          sendPushNotification(ids,`New update from ${sitterName}`,text.trim().slice(0,80)||"Tap to see the latest update",`/?portal=parent`,"new_post");
+        });
       reset();onPosted();onClose();
     }catch(err){setAlert({t:"e",m:err.message||"Something went wrong."});}
     finally{setLoading(false);}
@@ -1262,6 +1318,9 @@ function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMar
   },[familyId,unseenCount]);
 
   useEffect(()=>{load();},[load]);
+
+  // Subscribe to push on mount
+  useEffect(()=>{ subscribeToPush(sitterId); },[sitterId]);
 
   useEffect(()=>{
     const sub=supabase.channel(`feed-${familyId}`)
@@ -1600,6 +1659,7 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
         type:"new_message",
         payload:{recipientId:p.user_id,senderName,messagePreview:msgText,isSitter}
       }}).catch(console.error);
+      sendPushNotification([p.user_id],`New message from ${senderName}`,msgText.slice(0,80),'/?portal='+(isSitter?'parent':'sitter'),'new_message');
     }
     setNewMsg("");setSending(false);
   }
@@ -2091,6 +2151,11 @@ function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyC
           type:"new_invoice",
           payload:{familyId,sitterName,invoiceNumber:numData,amount:fmt,familyName:selectedFam?.name||""}
         }}).catch(console.error);
+        supabase.from("members").select("user_id").eq("family_id",familyId).in("role",["admin","member"]).eq("status","active")
+          .then(({data:mems})=>{
+            const ids=(mems||[]).map(m=>m.user_id).filter(Boolean);
+            sendPushNotification(ids,`New invoice from ${sitterName}`,`${fmt} — tap to view`,'/?portal=parent','new_invoice');
+          });
       } else {
         const {error}=await supabase.from("invoices").update({
           status,notes:notes||null,due_date:dueDate||null,
@@ -3573,6 +3638,9 @@ function ParentDashboard({session,onSignOut}) {
   },[session.user.id]);
 
   useEffect(()=>{load();},[load]);
+
+  // Subscribe to push on mount
+  useEffect(()=>{ if(session?.user?.id) subscribeToPush(session.user.id); },[session?.user?.id]);
 
   const isAdmin  = member?.role==="admin";
   const canView  = ["admin","member"].includes(member?.role);
