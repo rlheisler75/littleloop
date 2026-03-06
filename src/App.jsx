@@ -36,11 +36,13 @@ async function subscribeToPush(userId) {
     }
 
     // Store in DB (upsert)
-    await supabase.from('push_subscriptions').upsert({
+    const {error} = await supabase.from('push_subscriptions').upsert({
       user_id: userId,
       subscription: sub.toJSON(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
+    if (error) console.error('Push subscription save failed:', error);
+    else console.log('Push subscription saved for', userId);
   } catch (e) { console.warn('Push subscribe failed:', e); }
 }
 
