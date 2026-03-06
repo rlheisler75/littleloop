@@ -3561,6 +3561,9 @@ function SitterDashboard({session,onSignOut}) {
     }
   },[tab]);
 
+  // Subscribe to push on mount
+  useEffect(()=>{ subscribeToPush(sitterId); },[sitterId]);
+
   const NAV=[
     {id:"families",icon:"👨‍👩‍👧",label:"Families",badge:unread.eta},
     {id:"feed",icon:"🌸",label:"Feed",badge:unread.feed},
