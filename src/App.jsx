@@ -48,9 +48,20 @@ async function subscribeToPush(userId) {
 
 async function sendPushNotification(userIds, title, body, url, tag) {
   if (!userIds?.length) return;
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
   supabase.functions.invoke('send-push', {
-    body: { userIds, title, body, url, tag }
+    body: { userIds, title, body, url, tag },
+    headers,
   }).catch(console.error);
+}
+
+async function invokeNotification(data) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
+  // data may be {body:{type,payload}} or {type,payload} — normalize
+  const body = data?.body ?? data;
+  return supabase.functions.invoke('send-notification', { body, headers });
 }
 
 const supabase = createClient(
@@ -1098,7 +1109,7 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
         await supabase.from("post_children").insert(tagged.map(child_id=>({post_id:post.id,child_id})));
       }
       // Send email notification to family (fire and forget)
-      supabase.functions.invoke("send-notification",{body:{
+      invokeNotification({body:{
         type:"new_post",
         payload:{familyId,sitterName,familyName,postType:type,postContent:text.trim()}
       }}).catch(console.error);
@@ -1657,7 +1668,7 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
     // Notify all other participants (fire and forget)
     const others=participants.filter(p=>p.user_id!==currentUserId);
     for(const p of others){
-      supabase.functions.invoke("send-notification",{body:{
+      invokeNotification({body:{
         type:"new_message",
         payload:{recipientId:p.user_id,senderName,messagePreview:msgText,isSitter}
       }}).catch(console.error);
@@ -2149,7 +2160,7 @@ function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyC
         const total=items.reduce((s,it)=>s+(it.amount||0),0);
         const fmt=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(total);
         const selectedFam=families.find(f=>f.id===familyId);
-        supabase.functions.invoke("send-notification",{body:{
+        invokeNotification({body:{
           type:"new_invoice",
           payload:{familyId,sitterName,invoiceNumber:numData,amount:fmt,familyName:selectedFam?.name||""}
         }}).catch(console.error);
