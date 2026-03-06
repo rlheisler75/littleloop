@@ -2988,6 +2988,104 @@ function MemberProfileTab({memberId, memberName, onNameChange}) {
 
 // ─── Check In/Out ─────────────────────────────────────────────────────────────
 
+
+// ─── On My Way / ETA ──────────────────────────────────────────────────────────
+const ETA_OPTIONS = [
+  {label:'5 min',  minutes:5},
+  {label:'10 min', minutes:10},
+  {label:'30 min', minutes:30},
+  {label:'45 min', minutes:45},
+  {label:'1 hour', minutes:60},
+];
+
+function OnMyWayButton({familyId, memberId, memberName}) {
+  const [expanded, setExpanded] = useState(false);
+  const [sent,     setSent]     = useState(false);
+  const [current,  setCurrent]  = useState(null);
+  const [loading,  setLoading]  = useState(false);
+
+  useEffect(()=>{
+    async function loadETA(){
+      const {data}=await supabase.from('eta_notifications')
+        .select('*').eq('family_id',familyId).eq('member_id',memberId)
+        .gt('expires_at',new Date().toISOString())
+        .order('created_at',{ascending:false}).limit(1).maybeSingle();
+      setCurrent(data||null);
+    }
+    if(familyId&&memberId) loadETA();
+  },[familyId,memberId]);
+
+  async function send(minutes){
+    setLoading(true);
+    const expires=new Date(Date.now()+Math.max(minutes*2,120)*60*1000).toISOString();
+    const eta_time=new Date(Date.now()+minutes*60*1000).toISOString();
+    const {data,error}=await supabase.from('eta_notifications').insert({
+      family_id:familyId, member_id:memberId, member_name:memberName,
+      eta_minutes:minutes, eta_time, expires_at:expires,
+    }).select().single();
+    setLoading(false);
+    if(!error){setCurrent(data);setSent(true);setExpanded(false);setTimeout(()=>setSent(false),3000);}
+  }
+
+  async function cancel(){
+    if(!current) return;
+    await supabase.from('eta_notifications').delete().eq('id',current.id);
+    setCurrent(null);
+  }
+
+  if(current){
+    const etaTime=new Date(current.eta_time);
+    const minsLeft=Math.max(0,Math.round((etaTime-Date.now())/60000));
+    return (
+      <div style={{marginTop:12,padding:'10px 14px',borderRadius:12,
+        background:'rgba(58,158,122,.1)',border:'1px solid rgba(94,207,170,.3)',
+        display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <span style={{fontSize:18}}>🚗</span>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:'#5ECFAA'}}>On the way!</div>
+            <div style={{fontSize:11,color:'var(--text-faint)'}}>
+              {minsLeft>0?`~${minsLeft} min away`:'Arriving soon'}
+            </div>
+          </div>
+        </div>
+        <button onClick={cancel} style={{background:'none',border:'none',fontSize:11,
+          color:'var(--text-faint)',cursor:'pointer',textDecoration:'underline'}}>Cancel</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{marginTop:12}}>
+      {!expanded
+        ?<button onClick={()=>setExpanded(true)} style={{width:'100%',padding:'10px 14px',
+            borderRadius:12,border:'1px solid rgba(94,207,170,.3)',
+            background:'rgba(58,158,122,.08)',color:'#5ECFAA',fontSize:13,fontWeight:600,
+            cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+            <span>🚗</span>{sent?'Sitter notified! ✓':'On My Way — notify sitter'}
+          </button>
+        :<div style={{padding:'12px 14px',borderRadius:12,border:'1px solid rgba(94,207,170,.3)',
+            background:'rgba(58,158,122,.06)'}}>
+            <div style={{fontSize:12,fontWeight:600,color:'#5ECFAA',marginBottom:10}}>How far away are you?</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:10}}>
+              {ETA_OPTIONS.map(o=>(
+                <button key={o.minutes} onClick={()=>send(o.minutes)} disabled={loading}
+                  style={{padding:'7px 14px',borderRadius:20,border:'1px solid rgba(94,207,170,.3)',
+                    background:'rgba(58,158,122,.1)',color:'#5ECFAA',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                  {loading?<Spinner size={10}/>:o.label}
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>setExpanded(false)}
+              style={{background:'none',border:'none',fontSize:11,color:'var(--text-faint)',cursor:'pointer'}}>
+              Cancel
+            </button>
+          </div>
+      }
+    </div>
+  );
+}
+
 function CheckInButton({child, familyId, currentUserId, checkerName, isSitter, onChecked}) {
   const [status, setStatus]   = useState(null); // 'in' | 'out' | null
   const [loading, setLoading] = useState(false);
