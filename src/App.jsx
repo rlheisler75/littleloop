@@ -48,20 +48,14 @@ async function subscribeToPush(userId) {
 
 async function sendPushNotification(userIds, title, body, url, tag) {
   if (!userIds?.length) return;
-  const { data: { session } } = await supabase.auth.getSession();
-  const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
   supabase.functions.invoke('send-push', {
     body: { userIds, title, body, url, tag },
-    headers,
   }).catch(console.error);
 }
 
 async function invokeNotification(data) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
-  // data may be {body:{type,payload}} or {type,payload} — normalize
   const body = data?.body ?? data;
-  return supabase.functions.invoke('send-notification', { body, headers });
+  supabase.functions.invoke('send-notification', { body }).catch(console.error);
 }
 
 const supabase = createClient(
