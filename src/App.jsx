@@ -1947,6 +1947,7 @@ const PAYMENT_TYPES = [
   {id:"venmo",    label:"Venmo",        icon:"💜", placeholder:"@username",    deeplink:(handle,amount,note)=>`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(handle.replace('@',''))}&amount=${amount}&note=${encodeURIComponent(note)}`, weblink:(handle,amount,note)=>`https://venmo.com/${handle.replace('@','')}`},
   {id:"paypal",   label:"PayPal",       icon:"💙", placeholder:"username",     deeplink:(handle,amount,note)=>`https://paypal.me/${handle}/${amount}`},
   {id:"zelle",    label:"Zelle",        icon:"💛", placeholder:"email or phone",deeplink:null},
+  {id:"cashapp",  label:"Cash App",     icon:"💚", placeholder:"$cashtag",          deeplink:(handle,amount,note)=>`https://cash.app/${handle.replace('$','')}/${amount}`,  weblink:(handle,amount,note)=>`https://cash.app/${handle.replace('$','')}`},
   {id:"cash",     label:"Cash",         icon:"💵", placeholder:"(no handle needed)",deeplink:null},
   {id:"check",    label:"Check",        icon:"📝", placeholder:"(no handle needed)",deeplink:null},
   {id:"transfer", label:"Bank Transfer",icon:"🏦", placeholder:"routing/account or instructions",deeplink:null},
@@ -2685,7 +2686,14 @@ function InviteWelcome({token, onContinue}) {
 
         {/* Welcome card */}
         <div className="card" style={{padding:'28px 24px',marginBottom:16,textAlign:'center'}}>
-          <div style={{fontSize:48,marginBottom:12}}>{sitter?.avatar_url||'➿'}</div>
+          <div style={{width:72,height:72,borderRadius:'50%',overflow:'hidden',
+            background:'var(--card-bg)',border:'1px solid var(--border)',
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:32,marginBottom:12,flexShrink:0}}>
+            {sitter?.avatar_url
+              ? <img src={sitter.avatar_url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={sitter.name}/>
+              : '➿'}
+          </div>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:6}}>
             You're invited!
           </div>
@@ -4467,7 +4475,13 @@ function ParentDashboard({session,onSignOut}) {
                           <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",
                             background:"var(--input-bg,rgba(255,255,255,.03))",borderRadius:12,
                             border:"1px solid var(--border,rgba(255,255,255,.06))"}}>
-                            <span style={{fontSize:22}}>{s.avatar_url||"➿"}</span>
+                            <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',
+                              background:'var(--card-bg)',border:'1px solid var(--border)',
+                              display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>
+                              {s.avatar_url
+                                ? <img src={s.avatar_url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={s.name}/>
+                                : '➿'}
+                            </div>
                             <div style={{flex:1}}>
                               <div style={{fontSize:13,fontWeight:500}}>{s.name}</div>
                             </div>
