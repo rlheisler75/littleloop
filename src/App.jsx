@@ -1701,6 +1701,24 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
     }
   }
 
+  // Track who has seen the conversation
+  const [seenBy, setSeenBy] = useState([]);
+  useEffect(()=>{
+    async function loadSeen(){
+      const {data}=await supabase.from('message_seen')
+        .select('user_id,last_seen_at')
+        .eq('conversation_id',conv.id)
+        .neq('user_id',currentUserId);
+      setSeenBy(data||[]);
+    }
+    loadSeen();
+    const ch=supabase.channel(`seen-${conv.id}`)
+      .on('postgres_changes',{event:'*',schema:'public',table:'message_seen',
+        filter:`conversation_id=eq.${conv.id}`},loadSeen)
+      .subscribe();
+    return()=>supabase.removeChannel(ch);
+  },[conv.id,currentUserId]);
+
   const convTitle = conv.title || participants.filter(p=>p.user_id!==currentUserId).map(p=>p.participant_name).join(", ") || "Conversation";
 
   return (
@@ -1736,6 +1754,12 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
                       {m.text}
                     </div>
                     <div style={{fontSize:10,color:"var(--text-faint)",marginTop:3,textAlign:isMe?"right":"left"}}>{timeAgo(m.created_at)}</div>
+                    {/* Read receipt — show "Seen" under last message from me */}
+                    {isMe && i===messages.length-1 && seenBy.length>0 && (
+                      <div style={{fontSize:9,color:'var(--text-faint)',textAlign:'right',marginTop:1}}>
+                        Seen by {seenBy.map(s=>participants.find(p=>p.user_id===s.user_id)?.participant_name||'them').join(', ')}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -2454,6 +2478,38 @@ function SitterInvoicesTab({sitterId, sitterName}) {
     await supabase.from("invoices").delete().eq("id",id);load();
   }
 
+  const [reminderSent, setReminderSent] = useState(null);
+  async function sendReminder(inv){
+    const fam = families.find(f=>f.id===inv.family_id);
+    if(!fam) return;
+    // Send email notification
+    invokeNotification({body:{
+      type:'invoice_reminder',
+      payload:{
+        recipientId: fam.admin_user_id||null,
+        familyEmail: fam.admin_email,
+        familyName: fam.name,
+        sitterName: sitterName,
+        invoiceNumber: inv.invoice_number,
+        amount: fmt(inv.total_amount),
+        dueDate: inv.due_date ? fmtDate(inv.due_date) : null,
+      }
+    }}).catch(console.error);
+    // Also send push
+    const {data:members} = await supabase.from('members')
+      .select('user_id').eq('family_id', fam.id).in('role',['admin','member']);
+    if(members?.length) {
+      sendPushNotification(
+        members.map(m=>m.user_id),
+        `Invoice reminder from ${sitterName}`,
+        `${inv.invoice_number} · ${fmt(inv.total_amount)} is due`,
+        '/?portal=parent', 'invoice_reminder'
+      );
+    }
+    setReminderSent(inv.id);
+    setTimeout(()=>setReminderSent(null), 3000);
+  }
+
   async function openPrint(inv){
     const {data:items}=await supabase.from("invoice_items").select("*").eq("invoice_id",inv.id).order("sort_order");
     const family=families.find(f=>f.id===inv.family_id)||{name:"—"};
@@ -2507,6 +2563,11 @@ function SitterInvoicesTab({sitterId, sitterName}) {
                     <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)}>🖨️ Print</button>
                     {inv.status!=="paid"&&<button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>setEditInv(inv)}>✏️ Edit</button>}
                     {inv.status==="sent"&&<button className="bp" style={{padding:"5px 10px",fontSize:11,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)"}} onClick={()=>setConfirmPaid(inv)}>✅ Mark Paid</button>}
+                    {inv.status==="sent"&&<button className="bg" style={{padding:"5px 10px",fontSize:11,
+                      color:reminderSent===inv.id?'#5EE89A':'inherit'}}
+                      onClick={()=>sendReminder(inv)}>
+                      {reminderSent===inv.id?'✓ Sent!':'🔔 Remind'}
+                    </button>}
                     {inv.status==="draft"&&<button className="bd" style={{padding:"5px 10px",fontSize:11}} onClick={()=>deleteInv(inv.id)}>🗑️</button>}
                   </div>
                 </div>
@@ -2589,6 +2650,89 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
         </div>
       }
     </div>
+  );
+}
+
+// ─── Check-in History Modal (parent side) ────────────────────────────────────
+function CheckinHistoryModal({open, onClose, familyId, children}) {
+  const [log, setLog]         = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter]   = useState('week');
+
+  useEffect(()=>{
+    if(!open) return;
+    async function load(){
+      setLoading(true);
+      let query = supabase.from('checkins')
+        .select('*, children(name,avatar)')
+        .eq('family_id', familyId)
+        .order('checked_at', {ascending:false});
+      const start = new Date();
+      if(filter==='today') { start.setHours(0,0,0,0); query=query.gte('checked_at',start.toISOString()); }
+      else if(filter==='week') { start.setDate(start.getDate()-7); query=query.gte('checked_at',start.toISOString()); }
+      else if(filter==='month') { start.setDate(start.getDate()-30); query=query.gte('checked_at',start.toISOString()); }
+      const {data}=await query.limit(200);
+      setLog(data||[]);
+      setLoading(false);
+    }
+    load();
+  },[open, familyId, filter]);
+
+  function fmt(ts){
+    const d=new Date(ts);
+    return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  }
+
+  // Group by date
+  const grouped = {};
+  log.forEach(e=>{
+    const day = new Date(e.checked_at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    if(!grouped[day]) grouped[day]=[];
+    grouped[day].push(e);
+  });
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:4}}>Check-in History</div>
+      <div style={{fontSize:12,color:'var(--text-faint)',marginBottom:16}}>All check-ins and check-outs for your family</div>
+
+      {/* Filter */}
+      <div style={{display:'flex',gap:6,marginBottom:16}}>
+        {['today','week','month','all'].map(f=>(
+          <button key={f} onClick={()=>setFilter(f)} style={{
+            padding:'4px 12px',borderRadius:20,fontSize:11,cursor:'pointer',
+            border:`1px solid ${filter===f?'var(--accent)':'var(--border)'}`,
+            background:filter===f?'rgba(58,111,212,.15)':'var(--card-bg)',
+            color:filter===f?'var(--accent)':'var(--text-faint)',
+          }}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>
+        ))}
+      </div>
+
+      {loading ? <div style={{textAlign:'center',padding:40}}><Spinner size={20}/></div>
+      : log.length===0 ? <div style={{textAlign:'center',padding:40,color:'var(--text-faint)',fontSize:13}}>No check-ins found.</div>
+      : Object.entries(grouped).map(([day, entries])=>(
+        <div key={day} style={{marginBottom:16}}>
+          <div style={{fontSize:11,fontWeight:600,color:'var(--text-faint)',marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>{day}</div>
+          {entries.map((e,i)=>(
+            <div key={e.id||i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',
+              borderBottom:'1px solid var(--border)'}}>
+              <span style={{fontSize:18}}>{e.children?.avatar||'🌟'}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:500}}>{e.children?.name||'Unknown'}</div>
+                <div style={{fontSize:11,color:'var(--text-faint)'}}>by {e.checked_by_name||'Unknown'}</div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div style={{fontSize:12,fontWeight:600,
+                  color:e.status==='in'?'#5EE89A':'#F5AAAA'}}>
+                  {e.status==='in'?'✓ In':'← Out'}
+                </div>
+                <div style={{fontSize:10,color:'var(--text-faint)'}}>{fmt(e.checked_at)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </Modal>
   );
 }
 
@@ -4161,6 +4305,7 @@ function SitterDashboard({session,onSignOut}) {
   const sitterId=session.user.id;
   const [name,setName]=useState(session.user.user_metadata?.name||session.user.email.split("@")[0]);
   const [reviewTarget,setReviewTarget]=useState(null); // {sitterId,sitterName}
+  const [showCheckinHistory,setShowCheckinHistory]=useState(false);
   const [onboarded,setOnboarded]=useState(!!localStorage.getItem(`ll_onboarded_${session.user.id}`));
   const [tab,setTab]=useState("families");
   const [unread,setUnread]=useState({messages:0,feed:0,eta:0});
@@ -4284,6 +4429,7 @@ function ParentDashboard({session,onSignOut}) {
   const [showAddMember,setShowAddMember] = useState(false);
   const [name,setName]=useState(session.user.user_metadata?.name||session.user.email.split("@")[0]);
   const [reviewTarget,setReviewTarget]=useState(null); // {sitterId,sitterName}
+  const [showCheckinHistory,setShowCheckinHistory]=useState(false);
 
   const load = useCallback(async()=>{
     setLoading(true);
@@ -4501,6 +4647,8 @@ function ParentDashboard({session,onSignOut}) {
                       </div>
                     }
                   </div>
+                  <CheckinHistoryModal open={showCheckinHistory} onClose={()=>setShowCheckinHistory(false)}
+                    familyId={family.id} children={children}/>
                   {reviewTarget&&<LeaveReviewModal
                     open={!!reviewTarget} onClose={()=>setReviewTarget(null)}
                     sitterId={reviewTarget.sitterId} sitterName={reviewTarget.sitterName}
