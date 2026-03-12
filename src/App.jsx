@@ -3412,12 +3412,12 @@ function PublicSitterProfile({username}) {
 
   useEffect(()=>{
     async function load() {
-      const {data:s} = await supabase.from('sitters')
+      const {data:s, error} = await supabase.from('sitters')
         .select('id,name,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,avatar_url,public_profile')
         .eq('username', username)
         .eq('public_profile', true)
-        .single();
-      if(!s) { setNotFound(true); setLoading(false); return; }
+        .maybeSingle();
+      if(!s || error) { setNotFound(true); setLoading(false); return; }
       setSitter(s);
       const {data:r} = await supabase.from('sitter_reviews')
         .select('*').eq('sitter_id', s.id).order('created_at',{ascending:false});
