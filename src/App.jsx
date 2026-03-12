@@ -3001,10 +3001,13 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
   const [years, setYears]       = useState('');
   const [certs, setCerts]       = useState([]);
 
+  const [avatarUrl, setAvatarUrl]   = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
   useEffect(()=>{
     async function load() {
       const {data:d} = await supabase.from('sitters')
-        .select('public_profile,username,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications')
+        .select('public_profile,username,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,avatar_url')
         .eq('id', sitterId).single();
       if(d) {
         setPub(d.public_profile||false);
@@ -3016,12 +3019,35 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
         setAvail(d.availability||'');
         setYears(d.years_experience||'');
         setCerts(d.certifications||[]);
+        setAvatarUrl(d.avatar_url||'');
         setData(d);
       }
       setLoading(false);
     }
     load();
   },[sitterId]);
+
+  async function uploadAvatar(file) {
+    if(!file) return;
+    if(!file.type.startsWith('image/')) { setAlert({t:'e',m:'Please select an image file.'}); return; }
+    if(file.size > 5*1024*1024) { setAlert({t:'e',m:'Image must be under 5MB.'}); return; }
+    setAvatarUploading(true); setAlert(null);
+    const ext = file.name.split('.').pop();
+    const path = `${sitterId}/avatar.${ext}`;
+    const {error:upErr} = await supabase.storage.from('sitter-avatars').upload(path, file, {
+      contentType: file.type, upsert: true
+    });
+    if(upErr) { setAlert({t:'e',m:upErr.message}); setAvatarUploading(false); return; }
+    const {data:urlData} = supabase.storage.from('sitter-avatars').getPublicUrl(path);
+    const url = urlData?.publicUrl;
+    if(!url) { setAlert({t:'e',m:'Could not get photo URL.'}); setAvatarUploading(false); return; }
+    // Add cache-busting so the browser shows the new image
+    const finalUrl = url + '?t=' + Date.now();
+    await supabase.from('sitters').update({avatar_url: finalUrl}).eq('id', sitterId);
+    setAvatarUrl(finalUrl);
+    setAvatarUploading(false);
+    setAlert({t:'s',m:'Photo updated!'});
+  }
 
   function toggleAgeRange(r) {
     setAgeRanges(prev => prev.includes(r) ? prev.filter(x=>x!==r) : [...prev,r]);
@@ -3084,6 +3110,33 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
             position:'absolute',top:3,left: pub ? 23 : 3,width:18,height:18,
             borderRadius:'50%',background:'#fff',transition:'left .2s'
           }}/>
+        </div>
+      </div>
+
+      {/* Avatar upload - visible whether public or not */}
+      <div style={{marginBottom:16}}>
+        <label style={{fontSize:11,color:'var(--text-dim)',display:'block',marginBottom:8}}>Profile Photo</label>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div style={{width:72,height:72,borderRadius:'50%',overflow:'hidden',flexShrink:0,
+            background:'var(--card-bg)',border:'1px solid var(--border)',
+            display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>
+            {avatarUrl
+              ? <img src={avatarUrl} style={{width:'100%',height:'100%',objectFit:'cover'}} alt="Profile"/>
+              : '➿'}
+          </div>
+          <div>
+            <label style={{display:'inline-block',cursor:'pointer'}}>
+              <span className="bg" style={{
+                display:'inline-block',padding:'6px 14px',borderRadius:8,fontSize:12,
+                opacity:avatarUploading?0.6:1,pointerEvents:avatarUploading?'none':'auto'
+              }}>
+                {avatarUploading ? <><Spinner size={11}/> Uploading…</> : '📷 Upload Photo'}
+              </span>
+              <input type="file" accept="image/*" style={{display:'none'}}
+                onChange={e=>uploadAvatar(e.target.files[0])}/>
+            </label>
+            <div style={{fontSize:11,color:'var(--text-faint)',marginTop:4}}>JPG, PNG or GIF · max 5MB</div>
+          </div>
         </div>
       </div>
 
