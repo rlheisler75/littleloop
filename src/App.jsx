@@ -1651,14 +1651,31 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
     if(!newMsg.trim()) return;
     setSending(true);
     const msgText=newMsg.trim();
-    await supabase.from("messages").insert({
+    // Optimistically add message to UI immediately
+    const optimistic={
+      id:`optimistic-${Date.now()}`,
       conversation_id:conv.id,
       sender_id:currentUserId,
       sender_name:senderName,
       sender_avatar:senderAvatar,
       is_sitter:isSitter,
       text:msgText,
-    });
+      created_at:new Date().toISOString(),
+    };
+    setMessages(prev=>[...prev, optimistic]);
+    setNewMsg("");
+    setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),50);
+    const {data:inserted}=await supabase.from("messages").insert({
+      conversation_id:conv.id,
+      sender_id:currentUserId,
+      sender_name:senderName,
+      sender_avatar:senderAvatar,
+      is_sitter:isSitter,
+      text:msgText,
+    }).select().single();
+    // Replace optimistic message with real one
+    if(inserted) setMessages(prev=>prev.map(m=>m.id===optimistic.id?inserted:m));
+    setSending(false);
     // Notify all other participants (fire and forget)
     const others=participants.filter(p=>p.user_id!==currentUserId);
     for(const p of others){
@@ -1668,7 +1685,6 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
       }}).catch(console.error);
       sendPushNotification([p.user_id],`New message from ${senderName}`,msgText.slice(0,80),'/?portal='+(isSitter?'parent':'sitter'),'new_message');
     }
-    setNewMsg("");setSending(false);
   }
 
   const convTitle = conv.title || participants.filter(p=>p.user_id!==currentUserId).map(p=>p.participant_name).join(", ") || "Conversation";
