@@ -8,6 +8,18 @@ async function registerServiceWorker() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
   try {
     const reg = await navigator.serviceWorker.register('/sw.js');
+    // Tell waiting SW to activate silently on next navigation (avoids "site updated" notification)
+    if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      if (newSW) {
+        newSW.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            newSW.postMessage('SKIP_WAITING');
+          }
+        });
+      }
+    });
     return reg;
   } catch (e) { console.warn('SW registration failed:', e); return null; }
 }

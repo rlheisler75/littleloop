@@ -1,8 +1,31 @@
-// ── Install ───────────────────────────────────────────────────────────────────
-self.addEventListener('install', () => self.skipWaiting());
+const CACHE_VERSION = 'littleloop-v2';
 
-// ── Activate ──────────────────────────────────────────────────────────────────
-self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+// ── Install — don't skipWaiting immediately, avoids "site updated" notification
+self.addEventListener('install', (e) => {
+  // Cache essential assets silently
+  e.waitUntil(
+    caches.open(CACHE_VERSION).then(cache =>
+      cache.addAll(['/icons/icon-192x192.png', '/icons/icon-96x96.png'])
+        .catch(() => {}) // ignore cache failures
+    )
+  );
+  // Only skip waiting if no existing controller (first install)
+  if (!self.registration.active) self.skipWaiting();
+});
+
+// ── Activate — clean old caches, claim clients silently ───────────────────────
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k)))
+    ).then(() => clients.claim())
+  );
+});
+
+// ── Message — allow app to trigger skipWaiting on next navigation ─────────────
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
+});
 
 // ── Push ──────────────────────────────────────────────────────────────────────
 self.addEventListener('push', (e) => {
@@ -19,7 +42,7 @@ self.addEventListener('push', (e) => {
 
   const options = {
     body:     data.body  || 'Tap to open littleloop.',
-    icon:     data.icon  || '/icons/icon-192x192.png',
+    icon:     '/icons/icon-192x192.png',
     badge:    '/icons/icon-96x96.png',
     tag:      data.tag   || 'littleloop',
     data:     { url: data.url || '/', littleloop: true },
