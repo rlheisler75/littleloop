@@ -1870,20 +1870,29 @@ function MessagesTab({currentUserId, isSitter, families=[], memberInfo, allMembe
 
   useEffect(()=>{load();},[load]);
 
-  // Realtime for new messages — reload conversation list to update previews/unseen
+  // Realtime for new messages — update list without full reload
   useEffect(()=>{
     const sub=supabase.channel("messages-list")
-      .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},()=>load())
-      .on("postgres_changes",{event:"*",schema:"public",table:"message_seen"},()=>load())
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},(p)=>{
+        const msg=p.new;
+        if(!msg) return;
+        // Update last message preview without full reload
+        setLastMessages(prev=>({...prev,[msg.conversation_id]:msg}));
+        // Increment unseen if not from me
+        if(msg.sender_id!==currentUserId){
+          setUnseenCounts(prev=>({...prev,[msg.conversation_id]:(prev[msg.conversation_id]||0)+1}));
+        }
+      })
       .subscribe();
     return()=>supabase.removeChannel(sub);
-  },[load]);
+  },[currentUserId]);
 
   const totalUnseen=Object.values(unseenCounts).reduce((a,b)=>a+b,0);
   const selectedConvData=convs.find(c=>c.id===selectedConv);
   const selectedParts=participants[selectedConv]||[];
 
-  if(loading) return <div style={{textAlign:"center",padding:"60px 0"}}><Spinner size={24}/></div>;
+  // Only show spinner on first load, not on background refreshes
+  if(loading&&convs.length===0) return <div style={{textAlign:"center",padding:"60px 0"}}><Spinner size={24}/></div>;
 
   // Show thread view
   if(selectedConv&&selectedConvData) return (
