@@ -2486,6 +2486,10 @@ function SitterInvoicesTab({sitterId, sitterName}) {
   async function sendReminder(inv){
     const fam = families.find(f=>f.id===inv.family_id);
     if(!fam) return;
+    // Fetch items to calculate real total
+    const {data:items} = await supabase.from('invoice_items').select('amount').eq('invoice_id',inv.id);
+    const total = (items||[]).reduce((s,it)=>s+(it.amount||0),0);
+    const amountStr = fmt(total);
     // Send email notification
     invokeNotification({body:{
       type:'invoice_reminder',
@@ -2495,7 +2499,7 @@ function SitterInvoicesTab({sitterId, sitterName}) {
         familyName: fam.name,
         sitterName: sitterName,
         invoiceNumber: inv.invoice_number,
-        amount: fmt(inv.total_amount),
+        amount: amountStr,
         dueDate: inv.due_date ? fmtDate(inv.due_date) : null,
       }
     }}).catch(console.error);
@@ -2506,7 +2510,7 @@ function SitterInvoicesTab({sitterId, sitterName}) {
       sendPushNotification(
         members.map(m=>m.user_id),
         `Invoice reminder from ${sitterName}`,
-        `${inv.invoice_number} · ${fmt(inv.total_amount)} is due`,
+        `${inv.invoice_number} · ${amountStr} is due`,
         '/?portal=parent', 'invoice_reminder'
       );
     }
