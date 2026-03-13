@@ -1653,24 +1653,23 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
   const [newMsg, setNewMsg]         = useState("");
   const [sending, setSending]       = useState(false);
   const [showAdd, setShowAdd]       = useState(false);
-  const [loading, setLoading]       = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const bottomRef                   = useRef(null);
   const senderName                  = isSitter ? "Your Sitter" : (participants.find(p=>p.user_id===currentUserId)?.participant_name||"You");
   const senderAvatar                = isSitter ? "➿" : (participants.find(p=>p.user_id===currentUserId)?.participant_avatar||"👤");
 
   // Use a ref so the realtime callback always has the latest version without re-subscribing
   const loadRef = useRef(null);
-  loadRef.current = async (showSpinner=false)=>{
-    if(showSpinner) setLoading(true);
+  loadRef.current = async ()=>{
     const {data}=await supabase.from("messages").select("*").eq("conversation_id",conv.id).order("created_at",{ascending:true});
     setMessages(data||[]);
-    setLoading(false);
+    setInitialLoad(false);
     await supabase.from("message_seen").upsert({conversation_id:conv.id, user_id:currentUserId, last_seen_at:new Date().toISOString()},{onConflict:"conversation_id,user_id"});
     setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),100);
   };
 
-  // Initial load with spinner
-  useEffect(()=>{ loadRef.current(true); },[conv.id]);
+  // Initial load
+  useEffect(()=>{ loadRef.current(); },[conv.id]);
 
   // Realtime — append new messages without full reload flash
   useEffect(()=>{
@@ -1767,9 +1766,7 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
 
       {/* Messages */}
       <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8,paddingBottom:8}}>
-        {loading
-          ?<div style={{textAlign:"center",padding:40}}><Spinner size={20}/></div>
-          :messages.length===0
+        {messages.length===0&&!initialLoad
             ?<div style={{textAlign:"center",padding:40,color:"var(--text-faint)",fontSize:13}}>No messages yet. Say hello! 👋</div>
             :messages.map((m,i)=>{
               const isMe = m.sender_id===currentUserId;
