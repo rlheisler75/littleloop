@@ -3116,6 +3116,14 @@ function PushPreferencesCard({userId, isSitter}) {
             <div style={{fontSize:12,color:'#5EE89A',fontWeight:500}}>Push notifications enabled</div>
             {saved&&<div style={{fontSize:11,color:'var(--text-faint)',marginLeft:'auto'}}>✓ Saved</div>}
           </div>
+          {/* Chrome tip — only show on Android/Chrome */}
+          {/android/i.test(navigator.userAgent)&&(
+            <div style={{marginBottom:12,padding:'10px 12px',borderRadius:8,
+              background:'rgba(58,111,212,.1)',border:'1px solid rgba(58,111,212,.2)',
+              fontSize:11,color:'var(--text-dim)',lineHeight:1.6}}>
+              💡 <strong>Tip:</strong> To get pop-up notifications, open Chrome → tap the lock icon in the address bar → <strong>Notifications</strong> → enable <strong>Pop on screen</strong> and <strong>Vibrate</strong>.
+            </div>
+          )}
           <div style={{fontSize:11,color:'var(--text-faint)',marginBottom:16}}>
             Choose which notifications you'd like to receive:
           </div>
