@@ -1,41 +1,37 @@
-const CACHE_VERSION = 'littleloop-v2';
+const CACHE_VERSION = 'littleloop-v3';
 
-// ── Install — don't skipWaiting immediately, avoids "site updated" notification
+// ── Install ───────────────────────────────────────────────────────────────────
 self.addEventListener('install', (e) => {
-  // Cache essential assets silently
   e.waitUntil(
     caches.open(CACHE_VERSION).then(cache =>
       cache.addAll(['/icons/icon-192x192.png', '/icons/icon-96x96.png'])
-        .catch(() => {}) // ignore cache failures
-    )
+        .catch(() => {})
+    ).then(() => self.skipWaiting())
   );
-  // Only skip waiting if no existing controller (first install)
-  if (!self.registration.active) self.skipWaiting();
 });
 
-// ── Activate — clean old caches, claim clients silently ───────────────────────
+// ── Activate ──────────────────────────────────────────────────────────────────
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k)))
-    ).then(() => clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k))))
+      .then(() => clients.claim())
   );
-});
-
-// ── Message — allow app to trigger skipWaiting on next navigation ─────────────
-self.addEventListener('message', (e) => {
-  if (e.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // ── Push ──────────────────────────────────────────────────────────────────────
 self.addEventListener('push', (e) => {
+  console.log('[SW] Push received', e.data ? 'with data' : 'no data');
+
   let data = { title: '➿ littleloop', body: 'You have a new update.' };
 
   if (e.data) {
     try {
       const parsed = e.data.json();
+      console.log('[SW] Push parsed:', JSON.stringify(parsed));
       if (parsed.title) data = parsed;
-    } catch {
+    } catch(err) {
+      console.log('[SW] Push parse error:', err);
       try { data.body = e.data.text() || data.body; } catch {}
     }
   }
@@ -47,17 +43,19 @@ self.addEventListener('push', (e) => {
     tag:      data.tag   || 'littleloop',
     data:     { url: data.url || '/', littleloop: true },
     vibrate:  [100, 50, 100],
-    renotify: !!data.tag,
+    renotify: true,
   };
 
-  e.waitUntil(self.registration.showNotification(data.title || '➿ littleloop', options));
+  e.waitUntil(
+    self.registration.showNotification(data.title || '➿ littleloop', options)
+      .then(() => console.log('[SW] Notification shown'))
+      .catch(err => console.error('[SW] showNotification error:', err))
+  );
 });
 
 // ── Notification click ────────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  if (!e.notification.data?.littleloop) return;
-
   const url = e.notification.data?.url || '/';
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
