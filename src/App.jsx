@@ -3006,6 +3006,139 @@ function ThemePicker({currentTheme, onSelect}) {
 }
 
 // ─── Sitter Profile/Settings Tab ─────────────────────────────────────────────
+// ─── Push Notification Preferences ───────────────────────────────────────────
+const PUSH_PREFS_SITTER = [
+  { key: 'new_message',  label: 'New messages',        icon: '💬' },
+  { key: 'new_post',     label: 'Family feed activity', icon: '📝' },
+];
+const PUSH_PREFS_PARENT = [
+  { key: 'new_message',  label: 'New messages',         icon: '💬' },
+  { key: 'new_invoice',  label: 'New invoices',         icon: '💰' },
+  { key: 'invoice_reminder', label: 'Invoice reminders', icon: '🔔' },
+  { key: 'new_post',     label: 'Feed updates',         icon: '📝' },
+];
+
+function PushPreferencesCard({userId, isSitter}) {
+  const PREFS = isSitter ? PUSH_PREFS_SITTER : PUSH_PREFS_PARENT;
+  const [enabled, setEnabled]     = useState(true);  // master toggle
+  const [prefs, setPrefs]         = useState({});
+  const [permission, setPermission] = useState(Notification.permission);
+  const [saving, setSaving]       = useState(false);
+  const [saved, setSaved]         = useState(false);
+  const [subbed, setSubbed]       = useState(false);
+
+  useEffect(()=>{
+    async function load() {
+      // Check if subscribed
+      if('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if(reg) {
+          const sub = await reg.pushManager.getSubscription();
+          setSubbed(!!sub);
+        }
+      }
+      // Load saved prefs
+      const {data} = await supabase.from('push_preferences')
+        .select('preferences').eq('user_id', userId).maybeSingle();
+      if(data) {
+        setPrefs(data.preferences||{});
+        // If any pref is explicitly false, show as individual setting
+      }
+    }
+    load();
+  },[userId]);
+
+  async function requestAndSubscribe() {
+    const perm = await Notification.requestPermission();
+    setPermission(perm);
+    if(perm === 'granted') {
+      await subscribeToPush(userId);
+      setSubbed(true);
+    }
+  }
+
+  async function save(newPrefs) {
+    setSaving(true);
+    await supabase.from('push_preferences').upsert({
+      user_id: userId,
+      preferences: newPrefs,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(()=>setSaved(false), 2000);
+  }
+
+  function toggle(key) {
+    const newPrefs = {...prefs, [key]: prefs[key]===false ? true : false};
+    setPrefs(newPrefs);
+    save(newPrefs);
+  }
+
+  return (
+    <div className="card" style={{padding:"20px 18px",marginBottom:14}}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:4}}>
+        🔔 Push Notifications
+      </div>
+      <div style={{fontSize:12,color:'var(--text-faint)',marginBottom:16}}>
+        Get notified even when littleloop isn't open.
+      </div>
+
+      {permission === 'denied' ? (
+        <div className="al al-e">
+          Notifications are blocked in your browser. To enable, click the lock icon in your address bar and allow notifications for littleloop.xyz.
+        </div>
+      ) : !subbed ? (
+        <div>
+          <div style={{fontSize:12,color:'var(--text-dim)',marginBottom:12}}>
+            You haven't enabled push notifications yet.
+          </div>
+          <button className="bp" onClick={requestAndSubscribe}>
+            Enable Push Notifications
+          </button>
+        </div>
+      ) : (
+        <div>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+            <div style={{width:8,height:8,borderRadius:'50%',background:'#5EE89A'}}/>
+            <div style={{fontSize:12,color:'#5EE89A',fontWeight:500}}>Push notifications enabled</div>
+            {saved&&<div style={{fontSize:11,color:'var(--text-faint)',marginLeft:'auto'}}>✓ Saved</div>}
+          </div>
+          <div style={{fontSize:11,color:'var(--text-faint)',marginBottom:16}}>
+            Choose which notifications you'd like to receive:
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {PREFS.map(p=>{
+              const isOn = prefs[p.key] !== false;
+              return (
+                <div key={p.key} style={{display:'flex',alignItems:'center',gap:10,
+                  padding:'10px 12px',borderRadius:10,
+                  background:'var(--card-bg)',border:'1px solid var(--border)'}}>
+                  <span style={{fontSize:18}}>{p.icon}</span>
+                  <div style={{flex:1,fontSize:13}}>{p.label}</div>
+                  <div onClick={()=>toggle(p.key)} style={{
+                    width:40,height:22,borderRadius:11,cursor:'pointer',
+                    transition:'background .2s',flexShrink:0,
+                    background: isOn ? 'var(--accent)' : 'rgba(255,255,255,.1)',
+                    position:'relative'
+                  }}>
+                    <div style={{
+                      position:'absolute',top:3,
+                      left: isOn ? 21 : 3,
+                      width:16,height:16,borderRadius:'50%',
+                      background:'#fff',transition:'left .2s'
+                    }}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SitterProfileTab({sitterId, sitterName, onNameChange}) {
   const [theme, setTheme]       = useState(localStorage.getItem('ll_theme')||'midnight');
   // Profile fields
@@ -3141,6 +3274,9 @@ function SitterProfileTab({sitterId, sitterName, onNameChange}) {
 
       {/* Public Profile */}
       <PublicProfileEditor sitterId={sitterId} sitterName={sitterName}/>
+
+      {/* Push Notification Preferences */}
+      <PushPreferencesCard userId={sitterId} isSitter={true}/>
 
       {/* Delete account */}
       <div className="card" style={{padding:"20px 18px",marginBottom:14,border:"1px solid rgba(192,80,80,.2)",background:"rgba(192,80,80,.04)"}}>
@@ -3889,6 +4025,9 @@ function MemberProfileTab({memberId, memberName, onNameChange}) {
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:16}}>🎨 App Theme</div>
         <ThemePicker currentTheme={theme} onSelect={selectTheme}/>
       </div>
+
+      {/* Push Notification Preferences */}
+      {memberId&&<PushPreferencesCard userId={memberId} isSitter={false}/>}
     </div>
   );
 }
