@@ -2487,8 +2487,11 @@ function SitterInvoicesTab({sitterId, sitterName}) {
     const fam = families.find(f=>f.id===inv.family_id);
     if(!fam) return;
     // Fetch items to calculate real total
-    const {data:items} = await supabase.from('invoice_items').select('amount').eq('invoice_id',inv.id);
-    const total = (items||[]).reduce((s,it)=>s+(it.amount||0),0);
+    const {data:items} = await supabase.from('invoice_items').select('amount,hours,rate,rate_type').eq('invoice_id',inv.id);
+    const total = (items||[]).reduce((s,it)=>{
+      const amt = it.amount || (it.rate_type==='hourly' ? (it.hours||0)*(it.rate||0) : (it.rate||0));
+      return s + amt;
+    },0);
     const amountStr = fmt(total);
     // Send email notification
     invokeNotification({body:{
