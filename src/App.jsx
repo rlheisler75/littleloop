@@ -1658,24 +1658,38 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
   const senderName                  = isSitter ? "Your Sitter" : (participants.find(p=>p.user_id===currentUserId)?.participant_name||"You");
   const senderAvatar                = isSitter ? "➿" : (participants.find(p=>p.user_id===currentUserId)?.participant_avatar||"👤");
 
-  const load = useCallback(async()=>{
+  // Use a ref so the realtime callback always has the latest version without re-subscribing
+  const loadRef = useRef(null);
+  loadRef.current = async (showSpinner=false)=>{
+    if(showSpinner) setLoading(true);
     const {data}=await supabase.from("messages").select("*").eq("conversation_id",conv.id).order("created_at",{ascending:true});
     setMessages(data||[]);
     setLoading(false);
-    // Mark seen
     await supabase.from("message_seen").upsert({conversation_id:conv.id, user_id:currentUserId, last_seen_at:new Date().toISOString()},{onConflict:"conversation_id,user_id"});
     setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),100);
-  },[conv.id,currentUserId]);
+  };
 
-  useEffect(()=>{load();},[load]);
+  // Initial load with spinner
+  useEffect(()=>{ loadRef.current(true); },[conv.id]);
 
+  // Realtime — append new messages without full reload flash
   useEffect(()=>{
     const sub=supabase.channel(`conv-${conv.id}`)
       .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",
-        filter:`conversation_id=eq.${conv.id}`},()=>load())
+        filter:`conversation_id=eq.${conv.id}`},(payload)=>{
+          const msg=payload.new;
+          if(!msg) { loadRef.current(false); return; }
+          if(msg.sender_id!==currentUserId){
+            setMessages(prev=>{
+              if(prev.some(m=>m.id===msg.id)) return prev;
+              return [...prev, msg];
+            });
+            setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),50);
+          }
+        })
       .subscribe();
     return()=>supabase.removeChannel(sub);
-  },[conv.id]);  // eslint-disable-line react-hooks/exhaustive-deps
+  },[conv.id, currentUserId]);
 
   async function send(){
     if(!newMsg.trim()) return;
