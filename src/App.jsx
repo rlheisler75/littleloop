@@ -2445,7 +2445,8 @@ function SitterInvoicesTab({sitterId, sitterName}) {
   const [showSettings,setShowSettings] = useState(false);
   const [filter,setFilter]       = useState("all");
   const [loading,setLoading]     = useState(true);
-  const [confirmPaid,setConfirmPaid] = useState(null);
+  const [confirmPaid,setConfirmPaid]     = useState(null);
+  const [confirmUnpaid,setConfirmUnpaid] = useState(null);
 
   const load=useCallback(async()=>{
     setLoading(true);
@@ -2476,6 +2477,11 @@ function SitterInvoicesTab({sitterId, sitterName}) {
   async function markPaid(inv){
     await supabase.from("invoices").update({status:"paid",paid_date:new Date().toISOString().slice(0,10)}).eq("id",inv.id);
     setConfirmPaid(null);load();
+  }
+
+  async function unmarkPaid(inv){
+    await supabase.from("invoices").update({status:"sent",paid_date:null}).eq("id",inv.id);
+    setConfirmUnpaid(null);load();
   }
 
   async function deleteInv(id){
@@ -2571,6 +2577,7 @@ function SitterInvoicesTab({sitterId, sitterName}) {
                       onClick={()=>sendReminder(inv)}>
                       {reminderSent===inv.id?'✓ Sent!':'🔔 Remind'}
                     </button>}
+                    {inv.status==="paid"&&<button className="bg" style={{padding:"5px 10px",fontSize:11,color:"#F5AAAA"}} onClick={()=>setConfirmUnpaid(inv)}>↩ Unmark Paid</button>}
                     {inv.status==="draft"&&<button className="bd" style={{padding:"5px 10px",fontSize:11}} onClick={()=>deleteInv(inv.id)}>🗑️</button>}
                   </div>
                 </div>
@@ -2584,6 +2591,7 @@ function SitterInvoicesTab({sitterId, sitterName}) {
         sitterId={sitterId} sitterName={sitterName||''} families={families} allFamilyChildren={familyChildren} onSaved={load} editInvoice={editInv||null}/>
       <PaymentSettingsModal open={showSettings} onClose={()=>setShowSettings(false)} sitterId={sitterId} onSaved={load}/>
       <Confirm open={!!confirmPaid} title="Mark as paid?" message={`Mark ${confirmPaid?.invoice_number} as paid today?`} onConfirm={()=>markPaid(confirmPaid)} onCancel={()=>setConfirmPaid(null)}/>
+      <Confirm open={!!confirmUnpaid} title="Unmark as paid?" message={`Mark ${confirmUnpaid?.invoice_number} back to sent? This will remove the paid date.`} danger onConfirm={()=>unmarkPaid(confirmUnpaid)} onCancel={()=>setConfirmUnpaid(null)}/>
     </div>
   );
 }
@@ -2648,9 +2656,21 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
                 </div>
               </div>
 
-              {/* Payment buttons inline for sent invoices */}
-              {inv.status==="sent"&&sitter&&(
+              {/* Payment buttons for sent invoices */}
+              {inv.status==="sent"&&(
                 <PayButtons sitter={sitter} invoice={inv}/>
+              )}
+              {/* Paid confirmation banner */}
+              {inv.status==="paid"&&(
+                <div style={{marginTop:10,padding:"8px 12px",borderRadius:8,
+                  background:"rgba(88,216,184,.1)",border:"1px solid rgba(88,216,184,.25)",
+                  display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:16}}>✅</span>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:600,color:"#88D8B8"}}>Payment Received</div>
+                    {inv.paid_date&&<div style={{fontSize:11,color:"var(--text-faint)"}}>Marked paid on {fmtDate(inv.paid_date)}</div>}
+                  </div>
+                </div>
               )}
             </div>
           ))}
