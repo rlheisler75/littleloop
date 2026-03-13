@@ -2489,7 +2489,7 @@ function SitterInvoicesTab({sitterId, sitterName}) {
     // Fetch items to calculate real total
     const {data:items} = await supabase.from('invoice_items').select('amount,hours,rate,rate_type').eq('invoice_id',inv.id);
     const total = (items||[]).reduce((s,it)=>{
-      const amt = it.amount || (it.rate_type==='hourly' ? (it.hours||0)*(it.rate||0) : (it.rate||0));
+      const amt = parseFloat(it.amount) || (it.rate_type==='hourly' ? parseFloat(it.hours||0)*parseFloat(it.rate||0) : parseFloat(it.rate||0));
       return s + amt;
     },0);
     const amountStr = fmt(total);
