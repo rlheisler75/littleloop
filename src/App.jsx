@@ -1675,7 +1675,7 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
         filter:`conversation_id=eq.${conv.id}`},()=>load())
       .subscribe();
     return()=>supabase.removeChannel(sub);
-  },[conv.id, load]);
+  },[conv.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   async function send(){
     if(!newMsg.trim()) return;
