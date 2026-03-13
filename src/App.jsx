@@ -2745,14 +2745,26 @@ function CheckinHistoryModal({open, onClose, familyId, children}) {
 
 // ─── Pay Buttons ─────────────────────────────────────────────────────────────
 function PayButtons({sitter, invoice}) {
-  const [items,setItems] = useState(null);
+  const [items,setItems]   = useState(null);
+  const [payMethods,setPayMethods] = useState(sitter?.payment_methods||null);
+
   useEffect(()=>{
-    supabase.from("invoice_items").select("*").eq("invoice_id",invoice.id)
+    supabase.from("invoice_items").select("amount,hours,rate,rate_type").eq("invoice_id",invoice.id)
       .then(({data})=>setItems(data||[]));
   },[invoice.id]);
 
-  const total=items?items.reduce((s,i)=>s+(i.amount||0),0):0;
-  const enabled=(sitter.payment_methods||[]).filter(m=>m.enabled);
+  // If sitter prop doesn't have payment_methods, fetch via invoice sitter_id
+  useEffect(()=>{
+    if(payMethods) return;
+    if(!invoice.sitter_id) return;
+    supabase.from("sitters").select("payment_methods").eq("id",invoice.sitter_id).single()
+      .then(({data})=>{ if(data) setPayMethods(data.payment_methods||[]); });
+  },[invoice.sitter_id]);
+
+  const total = items ? items.reduce((s,i)=>{
+    return s + (parseFloat(i.amount) || (i.rate_type==='hourly' ? parseFloat(i.hours||0)*parseFloat(i.rate||0) : parseFloat(i.rate||0)));
+  },0) : 0;
+  const enabled=(payMethods||[]).filter(m=>m.enabled);
   if(!enabled.length||!items) return null;
 
   return (
