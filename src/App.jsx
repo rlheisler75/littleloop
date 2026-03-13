@@ -170,6 +170,7 @@ const CSS = `
   .fl{display:block;font-size:10px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;color:var(--text-faint,rgba(255,255,255,.3));margin-bottom:7px}
   .fi{width:100%;padding:11px 14px;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--input-border,rgba(255,255,255,.09));border-radius:10px;color:var(--text,#E4EAF4);font-size:13px;outline:none;transition:all .2s;margin-bottom:14px}
   .fi::placeholder{color:var(--text-faint,rgba(255,255,255,.2))}.fi:focus{border-color:rgba(111,163,232,.45);background:rgba(111,163,232,.06);box-shadow:0 0 0 3px rgba(111,163,232,.1)}
+  select.fi option{background:var(--body,#0C1420);color:var(--text,#E4EAF4)}
   .bp{padding:11px 20px;background:var(--accent-grad,linear-gradient(135deg,#3A6FD4,#2550A8));border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
   .bp:hover:not(:disabled){background:linear-gradient(135deg,#4A7FE4,#3560B8);transform:translateY(-1px);box-shadow:0 6px 20px rgba(58,111,212,.3)}.bp:disabled{opacity:.5;cursor:not-allowed}.bp.full{width:100%;justify-content:center}
   .bg{padding:9px 16px;background:transparent;border:1px solid var(--border,rgba(255,255,255,.12));border-radius:10px;color:var(--text-dim,rgba(255,255,255,.5));font-size:13px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
