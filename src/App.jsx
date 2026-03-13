@@ -2453,11 +2453,12 @@ function SitterInvoicesTab({sitterId, sitterName}) {
       supabase.from("invoices").select("*").eq("sitter_id",sitterId).order("created_at",{ascending:false}),
       supabase.from("sitters").select("*").eq("id",sitterId).single(),
     ]);
-    setFamilies(fams||[]);setInvoices(invs||[]);setSitter(sit);
-    if(fams?.length){
+    const unwrappedFams=(fams||[]).map(r=>({...r.families,connection_status:r.status})).filter(Boolean);
+    setFamilies(unwrappedFams);setInvoices(invs||[]);setSitter(sit);
+    if(unwrappedFams?.length){
       const [{data:kids},{data:mems}]=await Promise.all([
-        supabase.from("children").select("*").in("family_id",fams.map(f=>f.id)),
-        supabase.from("members").select("*").in("family_id",fams.map(f=>f.id)),
+        supabase.from("children").select("*").in("family_id",unwrappedFams.map(f=>f.id)),
+        supabase.from("members").select("*").in("family_id",unwrappedFams.map(f=>f.id)),
       ]);
       const kg={},mg={};
       (kids||[]).forEach(k=>{if(!kg[k.family_id])kg[k.family_id]=[];kg[k.family_id].push(k);});
