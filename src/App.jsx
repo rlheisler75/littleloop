@@ -2360,7 +2360,7 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
 <div class="parties">
   <div class="party">
     <h3>Care Provider</h3>
-    <p><strong>${sitter.legal_name||sitter.name}</strong><br>
+    <p><strong>${sitter.legal_name||sitter.name||sitter.sitter_name||'Care Provider'}</strong><br>
     ${sitter.address_line1||""}<br>
     ${sitter.address_line2?sitter.address_line2+"<br>":""}
     ${[sitter.city,sitter.state,sitter.zip].filter(Boolean).join(", ")}</p>
@@ -2455,7 +2455,9 @@ function SitterInvoicesTab({sitterId, sitterName}) {
       supabase.from("sitters").select("*").eq("id",sitterId).single(),
     ]);
     const unwrappedFams=(fams||[]).map(r=>({...r.families,connection_status:r.status})).filter(Boolean);
-    setFamilies(unwrappedFams);setInvoices(invs||[]);setSitter(sit);
+    setFamilies(unwrappedFams);setInvoices(invs||[]);
+    // Merge sitterName prop as fallback in case DB name is missing
+    setSitter(sit ? {...sit, name: sit.name||sitterName||'Care Provider'} : {name:sitterName||'Care Provider'});
     if(unwrappedFams?.length){
       const [{data:kids},{data:mems}]=await Promise.all([
         supabase.from("children").select("*").in("family_id",unwrappedFams.map(f=>f.id)),
@@ -2516,7 +2518,7 @@ function SitterInvoicesTab({sitterId, sitterName}) {
     const {data:items}=await supabase.from("invoice_items").select("*").eq("invoice_id",inv.id).order("sort_order");
     const family=families.find(f=>f.id===inv.family_id)||{name:"—"};
     const admin=(familyMembers[inv.family_id]||[]).find(m=>m.role==="admin");
-    printInvoice(inv,items||[],sitter||{},family,admin);
+    printInvoice(inv,items||[],{...(sitter||{}),name:sitter?.name||sitterName||'Care Provider'},family,admin);
   }
 
   const filtered=filter==="all"?invoices:invoices.filter(i=>i.status===filter);
@@ -2598,14 +2600,15 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
   useEffect(()=>{
     async function load(){
       setLoading(true);
-      const [{data:invs},{data:fam},{data:mem}]=await Promise.all([
+      const [{data:invs},{data:fam},{data:mem},{data:fsRows}]=await Promise.all([
         supabase.from("invoices").select("*").eq("family_id",familyId).in("status",["sent","paid"]).order("created_at",{ascending:false}),
-        supabase.from("families").select("*, sitters(*)").eq("id",familyId).single(),
+        supabase.from("families").select("*").eq("id",familyId).single(),
         supabase.from("members").select("*").eq("family_id",familyId).eq("user_id",currentUserId).maybeSingle(),
+        supabase.from("family_sitters").select("sitters(*)").eq("family_id",familyId).eq("status","active").limit(1),
       ]);
       setInvoices(invs||[]);
       setFamily(fam);
-      setSitter(fam?.sitters||null);
+      setSitter(fsRows?.[0]?.sitters||null);
       setMember(mem);
       setLoading(false);
     }
