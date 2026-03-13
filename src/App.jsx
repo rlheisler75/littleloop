@@ -2486,34 +2486,26 @@ function SitterInvoicesTab({sitterId, sitterName}) {
   async function sendReminder(inv){
     const fam = families.find(f=>f.id===inv.family_id);
     if(!fam) return;
-    // Fetch items to calculate real total
-    const {data:items} = await supabase.from('invoice_items').select('amount,hours,rate,rate_type').eq('invoice_id',inv.id);
-    const total = (items||[]).reduce((s,it)=>{
-      const amt = parseFloat(it.amount) || (it.rate_type==='hourly' ? parseFloat(it.hours||0)*parseFloat(it.rate||0) : parseFloat(it.rate||0));
-      return s + amt;
-    },0);
-    const amountStr = fmt(total);
-    // Send email notification
+    // Pass invoice_id to edge function — it calculates total server-side (no RLS issues)
     invokeNotification({body:{
       type:'invoice_reminder',
       payload:{
-        recipientId: fam.admin_user_id||null,
         familyEmail: fam.admin_email,
         familyName: fam.name,
         sitterName: sitterName,
         invoiceNumber: inv.invoice_number,
-        amount: amountStr,
+        invoiceId: inv.id,
         dueDate: inv.due_date ? fmtDate(inv.due_date) : null,
       }
     }}).catch(console.error);
-    // Also send push
+    // Push — edge function will handle amount, just notify
     const {data:members} = await supabase.from('members')
       .select('user_id').eq('family_id', fam.id).in('role',['admin','member']);
     if(members?.length) {
       sendPushNotification(
         members.map(m=>m.user_id),
         `Invoice reminder from ${sitterName}`,
-        `${inv.invoice_number} · ${amountStr} is due`,
+        `Invoice ${inv.invoice_number} is due`,
         '/?portal=parent', 'invoice_reminder'
       );
     }
@@ -2623,8 +2615,11 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
   },[familyId,currentUserId]);
 
   async function openPrint(inv){
-    const {data:items}=await supabase.from("invoice_items").select("*").eq("invoice_id",inv.id).order("sort_order");
-    printInvoice(inv,items||[],sitter||{},family||{name:"—"},member);
+    const [{data:items},{data:sit}]=await Promise.all([
+      supabase.from("invoice_items").select("*").eq("invoice_id",inv.id).order("sort_order"),
+      supabase.from("sitters").select("name,legal_name,address_line1,address_line2,city,state,zip").eq("id",inv.sitter_id).single(),
+    ]);
+    printInvoice(inv,items||[],sit||sitter||{},family||{name:"—"},member);
   }
 
   const statusColors={sent:"#7BAAEE",paid:"#88D8B8"};
