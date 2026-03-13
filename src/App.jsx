@@ -47,10 +47,12 @@ async function subscribeToPush(userId) {
       });
     }
 
+    const subJson = sub.toJSON();
+    console.log('Push sub keys present:', !!subJson.keys?.p256dh, !!subJson.keys?.auth);
     // Store in DB (upsert)
     const {error} = await supabase.from('push_subscriptions').upsert({
       user_id: userId,
-      subscription: sub.toJSON(),
+      subscription: subJson,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
     if (error) console.error('Push subscription save failed:', error);
@@ -1669,10 +1671,11 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
 
   useEffect(()=>{
     const sub=supabase.channel(`conv-${conv.id}`)
-      .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:`conversation_id=eq.${conv.id}`},()=>load())
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",
+        filter:`conversation_id=eq.${conv.id}`},()=>load())
       .subscribe();
     return()=>supabase.removeChannel(sub);
-  },[conv.id]);
+  },[conv.id, load]);
 
   async function send(){
     if(!newMsg.trim()) return;
@@ -1856,13 +1859,14 @@ function MessagesTab({currentUserId, isSitter, families=[], memberInfo, allMembe
 
   useEffect(()=>{load();},[load]);
 
-  // Realtime for new messages
+  // Realtime for new messages — reload conversation list to update previews/unseen
   useEffect(()=>{
     const sub=supabase.channel("messages-list")
       .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},()=>load())
+      .on("postgres_changes",{event:"*",schema:"public",table:"message_seen"},()=>load())
       .subscribe();
     return()=>supabase.removeChannel(sub);
-  },[]);
+  },[load]);
 
   const totalUnseen=Object.values(unseenCounts).reduce((a,b)=>a+b,0);
   const selectedConvData=convs.find(c=>c.id===selectedConv);
@@ -4543,7 +4547,7 @@ function SitterDashboard({session,onSignOut}) {
         if(p.new.author_id!==sitterId) setUnread(u=>({...u,feed:u.feed+1}));
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'eta_notifications'},()=>{
-        if(tab!=='families') setUnread(u=>({...u,eta:u.eta+1}));
+        setUnread(u=>({...u,eta:u.eta+1}));
       }).subscribe();
     return()=>supabase.removeChannel(ch);
   },[sitterId]);
@@ -4687,7 +4691,9 @@ function ParentDashboard({session,onSignOut}) {
     checkUnread();
     const ch=supabase.channel('parent-unread')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},(p)=>{
-        if(p.new.sender_id!==session.user.id) setUnread(u=>({...u,messages:u.messages+1}));
+        if(p.new.sender_id!==session.user.id) {
+          setUnread(u=>({...u,messages:u.messages+1}));
+        }
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'posts',filter:`family_id=eq.${family?.id}`},()=>{
         setUnread(u=>({...u,feed:u.feed+1}));
