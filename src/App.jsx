@@ -641,7 +641,7 @@ function ChildModal({open,onClose,familyId,child,onSaved}) {
 }
 
 // ─── Member Modal ─────────────────────────────────────────────────────────────
-function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved}) {
+function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,canEditRole=true}) {
   const isEdit = !!member;
   const [name,setName]   = useState(member?.name||"");
   const [email,setEmail] = useState(member?.email||"");
@@ -709,7 +709,7 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved}
             </div>
           </div>
 
-          <div style={{marginBottom:14}}>
+          {canEditRole&&<div style={{marginBottom:14}}>
             <SectionLabel>Role</SectionLabel>
             <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
               {Object.entries(ROLE_LABELS).map(([r,l])=>(
@@ -3600,7 +3600,7 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
                 }}>{c}</div>
               ))}
             </div>
-          </div>
+          </div>}
 
           <button type="submit" className="bp" disabled={saving}>
             {saving ? <><Spinner/> Saving…</> : 'Save Public Profile'}
@@ -4905,7 +4905,7 @@ function ParentDashboard({session,onSignOut}) {
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                             <span className={`sb sb-${m.status==="active"?"a":"p"}`} style={{fontSize:9}}>{ROLE_LABELS[m.role]||m.role}</span>
-                            {isAdmin&&m.user_id!==session.user.id&&(
+                            {(isAdmin||m.user_id===session.user.id)&&(
                               <button className="bg" style={{padding:"4px 8px",fontSize:11}} onClick={()=>setEditMember(m)}>✏️</button>
                             )}
                           </div>
@@ -4929,7 +4929,8 @@ function ParentDashboard({session,onSignOut}) {
       {/* Modals */}
       <ChildProfileModal open={!!selectedChild} onClose={()=>setSelectedChild(null)} child={selectedChild} sitterId={null} isParent={true}/>
       <ChildModal open={showAddChild||!!editChild} onClose={()=>{setShowAddChild(false);setEditChild(null);}} familyId={family?.id} child={editChild||null} onSaved={load}/>
-      <MemberModal open={showAddMember||!!editMember} onClose={()=>{setShowAddMember(false);setEditMember(null);}} familyId={family?.id} familyName={family?.name} member={editMember||null} adminName={name} onSaved={load}/>
+      <MemberModal open={showAddMember||!!editMember} onClose={()=>{setShowAddMember(false);setEditMember(null);}} familyId={family?.id} familyName={family?.name} member={editMember||null} adminName={name} onSaved={load}
+        canEditRole={isAdmin&&editMember?.user_id!==session.user.id}/>
     </div>
   );
 }
