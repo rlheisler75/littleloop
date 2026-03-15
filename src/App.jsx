@@ -270,7 +270,14 @@ function Confirm({open,title,message,onConfirm,onCancel,danger=false}) {
 
 const ROLE_LABELS = {admin:"Admin",member:"Member",feed_only:"Feed Only",pickup:"Pickup"};
 const AVATARS = ["👤","👩","👨","👵","👴","🧑","👦","👧","🧒","🧔","👩‍🦱","👨‍🦱","👩‍🦰","👨‍🦰","👩‍🦳","👨‍🦳"];
-const CHILD_AVATARS = ["🌟","🦋","🐻","🦄","🐸","🐼","🦊","🐯","🐶","🐱","🌈","🚀","⭐","🎈","🌺","🦁"];
+const CHILD_AVATARS = [
+  // Animals
+  "🐻","🦁","🐯","🦊","🐼","🐸","🐶","🐱","🐰","🐨","🐮","🐷",
+  // Dinosaurs 🦕
+  "🦕","🦖","🐉","🐲",
+  // Fantasy & space
+  "🦄","🚀","🌈","⭐","🌟","🎈","🦋","🌺","🌸","🍀",
+];
 
 // ─── Section header ───────────────────────────────────────────────────────────
 function SectionLabel({children}) {
