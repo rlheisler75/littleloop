@@ -33,6 +33,10 @@ function b64urlToUint8(base64String) {
 
 async function subscribeToPush(userId) {
   try {
+    // Verify session is still valid before attempting DB write
+    const {data:{session}} = await supabase.auth.getSession();
+    if (!session) return;
+
     const reg = await registerServiceWorker();
     if (!reg) return;
 
@@ -49,7 +53,6 @@ async function subscribeToPush(userId) {
 
     const subJson = sub.toJSON();
     console.log('Push sub keys present:', !!subJson.keys?.p256dh, !!subJson.keys?.auth);
-    // Store in DB (upsert)
     const {error} = await supabase.from('push_subscriptions').upsert({
       user_id: userId,
       subscription: subJson,
@@ -2858,13 +2861,14 @@ function PayButtons({sitter, invoice}) {
           if(!pt) return null;
           const link=pt.deeplink?pt.deeplink(m.handle,total.toFixed(2),invoice.invoice_number):null;
           const weblink=pt.weblink?pt.weblink(m.handle,total.toFixed(2),invoice.invoice_number):link;
-          return link
+          const isMobile=/android|iphone|ipad/i.test(navigator.userAgent);
+          const href=(isMobile&&link)?link:(weblink||link);
+          return href
             ?<div key={m.type} style={{display:"inline-flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                <a href={link} target="_blank" rel="noopener noreferrer"
+                <a href={href} target="_blank" rel="noopener noreferrer"
                   style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"var(--card-bg)",border:"1px solid var(--border)",color:"rgba(255,255,255,.8)",textDecoration:"none",fontSize:12,fontWeight:500}}>
                   {pt.icon} {pt.label}{m.handle?` (${m.handle})`:""}
                 </a>
-                {pt.weblink&&<a href={weblink} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:"var(--text-faint)",textDecoration:"none"}}>open profile ↗</a>}
               </div>
             :<div key={m.type} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"var(--card-bg)",border:"1px solid var(--border)",color:"var(--text-dim)",fontSize:12}}>
                 {pt.icon} {pt.label}{m.handle?`: ${m.handle}`:""}
@@ -5097,6 +5101,11 @@ export default function App() {
       setSession(session??null);
       if(session) setUserRole(session.user.user_metadata?.role||"sitter");
       if(event==="PASSWORD_RECOVERY") setUserRole("__reset__");
+      if(event==="TOKEN_REFRESHED" && !session) {
+        // Refresh token invalid — clear storage and reload to login
+        Object.keys(localStorage).filter(k=>k.startsWith('sb-')||k.startsWith('ll_')).forEach(k=>localStorage.removeItem(k));
+        window.location.reload();
+      }
     });
     return()=>subscription.unsubscribe();
   },[]);
