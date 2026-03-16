@@ -269,7 +269,22 @@ function Confirm({open,title,message,onConfirm,onCancel,danger=false}) {
 }
 
 const ROLE_LABELS = {admin:"Admin",member:"Member",feed_only:"Feed Only",pickup:"Pickup"};
-const AVATARS = ["👤","👩","👨","👵","👴","🧑","👦","👧","🧒","🧔","👩‍🦱","👨‍🦱","👩‍🦰","👨‍🦰","👩‍🦳","👨‍🦳"];
+const AVATARS = [
+  // Default
+  "👤",
+  // Light skin
+  "👩🏻","👨🏻","👧🏻","👦🏻","🧑🏻","👵🏻","👴🏻",
+  // Medium-light skin
+  "👩🏼","👨🏼","👧🏼","👦🏼","🧑🏼","👵🏼","👴🏼",
+  // Medium skin
+  "👩🏽","👨🏽","👧🏽","👦🏽","🧑🏽","👵🏽","👴🏽",
+  // Medium-dark skin
+  "👩🏾","👨🏾","👧🏾","👦🏾","🧑🏾","👵🏾","👴🏾",
+  // Dark skin
+  "👩🏿","👨🏿","👧🏿","👦🏿","🧑🏿","👵🏿","👴🏿",
+  // Hair styles
+  "👩‍🦱","👨‍🦱","👩‍🦰","👨‍🦰","👩‍🦳","👨‍🦳","🧔","🧔‍♀️",
+];
 const CHILD_AVATARS = [
   // Animals
   "🐻","🦁","🐯","🦊","🐼","🐸","🐶","🐱","🐰","🐨","🐮","🐷",
@@ -3051,20 +3066,106 @@ function ThemePicker({currentTheme, onSelect}) {
 }
 
 // ─── Sitter Profile/Settings Tab ─────────────────────────────────────────────
+// ─── Email Notification Preferences ─────────────────────────────────────────
+const EMAIL_PREFS_SITTER = [
+  { key: 'new_message',  label: 'New messages',         icon: '💬' },
+  { key: 'new_post',     label: 'Family feed activity',  icon: '📝' },
+];
+const EMAIL_PREFS_PARENT = [
+  { key: 'new_message',  label: 'New messages',          icon: '💬' },
+  { key: 'new_invoice',  label: 'New invoices',          icon: '💰' },
+  { key: 'invoice_reminder', label: 'Invoice reminders', icon: '🔔' },
+  { key: 'new_post',     label: 'Feed updates',          icon: '📝' },
+  { key: 'eta',          label: 'On My Way / ETA alerts', icon: '🚗' },
+];
+
+function EmailPreferencesCard({userId, isSitter}) {
+  const PREFS = isSitter ? EMAIL_PREFS_SITTER : EMAIL_PREFS_PARENT;
+  const [prefs, setPrefs]   = useState({});
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved]   = useState(false);
+
+  useEffect(()=>{
+    supabase.from('email_preferences').select('preferences')
+      .eq('user_id', userId).maybeSingle()
+      .then(({data})=>{ if(data) setPrefs(data.preferences||{}); });
+  },[userId]);
+
+  async function save(newPrefs) {
+    setSaving(true);
+    await supabase.from('email_preferences').upsert({
+      user_id: userId, preferences: newPrefs, updated_at: new Date().toISOString(),
+    }, {onConflict:'user_id'});
+    setSaving(false); setSaved(true);
+    setTimeout(()=>setSaved(false), 2000);
+  }
+
+  function toggle(key) {
+    const newPrefs = {...prefs, [key]: prefs[key]===false ? true : false};
+    setPrefs(newPrefs);
+    save(newPrefs);
+  }
+
+  return (
+    <div className="card" style={{padding:"20px 18px",marginBottom:14}}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:4}}>
+        📧 Email Notifications
+      </div>
+      <div style={{fontSize:12,color:'var(--text-faint)',marginBottom:16}}>
+        Choose which emails you'd like to receive.
+      </div>
+      {saved&&<div style={{fontSize:11,color:'#5EE89A',marginBottom:10}}>✓ Saved</div>}
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {PREFS.map(p=>{
+          const isOn = prefs[p.key] !== false;
+          return (
+            <div key={p.key} style={{display:'flex',alignItems:'center',gap:10,
+              padding:'10px 12px',borderRadius:10,
+              background:'var(--card-bg)',border:'1px solid var(--border)'}}>
+              <span style={{fontSize:18}}>{p.icon}</span>
+              <div style={{flex:1,fontSize:13}}>{p.label}</div>
+              <div onClick={()=>toggle(p.key)} style={{
+                width:40,height:22,borderRadius:11,cursor:'pointer',
+                transition:'background .2s',flexShrink:0,
+                background: isOn ? 'var(--accent)' : 'rgba(255,255,255,.1)',
+                position:'relative'
+              }}>
+                <div style={{
+                  position:'absolute',top:3,
+                  left: isOn ? 21 : 3,
+                  width:16,height:16,borderRadius:'50%',
+                  background:'#fff',transition:'left .2s'
+                }}/>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Push Notification Preferences ───────────────────────────────────────────
 const PUSH_PREFS_SITTER = [
   { key: 'new_message',  label: 'New messages',        icon: '💬' },
   { key: 'new_post',     label: 'Family feed activity', icon: '📝' },
 ];
 const PUSH_PREFS_PARENT = [
-  { key: 'new_message',  label: 'New messages',         icon: '💬' },
-  { key: 'new_invoice',  label: 'New invoices',         icon: '💰' },
+  { key: 'new_message',  label: 'New messages',          icon: '💬' },
+  { key: 'new_invoice',  label: 'New invoices',          icon: '💰' },
   { key: 'invoice_reminder', label: 'Invoice reminders', icon: '🔔' },
-  { key: 'new_post',     label: 'Feed updates',         icon: '📝' },
+  { key: 'new_post',     label: 'Feed updates',          icon: '📝' },
+];
+
+// Sitter push prefs include ETA
+const PUSH_PREFS_SITTER_FULL = [
+  { key: 'new_message',  label: 'New messages',          icon: '💬' },
+  { key: 'new_post',     label: 'Family feed activity',  icon: '📝' },
+  { key: 'eta',          label: 'On My Way / ETA alerts', icon: '🚗' },
 ];
 
 function PushPreferencesCard({userId, isSitter}) {
-  const PREFS = isSitter ? PUSH_PREFS_SITTER : PUSH_PREFS_PARENT;
+  const PREFS = isSitter ? PUSH_PREFS_SITTER_FULL : PUSH_PREFS_PARENT;
   const [enabled, setEnabled]     = useState(true);  // master toggle
   const [prefs, setPrefs]         = useState({});
   const [permission, setPermission] = useState(Notification.permission);
@@ -3327,6 +3428,9 @@ function SitterProfileTab({sitterId, sitterName, onNameChange}) {
 
       {/* Public Profile */}
       <PublicProfileEditor sitterId={sitterId} sitterName={sitterName}/>
+
+      {/* Email Notification Preferences */}
+      <EmailPreferencesCard userId={sitterId} isSitter={true}/>
 
       {/* Push Notification Preferences */}
       <PushPreferencesCard userId={sitterId} isSitter={true}/>
@@ -4079,6 +4183,9 @@ function MemberProfileTab({memberId, memberName, onNameChange}) {
         <ThemePicker currentTheme={theme} onSelect={selectTheme}/>
       </div>
 
+      {/* Email Notification Preferences */}
+      {memberId&&<EmailPreferencesCard userId={memberId} isSitter={false}/>}
+
       {/* Push Notification Preferences */}
       {memberId&&<PushPreferencesCard userId={memberId} isSitter={false}/>}
     </div>
@@ -4124,7 +4231,20 @@ function OnMyWayButton({familyId, memberId, memberName}) {
       eta_minutes:minutes, eta_time, expires_at:expires,
     }).select().single();
     setLoading(false);
-    if(!error){setCurrent(data);setSent(true);setExpanded(false);setTimeout(()=>setSent(false),3000);}
+    if(!error){
+      setCurrent(data);setSent(true);setExpanded(false);setTimeout(()=>setSent(false),3000);
+      // Notify sitter(s) via push
+      const {data:fsRows}=await supabase.from('family_sitters')
+        .select('sitter_id').eq('family_id',familyId).eq('status','active');
+      if(fsRows?.length){
+        const sitterIds=fsRows.map(r=>r.sitter_id);
+        sendPushNotification(sitterIds,`${memberName} is on the way!`,
+          `ETA: ~${minutes} min`,`/?portal=sitter`,'eta');
+        invokeNotification({body:{type:'eta',payload:{
+          sitterIds, memberName, minutes, familyId
+        }}}).catch(console.error);
+      }
+    }
   }
 
   async function cancel(){
