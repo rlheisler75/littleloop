@@ -709,20 +709,22 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
             </div>
           </div>
 
-          {canEditRole&&<div style={{marginBottom:14}}>
-            <SectionLabel>Role</SectionLabel>
-            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-              {Object.entries(ROLE_LABELS).map(([r,l])=>(
-                <button key={r} type="button" onClick={()=>setRole(r)}
-                  style={{padding:"7px 14px",borderRadius:20,border:`1px solid ${role===r?"#7BAAEE":"rgba(255,255,255,.12)"}`,background:role===r?"rgba(111,163,232,.15)":"rgba(255,255,255,.04)",color:role===r?"#7BAAEE":"rgba(255,255,255,.5)",fontSize:12,cursor:"pointer"}}>
-                  {l}
-                </button>
-              ))}
+          {canEditRole&&(
+            <div style={{marginBottom:14}}>
+              <SectionLabel>Role</SectionLabel>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                {Object.entries(ROLE_LABELS).map(([r,l])=>(
+                  <button key={r} type="button" onClick={()=>setRole(r)}
+                    style={{padding:"7px 14px",borderRadius:20,border:`1px solid ${role===r?"#7BAAEE":"rgba(255,255,255,.12)"}`,background:role===r?"rgba(111,163,232,.15)":"rgba(255,255,255,.04)",color:role===r?"#7BAAEE":"rgba(255,255,255,.5)",fontSize:12,cursor:"pointer"}}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <div style={{fontSize:11,color:"var(--text-faint)",marginTop:8,lineHeight:1.6}}>
+                <strong style={{color:"var(--text-dim)"}}>Admin</strong> — full access · <strong style={{color:"var(--text-dim)"}}>Member</strong> — view all · <strong style={{color:"var(--text-dim)"}}>Feed Only</strong> — feed tab · <strong style={{color:"var(--text-dim)"}}>Pickup</strong> — messages only
+              </div>
             </div>
-            <div style={{fontSize:11,color:"var(--text-faint)",marginTop:8,lineHeight:1.6}}>
-              <strong style={{color:"var(--text-dim)"}}>Admin</strong> — full access · <strong style={{color:"var(--text-dim)"}}>Member</strong> — view all · <strong style={{color:"var(--text-dim)"}}>Feed Only</strong> — feed tab · <strong style={{color:"var(--text-dim)"}}>Pickup</strong> — messages only
-            </div>
-          </div>
+          )}
 
           <div style={{display:"flex",gap:10,marginTop:4}}>
             <button type="submit" className="bp full" disabled={loading}>{loading?<Spinner/>:isEdit?"Save Changes":"Add & Send Invite"}</button>
