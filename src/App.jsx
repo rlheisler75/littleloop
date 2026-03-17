@@ -1114,7 +1114,7 @@ const timeAgo = ts => {
 };
 
 // ─── New Post Modal ───────────────────────────────────────────────────────────
-function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,children,onPosted}) {
+function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,children,onPosted,startWithPhoto=false}) {
   const [type,setType]         = useState("note");
   const [mood,setMood]         = useState("");
   const [text,setText]         = useState("");
@@ -1123,6 +1123,14 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
   const [preview,setPreview]   = useState(null);
   const [loading,setLoading]   = useState(false);
   const [alert,setAlert]       = useState(null);
+  const fileInputRef           = useRef(null);
+
+  // When opened with photo-first, auto-trigger file picker
+  useEffect(()=>{
+    if(open && startWithPhoto) {
+      setTimeout(()=>fileInputRef.current?.click(), 100);
+    }
+  },[open, startWithPhoto]);
 
   function reset(){setType("note");setMood("");setText("");setTagged([]);setPhoto(null);setPreview(null);setAlert(null);}
   function close(){if(loading)return;reset();onClose();}
@@ -1176,8 +1184,12 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
 
   return (
     <Modal open={open} onClose={close}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:4}}>New Post</div>
-      <p style={{fontSize:12,color:"var(--text-faint)",marginBottom:20,lineHeight:1.6}}>Share an update with this family.</p>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:4}}>
+        {startWithPhoto&&!preview ? "📷 Add a Photo" : "New Post"}
+      </div>
+      <p style={{fontSize:12,color:"var(--text-faint)",marginBottom:20,lineHeight:1.6}}>
+        {startWithPhoto&&!preview ? "Choose a photo to share with this family." : "Share an update with this family."}
+      </p>
       {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
       <form onSubmit={submit}>
         <div style={{marginBottom:14}}>
@@ -1216,20 +1228,34 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
           </div>
         )}
         <div>
-          <label className="fl">Update</label>
-          <textarea className="fi" value={text} onChange={e=>setText(e.target.value)} placeholder="What's happening today?" rows={3} style={{resize:"vertical",marginBottom:14}}/>
+          <label className="fl">{startWithPhoto?"Caption (optional)":"Update"}</label>
+          <textarea className="fi" value={text} onChange={e=>setText(e.target.value)}
+            placeholder={startWithPhoto?"Add a caption…":"What's happening today?"}
+            rows={3} style={{resize:"vertical",marginBottom:14}}/>
         </div>
-        <div style={{marginBottom:16}}>
-          <SectionLabel>Photo (optional)</SectionLabel>
+        {/* Photo — shown prominently at top in photo-first mode */}
+        <div style={{marginBottom:16,order:startWithPhoto?-1:0}}>
+          {!startWithPhoto&&<SectionLabel>Photo (optional)</SectionLabel>}
           {preview
             ?<div style={{position:"relative"}}>
-              <img src={preview} alt="preview" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:12,border:"1px solid var(--border)"}}/>
+              <img src={preview} alt="preview" style={{width:"100%",maxHeight:startWithPhoto?360:200,objectFit:"cover",borderRadius:12,border:"1px solid var(--border)"}}/>
               <button type="button" onClick={()=>{setPhoto(null);setPreview(null);}}
                 style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,.6)",border:"none",borderRadius:"50%",width:28,height:28,cursor:"pointer",color:"#fff",fontSize:14}}>✕</button>
+              <label style={{position:"absolute",bottom:8,right:8,background:"rgba(0,0,0,.5)",borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:11,color:"#fff"}}>
+                Change
+                <input type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
+              </label>
             </div>
-            :<label style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderRadius:12,border:"1px dashed rgba(255,255,255,.15)",cursor:"pointer",color:"var(--text-dim)",fontSize:13}}>
-              📷 Choose a photo
-              <input type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
+            :<label style={{
+              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+              gap:8,padding:startWithPhoto?"40px 16px":"12px 16px",
+              borderRadius:12,border:`1px dashed ${startWithPhoto?"rgba(58,111,212,.4)":"rgba(255,255,255,.15)"}`,
+              cursor:"pointer",color:"var(--text-dim)",fontSize:13,
+              background:startWithPhoto?"rgba(58,111,212,.05)":"transparent"
+            }}>
+              <span style={{fontSize:startWithPhoto?36:20}}>📷</span>
+              <span>{startWithPhoto?"Tap to choose a photo":"Choose a photo"}</span>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
             </label>
           }
         </div>
@@ -1243,6 +1269,33 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
 }
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
+// ─── Photo Lightbox ──────────────────────────────────────────────────────────
+function PhotoLightbox({url, onClose}) {
+  useEffect(()=>{
+    function onKey(e){ if(e.key==='Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return()=>document.removeEventListener('keydown', onKey);
+  },[]);
+  return (
+    <div onClick={onClose} style={{
+      position:'fixed',inset:0,zIndex:1000,
+      background:'rgba(0,0,0,.92)',
+      display:'flex',alignItems:'center',justifyContent:'center',
+      cursor:'zoom-out',
+    }}>
+      <img src={url} alt="post"
+        style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',borderRadius:4}}
+        onClick={e=>e.stopPropagation()}/>
+      <button onClick={onClose} style={{
+        position:'absolute',top:16,right:16,
+        background:'rgba(255,255,255,.15)',border:'none',borderRadius:'50%',
+        width:36,height:36,fontSize:18,cursor:'pointer',color:'#fff',
+        display:'flex',alignItems:'center',justifyContent:'center',
+      }}>✕</button>
+    </div>
+  );
+}
+
 function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted,sitterName='Sitter',currentUserName='',currentUserAvatar='👤'}) {
   const [comments,setComments]     = useState([]);
   const [likes,setLikes]           = useState([]);
@@ -1251,6 +1304,7 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
   const [submitting,setSubmitting] = useState(false);
   const [confirmDel,setConfirmDel] = useState(false);
   const [expanded,setExpanded]     = useState(false);
+  const [lightbox,setLightbox]     = useState(false);
 
   const myLike = likes.find(l=>l.member_id===memberId);
   const liked  = !!myLike;
@@ -1288,9 +1342,38 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
 
   return (
     <div className="card" style={{padding:0,marginBottom:14,overflow:"hidden"}}>
+      {lightbox&&<PhotoLightbox url={post.photo_url} onClose={()=>setLightbox(false)}/>}
       {post.photo_url&&(
-        <div style={{cursor:"pointer"}} onClick={()=>setExpanded(!expanded)}>
-          <img src={post.photo_url} alt="post" style={{width:"100%",maxHeight:expanded?"100vw":280,objectFit:"cover",display:"block",transition:"max-height .3s"}}/>
+        <div style={{cursor:"zoom-in",position:"relative"}} onClick={()=>setLightbox(true)}>
+          <img src={post.photo_url} alt="post" style={{
+            width:"100%",
+            maxHeight: post.text ? 360 : 520,
+            minHeight: post.text ? 200 : 280,
+            objectFit:"cover",display:"block"
+          }}/>
+          {/* Overlay author info on photo-only posts */}
+          {!post.text&&(
+            <div style={{
+              position:"absolute",bottom:0,left:0,right:0,
+              background:"linear-gradient(transparent,rgba(0,0,0,.6))",
+              padding:"32px 14px 12px",
+              display:"flex",alignItems:"center",gap:8,
+            }}>
+              <div style={{width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>➿</div>
+              <div>
+                <div style={{fontSize:12,fontWeight:600,color:"#fff"}}>{sitterName}</div>
+                <div style={{fontSize:10,color:"rgba(255,255,255,.6)"}}>{timeAgo(post.created_at)}</div>
+              </div>
+              <div style={{marginLeft:"auto",fontSize:10,color:"rgba(255,255,255,.5)"}}>tap to expand</div>
+            </div>
+          )}
+          {post.text&&(
+            <div style={{
+              position:"absolute",bottom:8,right:8,
+              background:"rgba(0,0,0,.4)",borderRadius:6,padding:"3px 7px",
+              fontSize:10,color:"rgba(255,255,255,.7)"
+            }}>tap to expand</div>
+          )}
         </div>
       )}
       <div style={{padding:"14px 16px"}}>
@@ -1365,6 +1448,7 @@ function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMar
   const [postKids,setPostKids] = useState({});
   const [loading,setLoading]   = useState(true);
   const [showNew,setShowNew]   = useState(false);
+  const [photoFirst,setPhotoFirst] = useState(false);
   const [filter,setFilter]     = useState("all");
 
   const load = useCallback(async()=>{
@@ -1402,7 +1486,13 @@ function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMar
           Feed
           {unseenCount>0&&<span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:"#3A6FD4",fontSize:11,fontWeight:700,marginLeft:6}}>{unseenCount}</span>}
         </div>
-        {isSitter&&<button className="bp" onClick={()=>setShowNew(true)}>+ New Post</button>}
+        {isSitter&&(
+          <div style={{display:"flex",gap:8}}>
+            <button className="bg" onClick={()=>{setPhotoFirst(true);setShowNew(true);}}
+              style={{padding:"7px 12px",fontSize:13}}>📷</button>
+            <button className="bp" onClick={()=>{setPhotoFirst(false);setShowNew(true);}}>+ Post</button>
+          </div>
+        )}
       </div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
         {[{id:"all",icon:"📋",label:"All"},...POST_TYPES].map(t=>(
@@ -1428,8 +1518,9 @@ function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMar
           ))}</div>
       }
       {isSitter&&(
-        <NewPostModal open={showNew} onClose={()=>setShowNew(false)}
-          familyId={familyId} sitterId={sitterId} sitterName={sitterName} familyName={familyName||''} children={children} onPosted={load}/>
+        <NewPostModal open={showNew} onClose={()=>{setShowNew(false);setPhotoFirst(false);}}
+          familyId={familyId} sitterId={sitterId} sitterName={sitterName} familyName={familyName||''} children={children} onPosted={load}
+          startWithPhoto={photoFirst}/>
       )}
     </div>
   );
