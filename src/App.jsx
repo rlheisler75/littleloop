@@ -1171,7 +1171,7 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
             ))}
           </div>
         }
-        <CheckinLog familyId={family.id}/>
+        <SessionsList familyId={family.id} childrenMap={{}} showTitle={true}/>
       </div>
 
       {/* Recurring Schedule */}
@@ -2544,6 +2544,9 @@ function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyC
   const [items, setItems]         = useState([]);
   const [loading, setLoading]     = useState(false);
   const [alert, setAlert]         = useState(null);
+  const [sessions, setSessions]   = useState([]);
+  const [showSessions, setShowSessions] = useState(false);
+  const [importingSession, setImportingSession] = useState(false);
 
   function blankItem(){return {service_date:new Date().toISOString().slice(0,10),end_date:"",child_id:"",child_name:"",rate_type:"hourly",hours:0,rate:0,amount:0,description:""};}
 
@@ -2575,6 +2578,36 @@ function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyC
 
   const total=items.reduce((s,it)=>s+(it.amount||0),0);
   const familyChildren=allFamilyChildren[familyId]||[];
+
+  // Load unreviewed sessions when family is selected
+  useEffect(()=>{
+    if(!familyId || isEdit) return;
+    const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate()-30);
+    supabase.from('sessions')
+      .select('*,children:child_id(id,name,avatar)')
+      .eq('family_id',familyId)
+      .eq('is_open',false)
+      .gte('checked_in_at',monthAgo.toISOString())
+      .order('checked_in_at',{ascending:false})
+      .then(({data})=>setSessions(data||[]));
+  },[familyId]);
+
+  function importSessions() {
+    const imported = sessions.map(s=>({
+      service_date: s.checked_in_at?.slice(0,10)||new Date().toISOString().slice(0,10),
+      end_date: s.checked_out_at?.slice(0,10)||'',
+      child_id: s.child_id||'',
+      child_name: s.children?.name||'',
+      rate_type: 'hourly',
+      hours: Math.round((s.hours||0)*100)/100,
+      rate: 0, // sitter fills in rate
+      amount: 0,
+      description: `${s.children?.name||'Child'} · ${fmtDate(s.checked_in_at)} ${fmtTime(s.checked_in_at)}–${fmtTime(s.checked_out_at)}`,
+    }));
+    setItems(imported.length?imported:[blankItem()]);
+    setShowSessions(false);
+    setAlert({t:'i',m:`Imported ${imported.length} session${imported.length!==1?'s':''}. Fill in the hourly rate for each.`});
+  }
 
   async function save(status="draft"){
     if(!familyId){setAlert({t:"e",m:"Select a family."});return;}
@@ -2645,6 +2678,39 @@ function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyC
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
           <SectionLabel>Line Items</SectionLabel>
           <button type="button" className="bp" style={{padding:"5px 12px",fontSize:11}} onClick={addItem}>+ Add Item</button>
+          {!isEdit&&sessions.length>0&&(
+            <button type="button" className="bg" style={{padding:"5px 12px",fontSize:11}}
+              onClick={()=>setShowSessions(!showSessions)}>
+              📋 Import Sessions ({sessions.length})
+            </button>
+          )}
+          {showSessions&&(
+            <div style={{marginTop:8,padding:'12px 14px',borderRadius:10,
+              background:'var(--input-bg)',border:'1px solid var(--border)'}}>
+              <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:'var(--text-dim)'}}>
+                Recent sessions (last 30 days)
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:10,maxHeight:200,overflowY:'auto'}}>
+                {sessions.map(s=>(
+                  <div key={s.checkin_id} style={{display:'flex',alignItems:'center',gap:8,
+                    padding:'6px 10px',borderRadius:8,
+                    background:'var(--card-bg)',border:'1px solid var(--border)',fontSize:11}}>
+                    <span style={{fontSize:16}}>{s.children?.avatar||'🧒'}</span>
+                    <div style={{flex:1}}>
+                      <span style={{fontWeight:500}}>{s.children?.name}</span>
+                      <span style={{color:'var(--text-faint)',marginLeft:6}}>
+                        {fmtDate(s.checked_in_at)} · {fmtHours(s.hours)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="bp" style={{width:'100%',fontSize:12}}
+                onClick={importSessions}>
+                Import All as Line Items
+              </button>
+            </div>
+          )}
         </div>
         {items.map((it,i)=>(
           <LineItemRow key={i} item={it} index={i} children={familyChildren} onChange={updateItem} onRemove={removeItem}/>
@@ -3068,83 +3134,11 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
 
 // ─── Check-in History Modal (parent side) ────────────────────────────────────
 function CheckinHistoryModal({open, onClose, familyId, children}) {
-  const [log, setLog]         = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter]   = useState('week');
-
-  useEffect(()=>{
-    if(!open) return;
-    async function load(){
-      setLoading(true);
-      let query = supabase.from('checkins')
-        .select('*, children(name,avatar)')
-        .eq('family_id', familyId)
-        .order('checked_at', {ascending:false});
-      const start = new Date();
-      if(filter==='today') { start.setHours(0,0,0,0); query=query.gte('checked_at',start.toISOString()); }
-      else if(filter==='week') { start.setDate(start.getDate()-7); query=query.gte('checked_at',start.toISOString()); }
-      else if(filter==='month') { start.setDate(start.getDate()-30); query=query.gte('checked_at',start.toISOString()); }
-      const {data}=await query.limit(200);
-      setLog(data||[]);
-      setLoading(false);
-    }
-    load();
-  },[open, familyId, filter]);
-
-  function fmt(ts){
-    const d=new Date(ts);
-    return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-  }
-
-  // Group by date
-  const grouped = {};
-  log.forEach(e=>{
-    const day = new Date(e.checked_at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-    if(!grouped[day]) grouped[day]=[];
-    grouped[day].push(e);
-  });
-
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:4}}>Check-in History</div>
-      <div style={{fontSize:12,color:'var(--text-faint)',marginBottom:16}}>All check-ins and check-outs for your family</div>
-
-      {/* Filter */}
-      <div style={{display:'flex',gap:6,marginBottom:16}}>
-        {['today','week','month','all'].map(f=>(
-          <button key={f} onClick={()=>setFilter(f)} style={{
-            padding:'4px 12px',borderRadius:20,fontSize:11,cursor:'pointer',
-            border:`1px solid ${filter===f?'var(--accent)':'var(--border)'}`,
-            background:filter===f?'rgba(58,111,212,.15)':'var(--card-bg)',
-            color:filter===f?'var(--accent)':'var(--text-faint)',
-          }}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>
-        ))}
-      </div>
-
-      {loading ? <div style={{textAlign:'center',padding:40}}><Spinner size={20}/></div>
-      : log.length===0 ? <div style={{textAlign:'center',padding:40,color:'var(--text-faint)',fontSize:13}}>No check-ins found.</div>
-      : Object.entries(grouped).map(([day, entries])=>(
-        <div key={day} style={{marginBottom:16}}>
-          <div style={{fontSize:11,fontWeight:600,color:'var(--text-faint)',marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>{day}</div>
-          {entries.map((e,i)=>(
-            <div key={e.id||i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',
-              borderBottom:'1px solid var(--border)'}}>
-              <span style={{fontSize:18}}>{e.children?.avatar||'🌟'}</span>
-              <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:500}}>{e.children?.name||'Unknown'}</div>
-                <div style={{fontSize:11,color:'var(--text-faint)'}}>by {e.checked_by_name||'Unknown'}</div>
-              </div>
-              <div style={{textAlign:'right'}}>
-                <div style={{fontSize:12,fontWeight:600,
-                  color:e.status==='in'?'#5EE89A':'#F5AAAA'}}>
-                  {e.status==='in'?'✓ In':'← Out'}
-                </div>
-                <div style={{fontSize:10,color:'var(--text-faint)'}}>{fmt(e.checked_at)}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ))}
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:4}}>Hours & Check-ins</div>
+      <div style={{fontSize:12,color:'var(--text-faint)',marginBottom:16}}>Sessions, hours logged, and editable times.</div>
+      <SessionsList familyId={familyId} childrenMap={{}} showTitle={true}/>
     </Modal>
   );
 }
@@ -4865,6 +4859,370 @@ function WeeklyScheduleCard({familyId, sitters}) {
   );
 }
 
+
+// ─── Hours & Sessions ─────────────────────────────────────────────────────────
+
+function fmtHours(h) {
+  if(!h || h < 0) return '0h 0m';
+  const hrs  = Math.floor(h);
+  const mins = Math.round((h - hrs) * 60);
+  return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+}
+
+function fmtTime(iso) {
+  if(!iso) return '—';
+  return new Date(iso).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+function fmtDate(iso) {
+  if(!iso) return '';
+  return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+// Edit a single checkin timestamp
+function EditCheckinModal({open, onClose, entry, label, onSaved}) {
+  const [val, setVal]     = useState('');
+  const [note, setNote]   = useState('');
+  const [saving, setSaving] = useState(false);
+  const [alert, setAlert] = useState(null);
+  const {data:{user}} = supabase.auth.getUser ? {data:{user:null}} : {data:{user:null}};
+  const [userId, setUserId] = useState(null);
+
+  useEffect(()=>{
+    if(open && entry) {
+      const d = new Date(entry.checked_at);
+      // Format for datetime-local input
+      const local = new Date(d.getTime() - d.getTimezoneOffset()*60000)
+        .toISOString().slice(0,16);
+      setVal(local);
+      setNote('');
+      setAlert(null);
+    }
+    supabase.auth.getUser().then(({data:{user}})=>setUserId(user?.id));
+  },[open,entry]);
+
+  async function save(e) {
+    e.preventDefault();
+    if(!val) return;
+    setSaving(true);
+    const newTime = new Date(val).toISOString();
+    const {error} = await supabase.from('checkins').update({
+      checked_at:   newTime,
+      edited:       true,
+      edited_by:    userId,
+      edited_by_name: entry?.checked_by_name,
+      edit_note:    note.trim()||null,
+    }).eq('id', entry.id);
+    setSaving(false);
+    if(error){setAlert({t:'e',m:error.message});return;}
+    onSaved();
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:16}}>
+        Edit {label} Time
+      </div>
+      {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
+      <form onSubmit={save}>
+        <div style={{marginBottom:14}}>
+          <label className="fl">Time</label>
+          <input className="fi" type="datetime-local" value={val}
+            onChange={e=>setVal(e.target.value)} required/>
+        </div>
+        <div style={{marginBottom:16}}>
+          <label className="fl">Reason (optional)</label>
+          <input className="fi" value={note} onChange={e=>setNote(e.target.value)}
+            placeholder="e.g. Forgot to check out"/>
+        </div>
+        <div style={{display:'flex',gap:10}}>
+          <button type="submit" className="bp full" disabled={saving}>
+            {saving?<Spinner/>:'Save'}
+          </button>
+          <button type="button" className="bg" onClick={onClose}>Cancel</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// Manual checkout modal for open sessions
+function ManualCheckoutModal({open, onClose, session, familyId, onSaved}) {
+  const [val, setVal]     = useState('');
+  const [note, setNote]   = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(()=>{
+    if(open) {
+      const now = new Date();
+      const local = new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16);
+      setVal(local);
+      setNote('');
+    }
+  },[open]);
+
+  async function save(e) {
+    e.preventDefault();
+    setSaving(true);
+    const {data:{user}} = await supabase.auth.getUser();
+    await supabase.from('checkins').insert({
+      child_id:       session.child_id,
+      family_id:      familyId,
+      status:         'out',
+      checked_by:     user?.id,
+      checked_by_name: user?.email?.split('@')[0]||'unknown',
+      checked_by_role: 'manual',
+      checked_at:     new Date(val).toISOString(),
+      edited:         true,
+      edit_note:      note.trim()||'Manual checkout',
+    });
+    setSaving(false);
+    onSaved();
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:6}}>
+        Add Missing Checkout
+      </div>
+      <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:16,lineHeight:1.6}}>
+        Set the actual time this child was picked up.
+      </p>
+      <form onSubmit={save}>
+        <div style={{marginBottom:14}}>
+          <label className="fl">Checkout time</label>
+          <input className="fi" type="datetime-local" value={val}
+            onChange={e=>setVal(e.target.value)} required/>
+        </div>
+        <div style={{marginBottom:16}}>
+          <label className="fl">Note (optional)</label>
+          <input className="fi" value={note} onChange={e=>setNote(e.target.value)}
+            placeholder="e.g. Forgot to check out yesterday"/>
+        </div>
+        <div style={{display:'flex',gap:10}}>
+          <button type="submit" className="bp full" disabled={saving}>
+            {saving?<Spinner/>:'Save Checkout'}
+          </button>
+          <button type="button" className="bg" onClick={onClose}>Cancel</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// Sessions list — pairs check-ins with check-outs, shows hours, allows editing
+function SessionsList({familyId, childrenMap, dateRange='week', showTitle=true}) {
+  const [sessions, setSessions]   = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [editEntry, setEditEntry] = useState(null); // {entry, label}
+  const [manualSession, setManualSession] = useState(null);
+  const [filter, setFilter]       = useState(dateRange);
+
+  useEffect(()=>{ load(); },[familyId, filter]);
+
+  async function load() {
+    setLoading(true);
+    let query = supabase.from('sessions')
+      .select('*, children:child_id(name,avatar,color)')
+      .eq('family_id', familyId);
+
+    if(filter==='today'){
+      const start = new Date(); start.setHours(0,0,0,0);
+      query = query.gte('checked_in_at', start.toISOString());
+    } else if(filter==='week'){
+      const start = new Date(); start.setDate(start.getDate()-7);
+      query = query.gte('checked_in_at', start.toISOString());
+    } else if(filter==='month'){
+      const start = new Date(); start.setDate(start.getDate()-30);
+      query = query.gte('checked_in_at', start.toISOString());
+    }
+    query = query.order('checked_in_at',{ascending:false}).limit(100);
+    const {data} = await query;
+    setSessions(data||[]);
+    setLoading(false);
+  }
+
+  const openSessions    = sessions.filter(s=>s.is_open);
+  const needsReview     = sessions.filter(s=>s.needs_review);
+  const closedSessions  = sessions.filter(s=>!s.is_open);
+  const totalHours      = closedSessions.reduce((s,r)=>s+(r.hours||0),0);
+
+  return (
+    <div>
+      {showTitle&&(
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600}}>⏱ Hours Log</div>
+          <div style={{display:'flex',gap:6}}>
+            {['today','week','month','all'].map(f=>(
+              <button key={f} onClick={()=>setFilter(f)}
+                style={{padding:'4px 9px',borderRadius:20,fontSize:10,cursor:'pointer',
+                  border:`1px solid ${filter===f?'#7BAAEE':'rgba(255,255,255,.1)'}`,
+                  background:filter===f?'rgba(111,163,232,.15)':'transparent',
+                  color:filter===f?'#7BAAEE':'var(--text-faint)',textTransform:'capitalize'}}>
+                {f==='all'?'All':f.charAt(0).toUpperCase()+f.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Needs review warnings */}
+      {needsReview.map(s=>(
+        <div key={s.checkin_id} style={{display:'flex',alignItems:'center',gap:10,
+          padding:'10px 14px',borderRadius:10,marginBottom:8,
+          background:'rgba(200,120,74,.1)',border:'1px solid rgba(200,120,74,.3)'}}>
+          <span style={{fontSize:18}}>⚠️</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:600,color:'#F5C098'}}>Missing checkout</div>
+            <div style={{fontSize:11,color:'var(--text-faint)'}}>
+              {s.children?.name} checked in {fmtDate(s.checked_in_at)} at {fmtTime(s.checked_in_at)} — no checkout recorded
+            </div>
+          </div>
+          <button className="bp" style={{fontSize:10,padding:'4px 10px',flexShrink:0}}
+            onClick={()=>setManualSession(s)}>Fix</button>
+        </div>
+      ))}
+
+      {/* Open sessions (checked in today, no checkout yet) */}
+      {openSessions.filter(s=>!s.needs_review).map(s=>(
+        <div key={s.checkin_id} style={{display:'flex',alignItems:'center',gap:10,
+          padding:'10px 14px',borderRadius:10,marginBottom:8,
+          background:'rgba(58,158,122,.08)',border:'1px solid rgba(58,158,122,.25)'}}>
+          <span style={{fontSize:20}}>{s.children?.avatar||'🧒'}</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:500}}>{s.children?.name}</div>
+            <div style={{fontSize:11,color:'#88D8B8'}}>Checked in at {fmtTime(s.checked_in_at)} · {fmtHours(s.hours)} so far</div>
+          </div>
+          <span style={{fontSize:10,background:'rgba(58,158,122,.2)',color:'#88D8B8',
+            borderRadius:6,padding:'2px 8px',fontWeight:600}}>Active</span>
+        </div>
+      ))}
+
+      {/* Summary */}
+      {closedSessions.length>0&&(
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+          padding:'8px 14px',borderRadius:10,marginBottom:10,
+          background:'var(--input-bg,rgba(255,255,255,.03))',
+          border:'1px solid var(--border)'}}>
+          <span style={{fontSize:12,color:'var(--text-faint)'}}>
+            {closedSessions.length} session{closedSessions.length!==1?'s':''}
+          </span>
+          <span style={{fontSize:13,fontWeight:600,color:'#7BAAEE'}}>
+            {fmtHours(totalHours)} total
+          </span>
+        </div>
+      )}
+
+      {/* Session rows */}
+      {loading
+        ? <div style={{textAlign:'center',padding:20}}><Spinner size={16}/></div>
+        : closedSessions.length===0 && openSessions.filter(s=>!s.needs_review).length===0 && needsReview.length===0
+          ? <div style={{textAlign:'center',padding:20,color:'var(--text-faint)',fontSize:12}}>No sessions recorded yet.</div>
+          : <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {closedSessions.map(s=>(
+                <div key={s.checkin_id} style={{padding:'10px 14px',borderRadius:10,
+                  background:'var(--input-bg,rgba(255,255,255,.03))',
+                  border:'1px solid var(--border)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                    <span style={{fontSize:18,flexShrink:0}}>{s.children?.avatar||'🧒'}</span>
+                    <span style={{fontSize:13,fontWeight:500,flex:1}}>{s.children?.name}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:'#7BAAEE'}}>{fmtHours(s.hours)}</span>
+                  </div>
+                  <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                    {/* Check-in */}
+                    <button onClick={()=>setEditEntry({id:s.checkin_id,checked_at:s.checked_in_at,checked_by_name:s.checked_in_by,label:'Check-in'})}
+                      style={{display:'flex',alignItems:'center',gap:4,padding:'4px 8px',
+                        borderRadius:8,background:'rgba(58,158,122,.1)',border:'1px solid rgba(58,158,122,.2)',
+                        color:'#88D8B8',fontSize:10,cursor:'pointer'}}>
+                      <span>▶ In</span>
+                      <span style={{fontWeight:600}}>{fmtDate(s.checked_in_at)} {fmtTime(s.checked_in_at)}</span>
+                      {s.checkin_edited&&<span style={{opacity:.6}}>·edited</span>}
+                      <span style={{opacity:.5}}>✏️</span>
+                    </button>
+                    {/* Check-out */}
+                    <button onClick={()=>setEditEntry({id:s.checkout_id,checked_at:s.checked_out_at,checked_by_name:s.checked_out_by,label:'Check-out'})}
+                      style={{display:'flex',alignItems:'center',gap:4,padding:'4px 8px',
+                        borderRadius:8,background:'rgba(192,80,80,.1)',border:'1px solid rgba(192,80,80,.2)',
+                        color:'#F5AAAA',fontSize:10,cursor:'pointer'}}>
+                      <span>■ Out</span>
+                      <span style={{fontWeight:600}}>{fmtDate(s.checked_out_at)} {fmtTime(s.checked_out_at)}</span>
+                      {s.checkout_edited&&<span style={{opacity:.6}}>·edited</span>}
+                      <span style={{opacity:.5}}>✏️</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+      }
+
+      {editEntry&&(
+        <EditCheckinModal open={!!editEntry} onClose={()=>setEditEntry(null)}
+          entry={editEntry} label={editEntry?.label||''}
+          onSaved={()=>{setEditEntry(null);load();}}/>
+      )}
+      {manualSession&&(
+        <ManualCheckoutModal open={!!manualSession} onClose={()=>setManualSession(null)}
+          session={manualSession} familyId={familyId}
+          onSaved={()=>{setManualSession(null);load();}}/>
+      )}
+    </div>
+  );
+}
+
+// Hours summary card for parent home — shows open sessions + week total
+function HoursSummaryCard({familyId, children}) {
+  const [openSessions, setOpenSessions] = useState([]);
+  const [weekHours, setWeekHours]       = useState(0);
+  const [needsReview, setNeedsReview]   = useState([]);
+
+  useEffect(()=>{ load(); },[familyId]);
+
+  async function load() {
+    const weekStart = new Date(); weekStart.setDate(weekStart.getDate()-7);
+    const {data} = await supabase.from('sessions')
+      .select('*,children:child_id(name,avatar)')
+      .eq('family_id',familyId)
+      .gte('checked_in_at',weekStart.toISOString());
+    const open    = (data||[]).filter(s=>s.is_open&&!s.needs_review);
+    const review  = (data||[]).filter(s=>s.needs_review);
+    const closed  = (data||[]).filter(s=>!s.is_open);
+    const total   = closed.reduce((s,r)=>s+(r.hours||0),0);
+    setOpenSessions(open);
+    setNeedsReview(review);
+    setWeekHours(total);
+  }
+
+  if(openSessions.length===0 && weekHours===0 && needsReview.length===0) return null;
+
+  return (
+    <div className="card fade-up" style={{padding:'14px 18px',marginBottom:12}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+        <span style={{fontSize:16}}>⏱</span>
+        <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600}}>Hours This Week</span>
+        <span style={{marginLeft:'auto',fontSize:15,fontWeight:700,color:'#7BAAEE'}}>{fmtHours(weekHours)}</span>
+      </div>
+      {needsReview.map(s=>(
+        <div key={s.checkin_id} style={{fontSize:11,color:'#F5C098',marginBottom:4,
+          padding:'6px 10px',background:'rgba(200,120,74,.08)',borderRadius:8,
+          border:'1px solid rgba(200,120,74,.2)'}}>
+          ⚠️ {s.children?.name} — missing checkout from {fmtDate(s.checked_in_at)}
+        </div>
+      ))}
+      {openSessions.map(s=>(
+        <div key={s.checkin_id} style={{display:'flex',alignItems:'center',gap:8,
+          padding:'6px 10px',background:'rgba(58,158,122,.08)',borderRadius:8,
+          border:'1px solid rgba(58,158,122,.2)',marginBottom:4}}>
+          <span style={{fontSize:16}}>{s.children?.avatar||'🧒'}</span>
+          <span style={{fontSize:12,flex:1}}>{s.children?.name} is checked in</span>
+          <span style={{fontSize:11,color:'#88D8B8',fontWeight:600}}>{fmtHours(s.hours)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CheckInButton({child, familyId, currentUserId, checkerName, isSitter, onChecked}) {
   const [status, setStatus]   = useState(null); // 'in' | 'out' | null
   const [loading, setLoading] = useState(false);
@@ -5489,6 +5847,9 @@ function ParentDashboard({session,onSignOut}) {
               :<>
                 {/* Weekly schedule */}
                 <WeeklyScheduleCard familyId={family.id} sitters={family.sitters_list||[]}/>
+
+                {/* Hours summary */}
+                <HoursSummaryCard familyId={family.id} children={children}/>
 
                 {/* Family card */}
                 <div className="card fade-up" style={{padding:24,marginBottom:16}}>
