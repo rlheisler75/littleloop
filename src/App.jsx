@@ -1010,6 +1010,9 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
         <CheckinLog familyId={family.id}/>
       </div>
 
+      {/* Recurring Schedule */}
+      <ScheduleManager sitterId={sitterId} familyId={family.id} familyName={family.name}/>
+
       <div style={{borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:16}}>
         <button className="bd" onClick={()=>setConfirmRemove(true)} disabled={loading}>🔕 Remove from my families</button>
       </div>
@@ -4401,6 +4404,238 @@ function OnMyWayButton({familyId, memberId, memberName}) {
   );
 }
 
+
+// ─── Recurring Schedule ────────────────────────────────────────────────────────
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function fmt12(t) {
+  if(!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'pm' : 'am';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2,'0')}${ampm}`;
+}
+
+// Sitter side: manage schedule for a family
+function ScheduleManager({sitterId, familyId, familyName}) {
+  const [slots, setSlots]         = useState([]);
+  const [showAdd, setShowAdd]     = useState(false);
+  const [editSlot, setEditSlot]   = useState(null);
+  const [loading, setLoading]     = useState(true);
+
+  useEffect(()=>{ load(); },[familyId]);
+
+  async function load() {
+    setLoading(true);
+    const {data} = await supabase.from('schedules')
+      .select('*').eq('family_id', familyId).eq('sitter_id', sitterId)
+      .eq('active', true).order('day_of_week').order('start_time');
+    setSlots(data||[]);
+    setLoading(false);
+  }
+
+  async function deleteSlot(id) {
+    await supabase.from('schedules').delete().eq('id', id);
+    load();
+  }
+
+  return (
+    <div style={{marginBottom:14}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+        <SectionLabel>📅 Recurring Schedule</SectionLabel>
+        <button className="bp" style={{padding:'4px 10px',fontSize:11}} onClick={()=>{setEditSlot(null);setShowAdd(true);}}>+ Add</button>
+      </div>
+      {loading ? <Spinner/> : slots.length === 0
+        ? <div style={{fontSize:12,color:'var(--text-faint)',fontStyle:'italic',padding:'8px 0'}}>No recurring schedule set yet.</div>
+        : <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {slots.map(s=>(
+              <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',
+                background:'var(--card-bg)',borderRadius:10,border:'1px solid var(--border)'}}>
+                <div style={{width:36,height:36,borderRadius:10,background:'rgba(58,111,212,.12)',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:11,fontWeight:700,color:'#7BAAEE',flexShrink:0}}>
+                  {DAYS[s.day_of_week]}
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:500}}>{fmt12(s.start_time)} – {fmt12(s.end_time)}</div>
+                  {s.label&&<div style={{fontSize:11,color:'var(--text-faint)'}}>{s.label}</div>}
+                </div>
+                <button onClick={()=>{setEditSlot(s);setShowAdd(true);}}
+                  style={{background:'none',border:'none',cursor:'pointer',fontSize:13,opacity:.5,padding:'0 4px'}}>✏️</button>
+                <button onClick={()=>deleteSlot(s.id)}
+                  style={{background:'none',border:'none',cursor:'pointer',fontSize:13,opacity:.5,padding:'0 4px'}}>🗑️</button>
+              </div>
+            ))}
+          </div>
+      }
+      <ScheduleSlotModal
+        open={showAdd}
+        onClose={()=>{setShowAdd(false);setEditSlot(null);}}
+        sitterId={sitterId}
+        familyId={familyId}
+        slot={editSlot}
+        onSaved={()=>{setShowAdd(false);setEditSlot(null);load();}}
+      />
+    </div>
+  );
+}
+
+function ScheduleSlotModal({open, onClose, sitterId, familyId, slot, onSaved}) {
+  const [day, setDay]         = useState(slot?.day_of_week ?? 1);
+  const [start, setStart]     = useState(slot?.start_time?.slice(0,5) || '09:00');
+  const [end, setEnd]         = useState(slot?.end_time?.slice(0,5) || '17:00');
+  const [label, setLabel]     = useState(slot?.label || '');
+  const [loading, setLoading] = useState(false);
+  const [alert, setAlert]     = useState(null);
+
+  useEffect(()=>{
+    if(open) {
+      setDay(slot?.day_of_week ?? 1);
+      setStart(slot?.start_time?.slice(0,5) || '09:00');
+      setEnd(slot?.end_time?.slice(0,5) || '17:00');
+      setLabel(slot?.label || '');
+      setAlert(null);
+    }
+  },[open, slot]);
+
+  async function save(e) {
+    e.preventDefault();
+    if(end <= start){setAlert({t:'e',m:'End time must be after start time.'});return;}
+    setLoading(true);
+    const data = {family_id:familyId, sitter_id:sitterId, day_of_week:day, start_time:start, end_time:end, label:label.trim()||null, active:true};
+    const {error} = slot
+      ? await supabase.from('schedules').update(data).eq('id', slot.id)
+      : await supabase.from('schedules').insert(data);
+    setLoading(false);
+    if(error){setAlert({t:'e',m:error.message});return;}
+    onSaved();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:20}}>
+        {slot ? 'Edit Schedule' : 'Add Schedule'}
+      </div>
+      {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
+      <form onSubmit={save}>
+        <div style={{marginBottom:14}}>
+          <SectionLabel>Day of week</SectionLabel>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            {DAYS.map((d,i)=>(
+              <button key={i} type="button" onClick={()=>setDay(i)}
+                style={{padding:'7px 10px',borderRadius:10,fontSize:12,cursor:'pointer',
+                  border:`1px solid ${day===i?'#7BAAEE':'rgba(255,255,255,.1)'}`,
+                  background:day===i?'rgba(111,163,232,.15)':'rgba(255,255,255,.04)',
+                  color:day===i?'#7BAAEE':'rgba(255,255,255,.5)'}}>
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{display:'flex',gap:12,marginBottom:14}}>
+          <div style={{flex:1}}>
+            <label className="fl">Start time</label>
+            <input className="fi" type="time" value={start} onChange={e=>setStart(e.target.value)} required/>
+          </div>
+          <div style={{flex:1}}>
+            <label className="fl">End time</label>
+            <input className="fi" type="time" value={end} onChange={e=>setEnd(e.target.value)} required/>
+          </div>
+        </div>
+        <Field label="Label (optional)" value={label} onChange={e=>setLabel(e.target.value)} placeholder="e.g. After school, Morning"/>
+        <div style={{display:'flex',gap:10,marginTop:4}}>
+          <button type="submit" className="bp full" disabled={loading}>{loading?<Spinner/>:slot?'Save Changes':'Add to Schedule'}</button>
+          <button type="button" className="bg" onClick={onClose}>Cancel</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// Parent side: show upcoming schedule for the week
+function WeeklyScheduleCard({familyId, sitters}) {
+  const [slots, setSlots]   = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(()=>{ load(); },[familyId]);
+
+  async function load() {
+    setLoading(true);
+    const {data} = await supabase.from('schedules')
+      .select('*').eq('family_id', familyId).eq('active', true)
+      .order('day_of_week').order('start_time');
+    setSlots(data||[]);
+    setLoading(false);
+  }
+
+  if(loading) return null;
+  if(slots.length === 0) return null;
+
+  // Build next 7 days
+  const today = new Date();
+  const todayDow = today.getDay();
+  const week = Array.from({length:7},(_,i)=>{
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return {dow: d.getDay(), date: d, label: i===0?'Today':i===1?'Tomorrow':DAYS[d.getDay()]};
+  });
+
+  // Map slots to days
+  const byDow = {};
+  slots.forEach(s=>{
+    if(!byDow[s.day_of_week]) byDow[s.day_of_week] = [];
+    byDow[s.day_of_week].push(s);
+  });
+
+  const upcoming = week.filter(d => byDow[d.dow]);
+  if(upcoming.length === 0) return null;
+
+  return (
+    <div className="card fade-up" style={{padding:'16px 18px',marginBottom:16}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
+        <span style={{fontSize:18}}>📅</span>
+        <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600}}>This Week</span>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {upcoming.map(({dow, date, label:dayLabel})=>(
+          (byDow[dow]||[]).map((s,i)=>{
+            const sitter = (sitters||[]).find(st=>st.id===s.sitter_id);
+            const isToday = dayLabel==='Today';
+            return (
+              <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,
+                padding:'10px 12px',borderRadius:12,
+                background: isToday ? 'rgba(58,111,212,.1)' : 'var(--input-bg,rgba(255,255,255,.03))',
+                border: isToday ? '1px solid rgba(58,111,212,.3)' : '1px solid var(--border)'}}>
+                <div style={{width:40,textAlign:'center',flexShrink:0}}>
+                  <div style={{fontSize:10,color:'var(--text-faint)',textTransform:'uppercase',letterSpacing:.5}}>{dayLabel==='Today'||dayLabel==='Tomorrow'?DAYS[dow]:DAYS[dow]}</div>
+                  <div style={{fontSize:16,fontWeight:700,color:isToday?'#7BAAEE':'var(--text-dim)',lineHeight:1.2}}>
+                    {date.getDate()}
+                  </div>
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:500}}>
+                    {fmt12(s.start_time)} – {fmt12(s.end_time)}
+                    {isToday&&<span style={{marginLeft:6,fontSize:10,background:'rgba(58,111,212,.2)',color:'#7BAAEE',borderRadius:4,padding:'1px 6px'}}>Today</span>}
+                  </div>
+                  <div style={{fontSize:11,color:'var(--text-faint)'}}>
+                    {sitter?.name || 'Sitter'}
+                    {s.label && ` · ${s.label}`}
+                  </div>
+                </div>
+                {sitter?.avatar_url
+                  ? <img src={sitter.avatar_url} style={{width:28,height:28,borderRadius:'50%',objectFit:'cover',flexShrink:0}} alt={sitter.name}/>
+                  : <div style={{width:28,height:28,borderRadius:'50%',background:'linear-gradient(135deg,#3A6FD4,#3A9E7A)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}}>➿</div>
+                }
+              </div>
+            );
+          })
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CheckInButton({child, familyId, currentUserId, checkerName, isSitter, onChecked}) {
   const [status, setStatus]   = useState(null); // 'in' | 'out' | null
   const [loading, setLoading] = useState(false);
@@ -5014,6 +5249,9 @@ function ParentDashboard({session,onSignOut}) {
             {!family
               ?<div className="es"><div className="ic">👨‍👩‍👧</div><h3>Not connected yet</h3><p>Your account isn't linked to a family yet.<br/>Make sure you signed up with the email your sitter invited.</p></div>
               :<>
+                {/* Weekly schedule */}
+                <WeeklyScheduleCard familyId={family.id} sitters={family.sitters_list||[]}/>
+
                 {/* Family card */}
                 <div className="card fade-up" style={{padding:24,marginBottom:16}}>
                   <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
