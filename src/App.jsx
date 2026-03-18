@@ -668,11 +668,14 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
   const [loading,setLoading] = useState(false);
   const [alert,setAlert] = useState(null);
   const [confirmDel,setConfirmDel] = useState(false);
+  const [photoUrl,setPhotoUrl] = useState(member?.photo_url||null);
+  const [avatarUploading,setAvatarUploading] = useState(false);
 
   useEffect(()=>{
     if(open){
       setName(member?.name||"");setEmail(member?.email||"");
-      setRole(member?.role||"member");setAv(member?.avatar||"👤");setAlert(null);
+      setRole(member?.role||"member");setAv(member?.avatar||"👤");
+      setPhotoUrl(member?.photo_url||null);setAlert(null);
     }
   },[open,member]);
 
@@ -680,7 +683,7 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
     e.preventDefault();setAlert(null);setLoading(true);
     let error;
     if(isEdit){
-      ({error}=await supabase.from("members").update({name,role,avatar}).eq("id",member.id));
+      ({error}=await supabase.from("members").update({name,role,avatar,photo_url:photoUrl}).eq("id",member.id));
     } else {
       // Insert member row
       const {data:newMem,error:insErr}=await supabase.from("members").insert({
@@ -717,14 +720,49 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
 
           <div style={{marginBottom:14}}>
             <SectionLabel>Avatar</SectionLabel>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {/* Photo upload */}
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+              <div style={{width:48,height:48,borderRadius:14,overflow:"hidden",
+                background:"var(--card-bg)",border:"1px solid var(--border)",
+                display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>
+                {photoUrl
+                  ?<img src={photoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}} alt="avatar"/>
+                  :avatar}
+              </div>
+              <div>
+                <label style={{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 12px",
+                  borderRadius:10,background:"var(--card-bg)",border:"1px solid var(--border)",
+                  cursor:"pointer",fontSize:12,color:"var(--text-dim)"}}>
+                  📷 Upload photo
+                  <input type="file" accept="image/*" style={{display:"none"}}
+                    onChange={async e=>{
+                      const f=e.target.files?.[0]; if(!f) return;
+                      if(f.size>5*1024*1024){alert("Photo must be under 5MB");return;}
+                      setAvatarUploading(true);
+                      const ext=f.name.split(".").pop();
+                      const path=`members/${member?.id||Date.now()}.${ext}`;
+                      const {error:upErr}=await supabase.storage.from("member-avatars").upload(path,f,{upsert:true,contentType:f.type});
+                      if(!upErr){
+                        const {data:urlData}=supabase.storage.from("member-avatars").getPublicUrl(path);
+                        setPhotoUrl(urlData?.publicUrl||null);
+                      }
+                      setAvatarUploading(false);
+                    }}/>
+                </label>
+                {avatarUploading&&<span style={{fontSize:11,color:"var(--text-faint)",marginLeft:8}}><Spinner size={10}/> Uploading…</span>}
+                {photoUrl&&<button type="button" onClick={()=>setPhotoUrl(null)}
+                  style={{marginLeft:8,background:"none",border:"none",fontSize:11,color:"var(--text-faint)",cursor:"pointer",textDecoration:"underline"}}>Remove</button>}
+              </div>
+            </div>
+            {/* Emoji fallback */}
+            {!photoUrl&&<div style={{display:"flex",flexWrap:"wrap",gap:6}}>
               {AVATARS.map(a=>(
                 <button key={a} type="button" onClick={()=>setAv(a)}
                   style={{width:36,height:36,borderRadius:10,border:`2px solid ${avatar===a?"#7BAAEE":"rgba(255,255,255,.1)"}`,background:avatar===a?"rgba(111,163,232,.15)":"rgba(255,255,255,.04)",cursor:"pointer",fontSize:20}}>
                   {a}
                 </button>
               ))}
-            </div>
+            </div>}
           </div>
 
           {canEditRole&&(
@@ -757,6 +795,147 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
 }
 
 // ─── Invite Family Modal ──────────────────────────────────────────────────────
+
+
+// ─── Family Onboarding Flow ───────────────────────────────────────────────────
+function FamilyOnboarding({open, onClose, familyId, familyName, onDone}) {
+  const [step, setStep]       = useState(0);
+  const [childName, setChildName] = useState('');
+  const [childAvatar, setChildAvatar] = useState('🌟');
+  const [saving, setSaving]   = useState(false);
+
+  const steps = [
+    { id:'welcome',  title:'Welcome to littleloop! 👋' },
+    { id:'child',    title:'Add your first child' },
+    { id:'sitter',   title:'Connect with a sitter' },
+    { id:'done',     title:"You're all set! 🎉" },
+  ];
+
+  async function addChild() {
+    if(!childName.trim()) { setStep(2); return; }
+    setSaving(true);
+    await supabase.from('children').insert({
+      family_id: familyId, name: childName.trim(),
+      avatar: childAvatar, color: '#8B78D4',
+    });
+    setSaving(false);
+    setStep(2);
+  }
+
+  const progress = ((step) / (steps.length - 1)) * 100;
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      {/* Progress bar */}
+      <div style={{height:3,background:'var(--border)',borderRadius:3,marginBottom:24,overflow:'hidden'}}>
+        <div style={{height:'100%',width:`${progress}%`,
+          background:'linear-gradient(90deg,#3A6FD4,#3A9E7A)',
+          borderRadius:3,transition:'width .4s ease'}}/>
+      </div>
+
+      {step===0&&(
+        <div style={{textAlign:'center',padding:'8px 0'}}>
+          <div style={{fontSize:48,marginBottom:12}}>➿</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:8}}>
+            Welcome to littleloop!
+          </div>
+          <p style={{fontSize:13,color:'var(--text-faint)',lineHeight:1.7,marginBottom:24}}>
+            littleloop connects your family with your childcare provider — posts, messages, invoices, check-ins, and more. Let's get you set up in two quick steps.
+          </p>
+          <button className="bp full" onClick={()=>setStep(1)}>Get started →</button>
+        </div>
+      )}
+
+      {step===1&&(
+        <div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:4}}>
+            Add your first child
+          </div>
+          <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:20,lineHeight:1.6}}>
+            Your sitter will see this when they check in. You can add more later.
+          </p>
+          <div style={{marginBottom:14}}>
+            <label className="fl">Child's name</label>
+            <input className="fi" value={childName} onChange={e=>setChildName(e.target.value)}
+              placeholder="e.g. Emma" autoFocus/>
+          </div>
+          <div style={{marginBottom:20}}>
+            <SectionLabel>Pick an avatar</SectionLabel>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {CHILD_AVATARS.map(a=>(
+                <button key={a} type="button" onClick={()=>setChildAvatar(a)}
+                  style={{width:38,height:38,borderRadius:10,fontSize:22,cursor:'pointer',
+                    border:`2px solid ${childAvatar===a?'#7BAAEE':'rgba(255,255,255,.1)'}`,
+                    background:childAvatar===a?'rgba(111,163,232,.15)':'rgba(255,255,255,.04)'}}>
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <button className="bp full" onClick={addChild} disabled={saving}>
+              {saving?<Spinner/>:childName.trim()?'Add & continue':'Skip for now'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step===2&&(
+        <div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:4}}>
+            Connect with a sitter
+          </div>
+          <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:20,lineHeight:1.6}}>
+            Search for your sitter by name or username, or skip this and they can invite you.
+          </p>
+          <div style={{background:'var(--card-bg)',borderRadius:12,padding:'14px 16px',border:'1px solid var(--border)',marginBottom:16}}>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Option 1 — Search for your sitter</div>
+            <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:10}}>
+              If your sitter has a public profile on littleloop, you can find them and send a connection request.
+            </p>
+            <button className="bp" style={{width:'100%'}} onClick={()=>{onDone();/* FindSitterModal opens from home */}}>
+              🔍 Find my sitter
+            </button>
+          </div>
+          <div style={{background:'var(--card-bg)',borderRadius:12,padding:'14px 16px',border:'1px solid var(--border)',marginBottom:20}}>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Option 2 — Ask your sitter to invite you</div>
+            <p style={{fontSize:12,color:'var(--text-faint)',margin:0}}>
+              Your sitter can invite you by email from their littleloop account. You'll get a link to join automatically.
+            </p>
+          </div>
+          <button className="bg full" onClick={()=>setStep(3)}>Skip for now</button>
+        </div>
+      )}
+
+      {step===3&&(
+        <div style={{textAlign:'center',padding:'8px 0'}}>
+          <div style={{fontSize:48,marginBottom:12}}>🎉</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:8}}>
+            You're all set!
+          </div>
+          <p style={{fontSize:13,color:'var(--text-faint)',lineHeight:1.7,marginBottom:24}}>
+            Your family profile is ready. Once your sitter connects, you'll see their posts, invoices, and check-ins all in one place.
+          </p>
+          <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20,textAlign:'left'}}>
+            {[
+              {icon:'🌸',label:'Feed — sitter posts updates and photos'},
+              {icon:'💰',label:'Invoices — pay your sitter directly'},
+              {icon:'🟢',label:'Check-ins — see when kids arrive and leave'},
+              {icon:'💬',label:'Messages — chat with your sitter'},
+            ].map(f=>(
+              <div key={f.label} style={{display:'flex',alignItems:'center',gap:10,
+                padding:'8px 12px',borderRadius:10,background:'var(--card-bg)',border:'1px solid var(--border)'}}>
+                <span style={{fontSize:18}}>{f.icon}</span>
+                <span style={{fontSize:12,color:'var(--text-dim)'}}>{f.label}</span>
+              </div>
+            ))}
+          </div>
+          <button className="bp full" onClick={onDone}>Start using littleloop →</button>
+        </div>
+      )}
+    </Modal>
+  );
+}
 
 // ─── Family Icon Picker ──────────────────────────────────────────────────────
 const FAMILY_ICONS = [
@@ -1154,7 +1333,13 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
       </div>
 
       <div style={{marginBottom:20}}>
-        <SectionLabel>Children</SectionLabel>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+          <SectionLabel>Children</SectionLabel>
+          {children.length>1&&(
+            <MultiCheckInButton children={children} familyId={family.id}
+              currentUserId={sitterId} checkerName={sitterName||"Sitter"} isSitter={true}/>
+          )}
+        </div>
         {children.length===0
           ?<div style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>No children added yet</div>
           :<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -2876,6 +3061,7 @@ ${enabledMethods.length>0?`
 
 <div class="no-print" style="text-align:center;margin-top:24px">
   <button onclick="window.print()" style="padding:12px 28px;background:#2550A8;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🖨️ Print / Save as PDF</button>
+  <button onclick="window.close()" style="padding:12px 28px;background:#f0f0f0;color:#333;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-left:10px">✕ Close</button>
 </div>
 </body>
 </html>`;
@@ -3021,7 +3207,7 @@ function SitterInvoicesTab({sitterId, sitterName}) {
                     {inv.paid_date&&<div style={{fontSize:11,color:"#88D8B8"}}>Paid {fmtDate(inv.paid_date)}</div>}
                   </div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
-                    <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)}>🖨️ Print</button>
+                    <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)} title="Print or save as PDF">🖨️ PDF</button>
                     {inv.status!=="paid"&&<button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>setEditInv(inv)}>✏️ Edit</button>}
                     {inv.status==="sent"&&<button className="bp" style={{padding:"5px 10px",fontSize:11,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)"}} onClick={()=>setConfirmPaid(inv)}>✅ Mark Paid</button>}
                     {inv.status==="sent"&&<button className="bg" style={{padding:"5px 10px",fontSize:11,
@@ -3104,7 +3290,7 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
                   {inv.paid_date&&<div style={{fontSize:11,color:"#88D8B8"}}>Paid {fmtDate(inv.paid_date)}</div>}
                 </div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)}>🖨️ View / Print</button>
+                  <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)} title="Print or save as PDF">🖨️ PDF</button>
                 </div>
               </div>
 
@@ -3784,6 +3970,111 @@ function SitterProfileTab({sitterId, sitterName, onNameChange}) {
   );
 }
 
+
+// ─── Availability Picker ──────────────────────────────────────────────────────
+const AVAIL_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const AVAIL_TIMES = [
+  {id:'early_morning', label:'Early Morning', sub:'6–9am'},
+  {id:'morning',       label:'Morning',       sub:'9am–12pm'},
+  {id:'afternoon',     label:'Afternoon',     sub:'12–5pm'},
+  {id:'evening',       label:'Evening',       sub:'5–9pm'},
+  {id:'overnight',     label:'Overnight',     sub:'9pm+'},
+];
+
+function AvailabilityPicker({value, onChange}) {
+  // value = { mon:['morning','afternoon'], tue:[], ... }
+  const parsed = (() => {
+    try { return typeof value==='object'&&value?value:JSON.parse(value||'{}'); }
+    catch { return {}; }
+  })();
+
+  function toggle(day, time) {
+    const key = day.toLowerCase();
+    const cur = parsed[key]||[];
+    const next = cur.includes(time) ? cur.filter(t=>t!==time) : [...cur,time];
+    onChange({...parsed, [key]:next});
+  }
+
+  function toggleDay(day) {
+    const key = day.toLowerCase();
+    const cur = parsed[key]||[];
+    const next = cur.length===AVAIL_TIMES.length ? [] : AVAIL_TIMES.map(t=>t.id);
+    onChange({...parsed, [key]:next});
+  }
+
+  return (
+    <div style={{overflowX:'auto'}}>
+      <table style={{borderCollapse:'collapse',width:'100%',minWidth:420}}>
+        <thead>
+          <tr>
+            <th style={{width:60,padding:'6px 8px',textAlign:'left',fontSize:10,color:'var(--text-faint)',fontWeight:600}}></th>
+            {AVAIL_DAYS.map(d=>{
+              const key=d.toLowerCase();
+              const allOn=(parsed[key]||[]).length===AVAIL_TIMES.length;
+              return (
+                <th key={d} style={{padding:'4px 2px',textAlign:'center'}}>
+                  <button type="button" onClick={()=>toggleDay(d)}
+                    style={{padding:'3px 6px',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer',
+                      border:`1px solid ${allOn?'#7BAAEE':'rgba(255,255,255,.1)'}`,
+                      background:allOn?'rgba(111,163,232,.2)':'transparent',
+                      color:allOn?'#7BAAEE':'var(--text-dim)'}}>
+                    {d}
+                  </button>
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {AVAIL_TIMES.map(t=>(
+            <tr key={t.id}>
+              <td style={{padding:'3px 8px',fontSize:10,color:'var(--text-faint)',whiteSpace:'nowrap'}}>
+                <div style={{fontWeight:600,fontSize:10}}>{t.label}</div>
+                <div style={{fontSize:9,opacity:.7}}>{t.sub}</div>
+              </td>
+              {AVAIL_DAYS.map(d=>{
+                const key=d.toLowerCase();
+                const on=(parsed[key]||[]).includes(t.id);
+                return (
+                  <td key={d} style={{padding:'3px 2px',textAlign:'center'}}>
+                    <button type="button" onClick={()=>toggle(d,t.id)}
+                      style={{width:28,height:28,borderRadius:8,cursor:'pointer',
+                        border:`1px solid ${on?'#7BAAEE':'rgba(255,255,255,.08)'}`,
+                        background:on?'rgba(111,163,232,.2)':'rgba(255,255,255,.03)',
+                        fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto'}}>
+                      {on?'✓':''}
+                    </button>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Display availability compactly (for browse/profile pages)
+function AvailabilityDisplay({value}) {
+  let parsed = {};
+  try { parsed = typeof value==='object'&&value?value:JSON.parse(value||'{}'); } catch {}
+  const days = AVAIL_DAYS.filter(d=>(parsed[d.toLowerCase()]||[]).length>0);
+  if(!days.length) return null;
+  return (
+    <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+      {days.map(d=>{
+        const slots=(parsed[d.toLowerCase()]||[]).map(id=>AVAIL_TIMES.find(t=>t.id===id)?.label).filter(Boolean);
+        return (
+          <span key={d} className="chip" style={{fontSize:10}}>
+            {d}: {slots.join(', ')}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Public Profile Editor (inside sitter settings) ─────────────────────────
 function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
   const AGE_RANGES = ["Infants (0-1)","Toddlers (1-3)","Preschool (3-5)","School Age (5-12)","Teens (13-17)"];
@@ -3821,7 +4112,9 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
         setAgeRanges(d.age_ranges||[]);
         setRateMin(d.hourly_rate_min||'');
         setRateMax(d.hourly_rate_max||'');
-        setAvail(d.availability||'');
+        const rawAvail = d.availability||'';
+        try { setAvail(typeof rawAvail==='string'&&rawAvail.startsWith('{')?JSON.parse(rawAvail):rawAvail); }
+        catch { setAvail(rawAvail); }
         setYears(d.years_experience||'');
         setCerts(d.certifications||[]);
         setAvatarUrl(d.avatar_url||'');
@@ -3874,7 +4167,7 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
       age_ranges: ageRanges.length ? ageRanges : null,
       hourly_rate_min: rateMin ? parseFloat(rateMin) : null,
       hourly_rate_max: rateMax ? parseFloat(rateMax) : null,
-      availability: avail.trim()||null,
+      availability: typeof avail==='object' ? JSON.stringify(avail) : (avail||null),
       years_experience: years ? parseInt(years) : null,
       certifications: certs.length ? certs : null,
     }).eq('id', sitterId);
@@ -3994,9 +4287,8 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
 
           {/* Availability */}
           <div style={{marginBottom:12}}>
-            <label style={{fontSize:11,color:'var(--text-dim)',display:'block',marginBottom:4}}>Availability</label>
-            <input className="fi" value={avail} onChange={e=>setAvail(e.target.value)}
-              placeholder="e.g. Weekday evenings and weekends"/>
+            <label style={{fontSize:11,color:'var(--text-dim)',display:'block',marginBottom:8}}>Availability</label>
+            <AvailabilityPicker value={avail} onChange={v=>setAvail(v)}/>
           </div>
 
           {/* Age ranges */}
@@ -4142,8 +4434,8 @@ function PublicSitterProfile({username}) {
             </div>
           )}
           {sitter.availability && (
-            <div style={{padding:'6px 12px',borderRadius:20,background:'var(--card-bg)',border:'1px solid var(--border)',fontSize:12}}>
-              🗓 {sitter.availability}
+            <div style={{marginTop:4}}>
+              <AvailabilityDisplay value={sitter.availability}/>
             </div>
           )}
         </div>
@@ -5223,6 +5515,153 @@ function HoursSummaryCard({familyId, children}) {
   );
 }
 
+
+
+// ─── In-App Notification Center ──────────────────────────────────────────────
+function NotificationCenter({userId, isSitter, familyId, sitterId}) {
+  const [open, setOpen]       = useState(false);
+  const [notifs, setNotifs]   = useState([]);
+  const [unread, setUnread]   = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(()=>{
+    loadUnread();
+    // Poll every 30s
+    const t = setInterval(loadUnread, 30000);
+    return ()=>clearInterval(t);
+  },[userId]);
+
+  async function loadUnread() {
+    const {count} = await supabase.from('notifications')
+      .select('id',{count:'exact',head:true})
+      .eq('user_id',userId).eq('read',false);
+    setUnread(count||0);
+  }
+
+  async function loadNotifs() {
+    setLoading(true);
+    const {data} = await supabase.from('notifications')
+      .select('*').eq('user_id',userId)
+      .order('created_at',{ascending:false}).limit(30);
+    setNotifs(data||[]);
+    setLoading(false);
+    // Mark all as read
+    await supabase.from('notifications').update({read:true})
+      .eq('user_id',userId).eq('read',false);
+    setUnread(0);
+  }
+
+  function handleOpen() {
+    setOpen(true);
+    loadNotifs();
+  }
+
+  function notifIcon(type) {
+    const icons = {
+      new_message:'💬', new_post:'🌸', new_invoice:'💰',
+      invoice_paid:'✅', checkin:'🟢', checkout:'🔴',
+      eta:'🚗', connection_request:'🤝', connection_accepted:'✅',
+      invoice_reminder:'🔔', review:'⭐',
+    };
+    return icons[type]||'🔔';
+  }
+
+  return (
+    <>
+      <button onClick={handleOpen} style={{
+        position:'relative',background:'none',border:'none',cursor:'pointer',
+        padding:'6px 8px',borderRadius:10,color:'var(--text-dim)',fontSize:18,
+        display:'flex',alignItems:'center',justifyContent:'center'}}>
+        🔔
+        {unread>0&&(
+          <span style={{position:'absolute',top:2,right:2,
+            background:'#E05A5A',color:'#fff',borderRadius:'50%',
+            width:16,height:16,fontSize:9,fontWeight:700,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            border:'2px solid var(--body-bg,#0C1420)'}}>
+            {unread>9?'9+':unread}
+          </span>
+        )}
+      </button>
+
+      <Modal open={open} onClose={()=>setOpen(false)}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:16}}>
+          Notifications
+        </div>
+        {loading
+          ? <div style={{textAlign:'center',padding:40}}><Spinner size={20}/></div>
+          : notifs.length===0
+            ? <div style={{textAlign:'center',padding:40,color:'var(--text-faint)',fontSize:13}}>
+                No notifications yet.
+              </div>
+            : <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                {notifs.map(n=>(
+                  <div key={n.id} style={{
+                    display:'flex',alignItems:'flex-start',gap:10,padding:'10px 12px',
+                    borderRadius:10,background:n.read?'transparent':'rgba(111,163,232,.06)',
+                    border:`1px solid ${n.read?'transparent':'rgba(111,163,232,.12)'}`,
+                  }}>
+                    <span style={{fontSize:18,flexShrink:0,marginTop:1}}>{notifIcon(n.type)}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:n.read?400:600,color:'var(--text-dim)',lineHeight:1.4}}>
+                        {n.title}
+                      </div>
+                      {n.body&&<div style={{fontSize:11,color:'var(--text-faint)',marginTop:2,lineHeight:1.4}}>
+                        {n.body}
+                      </div>}
+                      <div style={{fontSize:10,color:'var(--text-faint)',marginTop:4}}>
+                        {timeAgo(n.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+        }
+      </Modal>
+    </>
+  );
+}
+
+// ─── Multi-Child Check-In Button ─────────────────────────────────────────────
+function MultiCheckInButton({children, familyId, currentUserId, checkerName, isSitter}) {
+  const [loading, setLoading] = useState(false);
+  const [done, setDone]       = useState(false);
+
+  async function checkAll() {
+    setLoading(true);
+    const now = new Date().toISOString();
+    // Get latest status for each child
+    const statuses = await Promise.all(children.map(async c => {
+      const {data} = await supabase.from('checkins').select('status')
+        .eq('child_id',c.id).order('checked_at',{ascending:false}).limit(1).maybeSingle();
+      return {child:c, lastStatus: data?.status||null};
+    }));
+    // All checked in? Check everyone out. Otherwise check everyone in.
+    const allIn = statuses.every(s=>s.lastStatus==='in');
+    const newStatus = allIn ? 'out' : 'in';
+    await supabase.from('checkins').insert(
+      statuses.map(({child})=>({
+        child_id:child.id, family_id:familyId, status:newStatus,
+        checked_by:currentUserId, checked_by_name:checkerName,
+        checked_by_role: isSitter?'sitter':'member', checked_at:now,
+      }))
+    );
+    setLoading(false);
+    setDone(true);
+    setTimeout(()=>setDone(false),2000);
+    // Reload page state
+    window.dispatchEvent(new CustomEvent('checkin-update'));
+  }
+
+  return (
+    <button onClick={checkAll} disabled={loading||done}
+      style={{padding:'4px 10px',borderRadius:10,border:'1px solid rgba(58,158,122,.3)',
+        background:'rgba(58,158,122,.1)',color:'#88D8B8',fontSize:10,fontWeight:600,cursor:'pointer'}}>
+      {loading?<Spinner size={10}/>:done?'✓ Done':'⊕ Check in all'}
+    </button>
+  );
+}
+
 function CheckInButton({child, familyId, currentUserId, checkerName, isSitter, onChecked}) {
   const [status, setStatus]   = useState(null); // 'in' | 'out' | null
   const [loading, setLoading] = useState(false);
@@ -5662,8 +6101,8 @@ function SitterDashboard({session,onSignOut}) {
           <div className="leaf" style={{fontSize:22,filter:"drop-shadow(0 0 10px rgba(58,158,122,.4))"}}>➿</div>
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{fontSize:12,color:"var(--text-faint)",display:"none"}} className="hide-mobile-name">{name}</div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <NotificationCenter userId={sitterId}/>
           <button className="bg" style={{padding:"6px 12px",fontSize:12}} onClick={onSignOut}>Sign out</button>
         </div>
       </div>
@@ -5707,6 +6146,7 @@ function ParentDashboard({session,onSignOut}) {
   const [showCheckinHistory,setShowCheckinHistory]=useState(false);
   const [showFindSitter,setShowFindSitter]=useState(false);
   const [showIconPicker,setShowIconPicker]=useState(false);
+  const [showOnboarding,setShowOnboarding]=useState(false);
 
   const load = useCallback(async()=>{
     setLoading(true);
@@ -5722,6 +6162,11 @@ function ParentDashboard({session,onSignOut}) {
     const sittersList=(fsRows||[]).map(r=>({...r.sitters,connection_status:r.status})).filter(Boolean);
     const famWithSitters = fam ? {...fam, sitters_list:sittersList, sitter_name:sittersList[0]?.name||'Sitter'} : fam;
     setFamily(famWithSitters);setChildren(kids||[]);setMembers(mems||[]);
+    // Show onboarding for new families with no children and no sitters
+    if(famWithSitters && !(kids||[]).length && !(sittersList||[]).length) {
+      const seen = localStorage.getItem(`ll_onboarded_family_${famWithSitters.id}`);
+      if(!seen) setShowOnboarding(true);
+    }
     setLoading(false);
   },[session.user.id]);
 
@@ -5820,8 +6265,8 @@ function ParentDashboard({session,onSignOut}) {
           <div className="leaf" style={{fontSize:22,filter:"drop-shadow(0 0 10px rgba(58,158,122,.4))"}}>➿</div>
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{fontSize:12,color:"var(--text-faint)",display:"none"}} className="hide-mobile-name">{name}</div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <NotificationCenter userId={session.user.id}/>
           <button className="bg" style={{padding:"6px 12px",fontSize:12}} onClick={onSignOut}>Sign out</button>
         </div>
       </div>
@@ -5950,6 +6395,13 @@ function ParentDashboard({session,onSignOut}) {
                   <FamilyIconPicker open={showIconPicker} onClose={()=>setShowIconPicker(false)}
                     familyId={family.id} current={family.icon||"👨‍👩‍👧"}
                     onSaved={icon=>{setFamily(f=>({...f,icon}));setShowIconPicker(false);}}/>
+                  <FamilyOnboarding open={showOnboarding} onClose={()=>{
+                    localStorage.setItem(`ll_onboarded_family_${family.id}`,'1');
+                    setShowOnboarding(false);load();
+                  }} familyId={family.id} familyName={family.name} onDone={()=>{
+                    localStorage.setItem(`ll_onboarded_family_${family.id}`,'1');
+                    setShowOnboarding(false);load();
+                  }}/>
                   {reviewTarget&&<LeaveReviewModal
                     open={!!reviewTarget} onClose={()=>setReviewTarget(null)}
                     sitterId={reviewTarget.sitterId} sitterName={reviewTarget.sitterName}
@@ -5967,7 +6419,9 @@ function ParentDashboard({session,onSignOut}) {
                       {members.map(m=>(
                         <div key={m.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"var(--card-bg)",borderRadius:12,border:"1px solid rgba(255,255,255,.06)"}}>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            <span style={{fontSize:22}}>{m.avatar||"👤"}</span>
+                            {m.photo_url
+                              ?<img src={m.photo_url} style={{width:28,height:28,borderRadius:8,objectFit:"cover"}} alt={m.name}/>
+                              :<span style={{fontSize:22}}>{m.avatar||"👤"}</span>}
                             <div>
                               <div style={{fontSize:13,fontWeight:500}}>{m.name}{m.user_id===session.user.id&&<span style={{fontSize:10,color:"var(--text-faint)",marginLeft:6}}>(you)</span>}</div>
                               <div style={{fontSize:11,color:"var(--text-faint)"}}>{m.email}</div>
