@@ -758,6 +758,75 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
 
 // ─── Invite Family Modal ──────────────────────────────────────────────────────
 
+// ─── Family Icon Picker ──────────────────────────────────────────────────────
+const FAMILY_ICONS = [
+  // Families
+  "👨‍👩‍👧","👨‍👩‍👦","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧",
+  "👩‍👧","👩‍👦","👨‍👧","👨‍👦","👩‍👧‍👦","👩‍👦‍👦","👩‍👧‍👧","👨‍👧‍👦",
+  // Homes
+  "🏠","🏡","🏰","🏯","🛖","⛺","🏕️",
+  // Nature & flowers
+  "🌻","🌸","🌺","🌹","🌷","🌿","🍀","🌳","🌲","🌴",
+  // Animals
+  "🐶","🐱","🐻","🦁","🐼","🦊","🐰","🦋","🐝","🦜",
+  // Stars & sky
+  "⭐","🌟","✨","🌙","☀️","🌈","❄️","🔥",
+  // Hearts & misc
+  "❤️","💜","💙","💚","💛","🧡","🎈","🎀","🎁",
+];
+
+function FamilyIconPicker({open, onClose, familyId, current, onSaved}) {
+  const [selected, setSelected] = useState(current);
+  const [saving, setSaving]     = useState(false);
+
+  useEffect(()=>{ if(open) setSelected(current); },[open,current]);
+
+  async function save() {
+    setSaving(true);
+    await supabase.from('families').update({icon: selected}).eq('id', familyId);
+    setSaving(false);
+    onSaved(selected);
+  }
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:6}}>
+        Family Icon
+      </div>
+      <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:16}}>Choose an icon for your family.</p>
+
+      {/* Preview */}
+      <div style={{display:'flex',justifyContent:'center',marginBottom:20}}>
+        <div style={{width:72,height:72,borderRadius:20,background:'linear-gradient(135deg,#3A9E7A,#2A7A5A)',
+          display:'flex',alignItems:'center',justifyContent:'center',fontSize:38}}>
+          {selected}
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:20,maxHeight:280,overflowY:'auto'}}>
+        {FAMILY_ICONS.map(icon=>(
+          <button key={icon} type="button" onClick={()=>setSelected(icon)}
+            style={{width:44,height:44,borderRadius:12,fontSize:24,cursor:'pointer',
+              border:`2px solid ${selected===icon?'#7BAAEE':'rgba(255,255,255,.08)'}`,
+              background:selected===icon?'rgba(111,163,232,.15)':'rgba(255,255,255,.03)',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              transition:'border-color .15s'}}>
+            {icon}
+          </button>
+        ))}
+      </div>
+
+      <div style={{display:'flex',gap:10}}>
+        <button className="bp full" onClick={save} disabled={saving||selected===current}>
+          {saving?<Spinner/>:'Save Icon'}
+        </button>
+        <button className="bg" onClick={onClose}>Cancel</button>
+      </div>
+    </Modal>
+  );
+}
+
 // ─── Find Sitter Modal (family side) ────────────────────────────────────────
 function FindSitterModal({open, onClose, familyId, familyName, onRequested}) {
   const [query, setQuery]     = useState('');
@@ -5279,6 +5348,7 @@ function ParentDashboard({session,onSignOut}) {
   const [reviewTarget,setReviewTarget]=useState(null); // {sitterId,sitterName}
   const [showCheckinHistory,setShowCheckinHistory]=useState(false);
   const [showFindSitter,setShowFindSitter]=useState(false);
+  const [showIconPicker,setShowIconPicker]=useState(false);
 
   const load = useCallback(async()=>{
     setLoading(true);
@@ -5423,7 +5493,14 @@ function ParentDashboard({session,onSignOut}) {
                 {/* Family card */}
                 <div className="card fade-up" style={{padding:24,marginBottom:16}}>
                   <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
-                    <div style={{width:48,height:48,borderRadius:14,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>👨‍👩‍👧</div>
+                    {isAdmin
+                      ? <button onClick={()=>setShowIconPicker(true)} title="Change family icon"
+                          style={{width:48,height:48,borderRadius:14,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0,border:"none",cursor:"pointer",position:"relative"}}>
+                          {family.icon||"👨‍👩‍👧"}
+                          <span style={{position:"absolute",bottom:-2,right:-2,fontSize:10,background:"var(--card-bg)",borderRadius:"50%",width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid var(--border)"}}>✏️</span>
+                        </button>
+                      : <div style={{width:48,height:48,borderRadius:14,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{family.icon||"👨‍👩‍👧"}</div>
+                    }
                     <div style={{flex:1,minWidth:0}}>
                       {isAdmin
                         ?<FamilyNameEditor familyId={family.id} name={family.name} onSaved={n=>{setFamily(f=>({...f,name:n}));}}/>
@@ -5509,6 +5586,9 @@ function ParentDashboard({session,onSignOut}) {
                     familyId={family.id} children={children}/>
                   <FindSitterModal open={showFindSitter} onClose={()=>setShowFindSitter(false)}
                     familyId={family.id} familyName={family.name} onRequested={load}/>
+                  <FamilyIconPicker open={showIconPicker} onClose={()=>setShowIconPicker(false)}
+                    familyId={family.id} current={family.icon||"👨‍👩‍👧"}
+                    onSaved={icon=>{setFamily(f=>({...f,icon}));setShowIconPicker(false);}}/>
                   {reviewTarget&&<LeaveReviewModal
                     open={!!reviewTarget} onClose={()=>setReviewTarget(null)}
                     sitterId={reviewTarget.sitterId} sitterName={reviewTarget.sitterName}
