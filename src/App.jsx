@@ -757,6 +757,101 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
 }
 
 // ─── Invite Family Modal ──────────────────────────────────────────────────────
+
+// ─── Find Sitter Modal (family side) ────────────────────────────────────────
+function FindSitterModal({open, onClose, familyId, familyName, onRequested}) {
+  const [query, setQuery]     = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [sent, setSent]       = useState({});
+  const [alert, setAlert]     = useState(null);
+
+  useEffect(()=>{ if(!open){setQuery('');setResults([]);setSent({});setAlert(null);} },[open]);
+
+  async function search(e) {
+    e.preventDefault();
+    if(!query.trim()) return;
+    setSearching(true); setAlert(null);
+    const {data} = await supabase.from('sitters')
+      .select('id,name,username,bio,avatar_url,hourly_rate_min,hourly_rate_max')
+      .eq('public_profile', true)
+      .or(`username.ilike.%${query.trim()}%,name.ilike.%${query.trim()}%`)
+      .limit(8);
+    setResults(data||[]);
+    if(!data?.length) setAlert({t:'i',m:'No sitters found. Try a different name or username.'});
+    setSearching(false);
+  }
+
+  async function sendRequest(sitter) {
+    // Check if already connected/requested
+    const {data:existing} = await supabase.from('family_sitters')
+      .select('id,status').eq('family_id', familyId).eq('sitter_id', sitter.id).maybeSingle();
+    if(existing && existing.status !== 'inactive') {
+      setSent(s=>({...s,[sitter.id]: existing.status==='active'?'connected':'requested'}));
+      return;
+    }
+    const {error} = existing
+      ? await supabase.from('family_sitters').update({status:'requested'}).eq('id',existing.id)
+      : await supabase.from('family_sitters').insert({family_id:familyId, sitter_id:sitter.id, status:'requested', initiated_by:'family'});
+    if(!error) {
+      setSent(s=>({...s,[sitter.id]:'requested'}));
+      // Send push to sitter
+      sendPushNotification([sitter.id], `New connection request from ${familyName}`,
+        'Tap to view and accept.', '/?portal=sitter', 'new_request');
+      onRequested?.();
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:6}}>Find a Sitter</div>
+      <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:16,lineHeight:1.6}}>Search by name or username to send a connection request.</p>
+      {alert&&<div className={`al al-${alert.t}`} style={{marginBottom:12}}>{alert.m}</div>}
+      <form onSubmit={search} style={{display:'flex',gap:8,marginBottom:16}}>
+        <input className="fi" value={query} onChange={e=>setQuery(e.target.value)}
+          placeholder="Name or @username" style={{marginBottom:0,flex:1}}/>
+        <button type="submit" className="bp" style={{flexShrink:0}} disabled={searching}>
+          {searching?<Spinner size={14}/>:'Search'}
+        </button>
+      </form>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {results.map(s=>{
+          const status = sent[s.id];
+          return (
+            <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',
+              background:'var(--card-bg)',borderRadius:12,border:'1px solid var(--border)'}}>
+              <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',
+                background:'var(--input-bg)',border:'1px solid var(--border)',
+                display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>
+                {s.avatar_url?<img src={s.avatar_url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={s.name}/>:'➿'}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600}}>{s.name}</div>
+                {s.username&&<div style={{fontSize:11,color:'var(--text-faint)'}}>@{s.username}</div>}
+                {(s.hourly_rate_min||s.hourly_rate_max)&&(
+                  <div style={{fontSize:11,color:'var(--text-faint)'}}>
+                    ${s.hourly_rate_min||'?'}–${s.hourly_rate_max||'?'}/hr
+                  </div>
+                )}
+              </div>
+              {status==='connected'
+                ? <span className="sb sb-a" style={{fontSize:10}}>Connected</span>
+                : status==='requested'
+                  ? <span className="sb sb-p" style={{fontSize:10}}>Requested</span>
+                  : <button className="bp" style={{fontSize:11,padding:'5px 12px',flexShrink:0}}
+                      onClick={()=>sendRequest(s)}>
+                      + Connect
+                    </button>
+              }
+            </div>
+          );
+        })}
+      </div>
+      <button className="bg" style={{width:'100%',marginTop:16}} onClick={onClose}>Close</button>
+    </Modal>
+  );
+}
+
 function InviteFamilyModal({open,onClose,sitterId,sitterName,onInvited}) {
   const [familyName,setFamilyName]   = useState("");
   const [adminEmail,setAdminEmail]   = useState("");
@@ -1023,6 +1118,70 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
   );
 }
 
+
+// ─── Connection Requests (sitter side) ──────────────────────────────────────
+function ConnectionRequests({sitterId, onUpdate}) {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(()=>{ load(); },[sitterId]);
+
+  async function load() {
+    setLoading(true);
+    const {data} = await supabase.from('family_sitters')
+      .select('id,family_id,families(id,name,admin_email)')
+      .eq('sitter_id', sitterId)
+      .eq('status', 'requested');
+    setRequests(data||[]);
+    setLoading(false);
+  }
+
+  async function respond(id, familyId, accept) {
+    if(accept) {
+      // Activate the connection
+      await supabase.from('family_sitters').update({status:'active'}).eq('id',id);
+      // Activate the family if still pending
+      await supabase.from('families').update({status:'active'}).eq('id',familyId).eq('status','pending');
+    } else {
+      await supabase.from('family_sitters').update({status:'inactive'}).eq('id',id);
+    }
+    setRequests(r=>r.filter(req=>req.id!==id));
+    onUpdate?.();
+  }
+
+  if(loading || requests.length===0) return null;
+
+  return (
+    <div className="card" style={{padding:'16px 18px',marginBottom:14,border:'1px solid rgba(111,163,232,.2)',background:'rgba(111,163,232,.04)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+        <span style={{fontSize:16}}>🤝</span>
+        <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600}}>
+          Connection Requests
+        </span>
+        <span style={{background:'#3A6FD4',color:'#fff',borderRadius:'50%',width:18,height:18,
+          display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700}}>
+          {requests.length}
+        </span>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {requests.map(r=>(
+          <div key={r.id} style={{display:'flex',alignItems:'center',gap:10,
+            padding:'10px 12px',background:'var(--card-bg)',borderRadius:10,border:'1px solid var(--border)'}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:600}}>{r.families?.name||'A family'}</div>
+              <div style={{fontSize:11,color:'var(--text-faint)'}}>wants to connect with you</div>
+            </div>
+            <button className="bp" style={{fontSize:11,padding:'5px 12px'}}
+              onClick={()=>respond(r.id, r.family_id, true)}>✓ Accept</button>
+            <button className="bg" style={{fontSize:11,padding:'5px 10px'}}
+              onClick={()=>respond(r.id, r.family_id, false)}>✕</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Families Tab (Sitter) ────────────────────────────────────────────────────
 function FamiliesTab({sitterId,sitterName}) {
   const [families,setFamilies]   = useState([]);
@@ -1053,6 +1212,7 @@ function FamiliesTab({sitterId,sitterName}) {
 
   return (
     <div>
+      <ConnectionRequests sitterId={sitterId} onUpdate={load}/>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600}}>
           Families <span style={{fontSize:14,color:"var(--text-faint)",fontFamily:"'DM Sans',sans-serif",fontWeight:400}}>({families.length})</span>
@@ -4989,7 +5149,7 @@ function SitterDashboard({session,onSignOut}) {
   const [showCheckinHistory,setShowCheckinHistory]=useState(false);
   const [onboarded,setOnboarded]=useState(!!localStorage.getItem(`ll_onboarded_${session.user.id}`));
   const [tab,setTab]=useState("families");
-  const [unread,setUnread]=useState({messages:0,feed:0,eta:0});
+  const [unread,setUnread]=useState({messages:0,feed:0,eta:0,requests:0});
 
   useEffect(()=>{
     if(onboarded) return;
@@ -5014,7 +5174,10 @@ function SitterDashboard({session,onSignOut}) {
         .select('id',{count:'exact',head:true})
         .neq('author_id',sitterId)
         .gt('created_at',lastSeenFeed);
-      setUnread({messages:msgCount||0,feed:feedCount||0});
+      const {count:reqCount} = await supabase.from('family_sitters')
+        .select('id',{count:'exact',head:true})
+        .eq('sitter_id',sitterId).eq('status','requested');
+      setUnread({messages:msgCount||0,feed:feedCount||0,requests:reqCount||0});
     }
     checkUnread();
     // Real-time updates
@@ -5027,6 +5190,10 @@ function SitterDashboard({session,onSignOut}) {
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'eta_notifications'},()=>{
         setUnread(u=>({...u,eta:u.eta+1}));
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'family_sitters'},(p)=>{
+        if(p.new.sitter_id===sitterId && p.new.status==='requested')
+          setUnread(u=>({...u,requests:u.requests+1}));
       }).subscribe();
     return()=>supabase.removeChannel(ch);
   },[sitterId]);
@@ -5050,7 +5217,7 @@ function SitterDashboard({session,onSignOut}) {
   useEffect(()=>{ subscribeToPush(sitterId); },[sitterId]);
 
   const NAV=[
-    {id:"families",icon:"👨‍👩‍👧",label:"Families",badge:unread.eta},
+    {id:"families",icon:"👨‍👩‍👧",label:"Families",badge:(unread.eta||0)+(unread.requests||0)},
     {id:"feed",icon:"🌸",label:"Feed",badge:unread.feed},
     {id:"invoices",icon:"💰",label:"Invoices"},
     {id:"messages",icon:"💬",label:"Messages",badge:unread.messages},
@@ -5111,6 +5278,7 @@ function ParentDashboard({session,onSignOut}) {
   const [name,setName]=useState(session.user.user_metadata?.name||session.user.email.split("@")[0]);
   const [reviewTarget,setReviewTarget]=useState(null); // {sitterId,sitterName}
   const [showCheckinHistory,setShowCheckinHistory]=useState(false);
+  const [showFindSitter,setShowFindSitter]=useState(false);
 
   const load = useCallback(async()=>{
     setLoading(true);
@@ -5299,7 +5467,11 @@ function ParentDashboard({session,onSignOut}) {
 
                   {/* Sitters */}
                   <div style={{marginBottom:20}}>
-                    <SectionLabel>Sitters</SectionLabel>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                      <SectionLabel>Sitters</SectionLabel>
+                      {isAdmin&&<button className="bp" style={{padding:'4px 10px',fontSize:11}}
+                        onClick={()=>setShowFindSitter(true)}>+ Find Sitter</button>}
+                    </div>
                     {(family?.sitters_list||[]).length===0
                       ?<div style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>No sitters connected yet.</div>
                       :<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -5324,9 +5496,9 @@ function ParentDashboard({session,onSignOut}) {
                                 ⭐ Review
                               </button>
                             )}
-                            <span className={`sb sb-${s.connection_status==="active"?"a":"p"}`} style={{fontSize:9}}>
-                              {s.connection_status==="active"?"Active":"Pending"}
-                            </span>
+                            {s.connection_status!=="active"&&(
+                              <span className="sb sb-p" style={{fontSize:9}}>Pending</span>
+                            )}
                           </div>
                           </div>
                         ))}
@@ -5335,6 +5507,8 @@ function ParentDashboard({session,onSignOut}) {
                   </div>
                   <CheckinHistoryModal open={showCheckinHistory} onClose={()=>setShowCheckinHistory(false)}
                     familyId={family.id} children={children}/>
+                  <FindSitterModal open={showFindSitter} onClose={()=>setShowFindSitter(false)}
+                    familyId={family.id} familyName={family.name} onRequested={load}/>
                   {reviewTarget&&<LeaveReviewModal
                     open={!!reviewTarget} onClose={()=>setReviewTarget(null)}
                     sitterId={reviewTarget.sitterId} sitterName={reviewTarget.sitterName}
