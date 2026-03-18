@@ -2838,7 +2838,7 @@ function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyC
       hours: Math.round((s.hours||0)*100)/100,
       rate: 0, // sitter fills in rate
       amount: 0,
-      description: `${s.children?.name||'Child'} · ${fmtDate(s.checked_in_at)} ${fmtTime(s.checked_in_at)}–${fmtTime(s.checked_out_at)}`,
+      description: `${s.children?.name||'Child'} · ${fmtDateTime(s.checked_in_at)} ${fmtTime(s.checked_in_at)}–${fmtTime(s.checked_out_at)}`,
     }));
     setItems(imported.length?imported:[blankItem()]);
     setShowSessions(false);
@@ -2935,7 +2935,7 @@ function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyC
                     <div style={{flex:1}}>
                       <span style={{fontWeight:500}}>{s.children?.name}</span>
                       <span style={{color:'var(--text-faint)',marginLeft:6}}>
-                        {fmtDate(s.checked_in_at)} · {fmtHours(s.hours)}
+                        {fmtDateTime(s.checked_in_at)} · {fmtHours(s.hours)}
                       </span>
                     </div>
                   </div>
@@ -5217,7 +5217,7 @@ function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
 
-function fmtDate(iso) {
+function fmtDateTime(iso) {
   if(!iso) return '';
   return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
@@ -5420,7 +5420,7 @@ function SessionsList({familyId, childrenMap, dateRange='week', showTitle=true})
           <div style={{flex:1}}>
             <div style={{fontSize:12,fontWeight:600,color:'#F5C098'}}>Missing checkout</div>
             <div style={{fontSize:11,color:'var(--text-faint)'}}>
-              {s.children?.name} checked in {fmtDate(s.checked_in_at)} at {fmtTime(s.checked_in_at)} — no checkout recorded
+              {s.children?.name} checked in {fmtDateTime(s.checked_in_at)} at {fmtTime(s.checked_in_at)} — no checkout recorded
             </div>
           </div>
           <button className="bp" style={{fontSize:10,padding:'4px 10px',flexShrink:0}}
@@ -5480,7 +5480,7 @@ function SessionsList({familyId, childrenMap, dateRange='week', showTitle=true})
                         borderRadius:8,background:'rgba(58,158,122,.1)',border:'1px solid rgba(58,158,122,.2)',
                         color:'#88D8B8',fontSize:10,cursor:'pointer'}}>
                       <span>▶ In</span>
-                      <span style={{fontWeight:600}}>{fmtDate(s.checked_in_at)} {fmtTime(s.checked_in_at)}</span>
+                      <span style={{fontWeight:600}}>{fmtDateTime(s.checked_in_at)} {fmtTime(s.checked_in_at)}</span>
                       {s.checkin_edited&&<span style={{opacity:.6}}>·edited</span>}
                       <span style={{opacity:.5}}>✏️</span>
                     </button>
@@ -5490,7 +5490,7 @@ function SessionsList({familyId, childrenMap, dateRange='week', showTitle=true})
                         borderRadius:8,background:'rgba(192,80,80,.1)',border:'1px solid rgba(192,80,80,.2)',
                         color:'#F5AAAA',fontSize:10,cursor:'pointer'}}>
                       <span>■ Out</span>
-                      <span style={{fontWeight:600}}>{fmtDate(s.checked_out_at)} {fmtTime(s.checked_out_at)}</span>
+                      <span style={{fontWeight:600}}>{fmtDateTime(s.checked_out_at)} {fmtTime(s.checked_out_at)}</span>
                       {s.checkout_edited&&<span style={{opacity:.6}}>·edited</span>}
                       <span style={{opacity:.5}}>✏️</span>
                     </button>
@@ -5550,7 +5550,7 @@ function HoursSummaryCard({familyId, children}) {
         <div key={s.checkin_id} style={{fontSize:11,color:'#F5C098',marginBottom:4,
           padding:'6px 10px',background:'rgba(200,120,74,.08)',borderRadius:8,
           border:'1px solid rgba(200,120,74,.2)'}}>
-          ⚠️ {s.children?.name} — missing checkout from {fmtDate(s.checked_in_at)}
+          ⚠️ {s.children?.name} — missing checkout from {fmtDateTime(s.checked_in_at)}
         </div>
       ))}
       {openSessions.map(s=>(
