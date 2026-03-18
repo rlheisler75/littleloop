@@ -2036,11 +2036,13 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
         {conversation_id:conv.id, user_id:currentUserId, participant_name:isSitter?sitterName:"You", participant_avatar:isSitter?"➿":sitterAvatar||"👤", is_sitter:isSitter},
         ...selected.map(m=>({conversation_id:conv.id, user_id:m.user_id, participant_name:m.name, participant_avatar:m.avatar||"👤", is_sitter:false})),
       ];
-      // If family member starting, also add sitter
+      // If family member starting, add selected sitters (or all if none selected)
       if(!isSitter){
-        const {data:fsRows}=await supabase.from("family_sitters").select("sitter_id, sitters(name,avatar_url)").eq("family_id",selectedFamily||familyId).eq("status","active");
-        for(const fs of (fsRows||[])){
-          participants.push({conversation_id:conv.id, user_id:fs.sitter_id, participant_name:fs.sitters?.name||"Sitter", participant_avatar:fs.sitters?.avatar_url||"➿", is_sitter:true});
+        const sittersToAdd = selectedSitters.length>0
+          ? availableSitters.filter(s=>selectedSitters.includes(s.id))
+          : availableSitters; // fallback: add all if none selected
+        for(const s of sittersToAdd){
+          participants.push({conversation_id:conv.id, user_id:s.id, participant_name:s.name||"Sitter", participant_avatar:s.avatar_url||"➿", is_sitter:true});
         }
       }
       const {error:partErr}=await supabase.from("conversation_participants").insert(participants);
@@ -2052,12 +2054,15 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
   }
 
   const [availableMembers, setAvailableMembers] = useState([]);
+  const [availableSitters, setAvailableSitters] = useState([]);
+  const [selectedSitters, setSelectedSitters] = useState([]);
   const [selectedFamily, setSelectedFamily] = useState(familyId||"");
 
   useEffect(()=>{
     if(!open) return;
     setSelectedFamily(familyId||"");
     setSelected([]);
+    setSelectedSitters([]);
   },[open,familyId]);
 
   useEffect(()=>{
@@ -2066,8 +2071,17 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
       const {data}=await supabase.from("members").select("*").eq("family_id",selectedFamily);
       setAvailableMembers((data||[]).filter(m=>m.user_id&&m.user_id!==currentUserId&&["admin","member"].includes(m.role)));
     }
+    async function loadSitters(){
+      const {data}=await supabase.from("family_sitters")
+        .select("sitter_id, sitters(id,name,avatar_url)")
+        .eq("family_id",selectedFamily).eq("status","active");
+      setAvailableSitters((data||[]).map(r=>({id:r.sitter_id,...r.sitters})));
+      // If only one sitter, auto-select them
+      if((data||[]).length===1) setSelectedSitters([data[0].sitter_id]);
+    }
     loadMembers();
-  },[selectedFamily,currentUserId]);
+    if(!isSitter) loadSitters();
+  },[selectedFamily,currentUserId,isSitter]);
 
   // Available people to add (exclude current user)
   const available = availableMembers;
@@ -2089,10 +2103,38 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
             </select>
           </div>
         )}
+        {/* Sitter picker — only shown on family side when multiple sitters */}
+        {!isSitter&&availableSitters.length>1&&(
+          <div style={{marginBottom:14}}>
+            <SectionLabel>Message which sitter?</SectionLabel>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {availableSitters.map(s=>{
+                const sel=selectedSitters.includes(s.id);
+                return (
+                  <div key={s.id} onClick={()=>setSelectedSitters(prev=>sel?prev.filter(id=>id!==s.id):[...prev,s.id])}
+                    style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:10,cursor:"pointer",
+                      border:`1px solid ${sel?"#7BAAEE":"rgba(255,255,255,.1)"}`,
+                      background:sel?"rgba(111,163,232,.1)":"rgba(255,255,255,.03)"}}>
+                    <div style={{width:32,height:32,borderRadius:"50%",overflow:"hidden",
+                      background:"var(--card-bg)",border:"1px solid var(--border)",
+                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
+                      {s.avatar_url?<img src={s.avatar_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt={s.name}/>:"➿"}
+                    </div>
+                    <span style={{fontSize:13,fontWeight:500,flex:1}}>{s.name}</span>
+                    {sel&&<span style={{fontSize:14,color:"#7BAAEE"}}>✓</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {!isSitter&&availableSitters.length===0&&(
+          <div className="al al-i" style={{marginBottom:12}}>No connected sitters yet. Connect with a sitter from the Home tab first.</div>
+        )}
         <Field label="Title (optional)" value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Emma's schedule" required={false} autoComplete="off"/>
         <div style={{marginBottom:16}}>
           <SectionLabel>{isSitter?"Add family members":"Add more family members (optional)"}</SectionLabel>
-          {!isSitter&&<p style={{fontSize:11,color:"rgba(88,158,122,.8)",marginBottom:8}}>✓ Your sitter will be included automatically</p>}
+          {!isSitter&&availableSitters.length===1&&<p style={{fontSize:11,color:"rgba(88,158,122,.8)",marginBottom:8}}>✓ {availableSitters[0]?.name||"Your sitter"} will be included</p>}
           {available.length===0
             ?<p style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>{isSitter?"No family members available yet.":"No other members to add."}</p>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -2465,7 +2507,16 @@ function MessagesTab({currentUserId, isSitter, families=[], memberInfo, allMembe
               <div key={c.id} className="fc" onClick={()=>setSelectedConv(c.id)}
                 style={{padding:"14px 16px"}}>
                 <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
-                  <div style={{width:40,height:40,borderRadius:12,background:"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>💬</div>
+                  {(()=>{
+                    const sitterPart=parts.find(p=>p.is_sitter&&p.user_id!==currentUserId);
+                    const otherPart=parts.find(p=>p.user_id!==currentUserId);
+                    const showPart=sitterPart||otherPart;
+                    return showPart?.participant_avatar&&showPart.participant_avatar.startsWith('http')
+                      ?<img src={showPart.participant_avatar} style={{width:40,height:40,borderRadius:12,objectFit:"cover",flexShrink:0}} alt={showPart.participant_name}/>
+                      :<div style={{width:40,height:40,borderRadius:12,background:"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
+                        {showPart?.participant_avatar||"💬"}
+                      </div>;
+                  })()}
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:3}}>
                       <div style={{fontWeight:600,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
