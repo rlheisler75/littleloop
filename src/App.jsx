@@ -5,23 +5,40 @@ const VAPID_PUBLIC_KEY = 'BLj1J-8f4WT9C_ql5m1sX7GFWeCDWZwEbT99LcrvxlJyTdNMO3c1B2
 
 // ── Push Notifications ────────────────────────────────────────────────────────
 async function registerServiceWorker() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  if (!('serviceWorker' in navigator)) { console.warn('[Push] serviceWorker not supported'); return null; }
+  if (!('PushManager' in window)) { console.warn('[Push] PushManager not supported'); return null; }
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js');
-    // Tell waiting SW to activate silently on next navigation (avoids "site updated" notification)
-    if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+    // Check for existing registration first
+    const existing = await navigator.serviceWorker.getRegistration('/');
+    if (existing?.active) {
+      console.log('[Push] SW already active:', existing.active.scriptURL, 'state:', existing.active.state);
+      return existing;
+    }
+    console.log('[Push] Registering SW...');
+    const reg = await navigator.serviceWorker.register('/sw.js', {scope: '/'});
+    console.log('[Push] SW registered, state:', reg.installing?.state || reg.waiting?.state || reg.active?.state);
+    // Force new SW to activate immediately
+    if (reg.installing) {
+      await new Promise(resolve => {
+        reg.installing.addEventListener('statechange', function() {
+          if (this.state === 'activated') resolve();
+        });
+      });
+    }
+    if (reg.waiting) { reg.waiting.postMessage('SKIP_WAITING'); }
     reg.addEventListener('updatefound', () => {
       const newSW = reg.installing;
       if (newSW) {
         newSW.addEventListener('statechange', () => {
-          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            newSW.postMessage('SKIP_WAITING');
-          }
+          console.log('[Push] SW state change:', newSW.state);
+          if (newSW.state === 'installed') newSW.postMessage('SKIP_WAITING');
         });
       }
     });
+    await navigator.serviceWorker.ready;
+    console.log('[Push] SW ready, controller:', !!navigator.serviceWorker.controller);
     return reg;
-  } catch (e) { console.warn('SW registration failed:', e); return null; }
+  } catch (e) { console.error('[Push] SW registration failed:', e); return null; }
 }
 
 function b64urlToUint8(base64String) {
@@ -73,6 +90,15 @@ async function sendPushNotification(userIds, title, body, url, tag) {
 async function invokeNotification(data) {
   const body = data?.body ?? data;
   supabase.functions.invoke('send-notification', { body }).catch(console.error);
+}
+
+// Register SW immediately on page load — don't wait for login
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', {scope: '/'})
+      .then(reg => console.log('[SW] Registered on load:', reg.scope, 'active:', !!reg.active))
+      .catch(err => console.error('[SW] Failed on load:', err));
+  });
 }
 
 const supabase = createClient(
