@@ -1,37 +1,44 @@
-const CACHE_VERSION = 'littleloop-v3';
+const CACHE_VERSION = 'littleloop-v4';
 
-// ── Install ───────────────────────────────────────────────────────────────────
+// ── Install — skip waiting IMMEDIATELY ────────────────────────────────────────
 self.addEventListener('install', (e) => {
+  console.log('[SW v4] Installing...');
   e.waitUntil(
-    caches.open(CACHE_VERSION).then(cache =>
-      cache.addAll(['/icons/icon-192x192.png', '/icons/icon-96x96.png'])
-        .catch(() => {})
-    ).then(() => self.skipWaiting())
+    caches.open(CACHE_VERSION)
+      .then(cache => cache.addAll(['/icons/icon-192x192.png', '/icons/icon-96x96.png']).catch(()=>{}))
+      .then(() => {
+        console.log('[SW v4] Installed, skipping waiting');
+        return self.skipWaiting();
+      })
   );
 });
 
-// ── Activate ──────────────────────────────────────────────────────────────────
+// ── Activate — claim all clients immediately ───────────────────────────────────
 self.addEventListener('activate', (e) => {
+  console.log('[SW v4] Activating...');
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k))))
-      .then(() => clients.claim())
+      .then(() => {
+        console.log('[SW v4] Activated, claiming clients');
+        return self.clients.claim();
+      })
   );
 });
 
-// ── Push ──────────────────────────────────────────────────────────────────────
+// ── Push ───────────────────────────────────────────────────────────────────────
 self.addEventListener('push', (e) => {
-  console.log('[SW] Push received', e.data ? 'with data' : 'no data');
+  console.log('[SW v4] Push received!', e.data ? 'has data' : 'no data');
 
   let data = { title: '➿ littleloop', body: 'You have a new update.' };
 
   if (e.data) {
     try {
       const parsed = e.data.json();
-      console.log('[SW] Push parsed:', JSON.stringify(parsed));
+      console.log('[SW v4] Push data:', JSON.stringify(parsed));
       if (parsed.title) data = parsed;
     } catch(err) {
-      console.log('[SW] Push parse error:', err);
+      console.log('[SW v4] Parse error:', err);
       try { data.body = e.data.text() || data.body; } catch {}
     }
   }
@@ -42,27 +49,28 @@ self.addEventListener('push', (e) => {
     badge:    '/icons/icon-96x96.png',
     tag:      data.tag   || 'littleloop',
     data:     { url: data.url || '/', littleloop: true },
-    vibrate:  [100, 50, 100],
+    vibrate:  [200, 100, 200],
     renotify: true,
   };
 
   e.waitUntil(
     self.registration.showNotification(data.title || '➿ littleloop', options)
-      .then(() => console.log('[SW] Notification shown'))
-      .catch(err => console.error('[SW] showNotification error:', err))
+      .then(() => console.log('[SW v4] Notification shown!'))
+      .catch(err => console.error('[SW v4] showNotification failed:', err))
   );
 });
 
-// ── Notification click ────────────────────────────────────────────────────────
+// ── Notification click ─────────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (e) => {
+  console.log('[SW v4] Notification clicked');
   e.notification.close();
   const url = e.notification.data?.url || '/';
   e.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const c of list) {
-        if (c.url.includes('littleloop.xyz') && 'focus' in c) return c.focus();
+        if (c.url.includes('littleloop') && 'focus' in c) return c.focus();
       }
-      if (clients.openWindow) return clients.openWindow(url);
+      return clients.openWindow(url);
     })
   );
 });
