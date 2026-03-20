@@ -1,64 +1,49 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// ── Firebase Push Notifications ───────────────────────────────────────────────
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBfGko5kB7BeSy4kFzaAdfWQiG_Nk62SqU",
-  authDomain: "littleloop-aa558.firebaseapp.com",
-  projectId: "littleloop-aa558",
-  storageBucket: "littleloop-aa558.firebasestorage.app",
-  messagingSenderId: "1025731561016",
-  appId: "1:1025731561016:web:4d44b61dced529072f08cd",
-};
-// Firebase VAPID key (from Firebase Console → Project Settings → Cloud Messaging → Web Push certificates)
-const FIREBASE_VAPID_KEY = 'BC8hDE8RmkIYX3wYXsxzeNWoU4rr4Zp-0lJkzTKiowOHbHOBinKK_IdXm1j9gjINhC_gZMCK5_eN9YCLJVZt7qI';
+const VAPID_PUBLIC_KEY = 'BLj1J-8f4WT9C_ql5m1sX7GFWeCDWZwEbT99LcrvxlJyTdNMO3c1B2lBPdWzKDf17jJLYG8rdktppsYAVa33-Gg';
 
-let _fbMessaging = null;
-
-async function getFirebaseMessaging() {
-  if (_fbMessaging) return _fbMessaging;
+// ── Push Notifications ────────────────────────────────────────────────────────
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
   try {
-    const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
-    const { getMessaging, getToken, isSupported } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js');
-    const supported = await isSupported();
-    if (!supported) { console.warn('[Push] Firebase Messaging not supported'); return null; }
-    const fbApp = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
-    _fbMessaging = { messaging: getMessaging(fbApp), getToken };
-    return _fbMessaging;
-  } catch(e) {
-    console.error('[Push] Firebase import failed:', e);
-    return null;
-  }
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    return reg;
+  } catch (e) { console.warn('SW registration failed:', e); return null; }
+}
+
+function b64urlToUint8(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
 async function subscribeToPush(userId) {
   try {
-    const {data:{session}} = await supabase.auth.getSession();
-    if (!session) return;
+    const reg = await registerServiceWorker();
+    if (!reg) return;
 
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') { console.warn('[Push] Permission denied'); return; }
+    // Check existing subscription
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: b64urlToUint8(VAPID_PUBLIC_KEY),
+      });
+    }
 
-    const reg = await navigator.serviceWorker.ready;
-    const fb = await getFirebaseMessaging();
-    if (!fb) { console.warn('[Push] Firebase not available'); return; }
-
-    const fcmToken = await fb.getToken(fb.messaging, {
-      vapidKey: FIREBASE_VAPID_KEY,
-      serviceWorkerRegistration: reg,
-    });
-    if (!fcmToken) { console.warn('[Push] No FCM token returned'); return; }
-    console.log('[Push] Firebase token:', fcmToken.slice(0, 20) + '...');
-
+    // Store in DB (upsert)
     const {error} = await supabase.from('push_subscriptions').upsert({
       user_id: userId,
-      fcm_token: fcmToken,
-      subscription: { fcm_token: fcmToken, type: 'firebase' },
+      subscription: sub.toJSON(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
-    if (error) console.error('[Push] Save failed:', error);
-    else console.log('[Push] Firebase token saved for', userId);
-  } catch(e) { console.warn('[Push] Subscribe failed:', e); }
+    if (error) console.error('Push subscription save failed:', error);
+    else console.log('Push subscription saved for', userId);
+  } catch (e) { console.warn('Push subscribe failed:', e); }
 }
 
 async function sendPushNotification(userIds, title, body, url, tag) {
@@ -71,15 +56,6 @@ async function sendPushNotification(userIds, title, body, url, tag) {
 async function invokeNotification(data) {
   const body = data?.body ?? data;
   supabase.functions.invoke('send-notification', { body }).catch(console.error);
-}
-
-// Register SW immediately on page load — don't wait for login
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', {scope: '/'})
-      .then(reg => console.log('[SW] Registered on load:', reg.scope, 'active:', !!reg.active))
-      .catch(err => console.error('[SW] Failed on load:', err));
-  });
 }
 
 const supabase = createClient(
@@ -194,7 +170,6 @@ const CSS = `
   .fl{display:block;font-size:10px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;color:var(--text-faint,rgba(255,255,255,.3));margin-bottom:7px}
   .fi{width:100%;padding:11px 14px;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--input-border,rgba(255,255,255,.09));border-radius:10px;color:var(--text,#E4EAF4);font-size:13px;outline:none;transition:all .2s;margin-bottom:14px}
   .fi::placeholder{color:var(--text-faint,rgba(255,255,255,.2))}.fi:focus{border-color:rgba(111,163,232,.45);background:rgba(111,163,232,.06);box-shadow:0 0 0 3px rgba(111,163,232,.1)}
-  select.fi option{background:var(--body,#0C1420);color:var(--text,#E4EAF4)}
   .bp{padding:11px 20px;background:var(--accent-grad,linear-gradient(135deg,#3A6FD4,#2550A8));border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
   .bp:hover:not(:disabled){background:linear-gradient(135deg,#4A7FE4,#3560B8);transform:translateY(-1px);box-shadow:0 6px 20px rgba(58,111,212,.3)}.bp:disabled{opacity:.5;cursor:not-allowed}.bp.full{width:100%;justify-content:center}
   .bg{padding:9px 16px;background:transparent;border:1px solid var(--border,rgba(255,255,255,.12));border-radius:10px;color:var(--text-dim,rgba(255,255,255,.5));font-size:13px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
@@ -279,30 +254,8 @@ function Confirm({open,title,message,onConfirm,onCancel,danger=false}) {
 }
 
 const ROLE_LABELS = {admin:"Admin",member:"Member",feed_only:"Feed Only",pickup:"Pickup"};
-const AVATARS = [
-  // Default
-  "👤",
-  // Light skin
-  "👩🏻","👨🏻","👧🏻","👦🏻","🧑🏻","👵🏻","👴🏻",
-  // Medium-light skin
-  "👩🏼","👨🏼","👧🏼","👦🏼","🧑🏼","👵🏼","👴🏼",
-  // Medium skin
-  "👩🏽","👨🏽","👧🏽","👦🏽","🧑🏽","👵🏽","👴🏽",
-  // Medium-dark skin
-  "👩🏾","👨🏾","👧🏾","👦🏾","🧑🏾","👵🏾","👴🏾",
-  // Dark skin
-  "👩🏿","👨🏿","👧🏿","👦🏿","🧑🏿","👵🏿","👴🏿",
-  // Hair styles
-  "👩‍🦱","👨‍🦱","👩‍🦰","👨‍🦰","👩‍🦳","👨‍🦳","🧔","🧔‍♀️",
-];
-const CHILD_AVATARS = [
-  // Animals
-  "🐻","🦁","🐯","🦊","🐼","🐸","🐶","🐱","🐰","🐨","🐮","🐷",
-  // Dinosaurs 🦕
-  "🦕","🦖","🐉","🐲",
-  // Fantasy & space
-  "🦄","🚀","🌈","⭐","🌟","🎈","🦋","🌺","🌸","🍀",
-];
+const AVATARS = ["👤","👩","👨","👵","👴","🧑","👦","👧","🧒","🧔","👩‍🦱","👨‍🦱","👩‍🦰","👨‍🦰","👩‍🦳","👨‍🦳"];
+const CHILD_AVATARS = ["🌟","🦋","🐻","🦄","🐸","🐼","🦊","🐯","🐶","🐱","🌈","🚀","⭐","🎈","🌺","🦁"];
 
 // ─── Section header ───────────────────────────────────────────────────────────
 function SectionLabel({children}) {
@@ -666,7 +619,7 @@ function ChildModal({open,onClose,familyId,child,onSaved}) {
 }
 
 // ─── Member Modal ─────────────────────────────────────────────────────────────
-function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,canEditRole=true}) {
+function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved}) {
   const isEdit = !!member;
   const [name,setName]   = useState(member?.name||"");
   const [email,setEmail] = useState(member?.email||"");
@@ -675,14 +628,11 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
   const [loading,setLoading] = useState(false);
   const [alert,setAlert] = useState(null);
   const [confirmDel,setConfirmDel] = useState(false);
-  const [photoUrl,setPhotoUrl] = useState(member?.photo_url||null);
-  const [avatarUploading,setAvatarUploading] = useState(false);
 
   useEffect(()=>{
     if(open){
       setName(member?.name||"");setEmail(member?.email||"");
-      setRole(member?.role||"member");setAv(member?.avatar||"👤");
-      setPhotoUrl(member?.photo_url||null);setAlert(null);
+      setRole(member?.role||"member");setAv(member?.avatar||"👤");setAlert(null);
     }
   },[open,member]);
 
@@ -690,7 +640,7 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
     e.preventDefault();setAlert(null);setLoading(true);
     let error;
     if(isEdit){
-      ({error}=await supabase.from("members").update({name,role,avatar,photo_url:photoUrl}).eq("id",member.id));
+      ({error}=await supabase.from("members").update({name,role,avatar}).eq("id",member.id));
     } else {
       // Insert member row
       const {data:newMem,error:insErr}=await supabase.from("members").insert({
@@ -727,67 +677,30 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
 
           <div style={{marginBottom:14}}>
             <SectionLabel>Avatar</SectionLabel>
-            {/* Photo upload */}
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-              <div style={{width:48,height:48,borderRadius:14,overflow:"hidden",
-                background:"var(--card-bg)",border:"1px solid var(--border)",
-                display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>
-                {photoUrl
-                  ?<img src={photoUrl} style={{width:"100%",height:"100%",objectFit:"cover"}} alt="avatar"/>
-                  :avatar}
-              </div>
-              <div>
-                <label style={{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 12px",
-                  borderRadius:10,background:"var(--card-bg)",border:"1px solid var(--border)",
-                  cursor:"pointer",fontSize:12,color:"var(--text-dim)"}}>
-                  📷 Upload photo
-                  <input type="file" accept="image/*" style={{display:"none"}}
-                    onChange={async e=>{
-                      const f=e.target.files?.[0]; if(!f) return;
-                      if(f.size>5*1024*1024){alert("Photo must be under 5MB");return;}
-                      setAvatarUploading(true);
-                      const ext=f.name.split(".").pop();
-                      const path=`members/${member?.id||Date.now()}.${ext}`;
-                      const {error:upErr}=await supabase.storage.from("member-avatars").upload(path,f,{upsert:true,contentType:f.type});
-                      if(!upErr){
-                        const {data:urlData}=supabase.storage.from("member-avatars").getPublicUrl(path);
-                        setPhotoUrl(urlData?.publicUrl||null);
-                      }
-                      setAvatarUploading(false);
-                    }}/>
-                </label>
-                {avatarUploading&&<span style={{fontSize:11,color:"var(--text-faint)",marginLeft:8}}><Spinner size={10}/> Uploading…</span>}
-                {photoUrl&&<button type="button" onClick={()=>setPhotoUrl(null)}
-                  style={{marginLeft:8,background:"none",border:"none",fontSize:11,color:"var(--text-faint)",cursor:"pointer",textDecoration:"underline"}}>Remove</button>}
-              </div>
-            </div>
-            {/* Emoji fallback */}
-            {!photoUrl&&<div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
               {AVATARS.map(a=>(
                 <button key={a} type="button" onClick={()=>setAv(a)}
                   style={{width:36,height:36,borderRadius:10,border:`2px solid ${avatar===a?"#7BAAEE":"rgba(255,255,255,.1)"}`,background:avatar===a?"rgba(111,163,232,.15)":"rgba(255,255,255,.04)",cursor:"pointer",fontSize:20}}>
                   {a}
                 </button>
               ))}
-            </div>}
+            </div>
           </div>
 
-          {canEditRole&&(
-            <div style={{marginBottom:14}}>
-              <SectionLabel>Role</SectionLabel>
-              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                {Object.entries(ROLE_LABELS).map(([r,l])=>(
-                  <button key={r} type="button" onClick={()=>setRole(r)}
-                    style={{padding:"7px 14px",borderRadius:20,border:`1px solid ${role===r?"#7BAAEE":"rgba(255,255,255,.12)"}`,background:role===r?"rgba(111,163,232,.15)":"rgba(255,255,255,.04)",color:role===r?"#7BAAEE":"rgba(255,255,255,.5)",fontSize:12,cursor:"pointer"}}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-              <div style={{fontSize:11,color:"var(--text-faint)",marginTop:8,lineHeight:1.6}}>
-                <strong style={{color:"var(--text-dim)"}}>Admin</strong> — full access · <strong style={{color:"var(--text-dim)"}}>Member</strong> — view all · <strong style={{color:"var(--text-dim)"}}>Feed Only</strong> — feed tab · <strong style={{color:"var(--text-dim)"}}>Pickup</strong> — messages only
-              </div>
+          <div style={{marginBottom:14}}>
+            <SectionLabel>Role</SectionLabel>
+            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+              {Object.entries(ROLE_LABELS).map(([r,l])=>(
+                <button key={r} type="button" onClick={()=>setRole(r)}
+                  style={{padding:"7px 14px",borderRadius:20,border:`1px solid ${role===r?"#7BAAEE":"rgba(255,255,255,.12)"}`,background:role===r?"rgba(111,163,232,.15)":"rgba(255,255,255,.04)",color:role===r?"#7BAAEE":"rgba(255,255,255,.5)",fontSize:12,cursor:"pointer"}}>
+                  {l}
+                </button>
+              ))}
             </div>
-          )}
+            <div style={{fontSize:11,color:"var(--text-faint)",marginTop:8,lineHeight:1.6}}>
+              <strong style={{color:"var(--text-dim)"}}>Admin</strong> — full access · <strong style={{color:"var(--text-dim)"}}>Member</strong> — view all · <strong style={{color:"var(--text-dim)"}}>Feed Only</strong> — feed tab · <strong style={{color:"var(--text-dim)"}}>Pickup</strong> — messages only
+            </div>
+          </div>
 
           <div style={{display:"flex",gap:10,marginTop:4}}>
             <button type="submit" className="bp full" disabled={loading}>{loading?<Spinner/>:isEdit?"Save Changes":"Add & Send Invite"}</button>
@@ -802,311 +715,6 @@ function MemberModal({open,onClose,familyId,familyName,member,adminName,onSaved,
 }
 
 // ─── Invite Family Modal ──────────────────────────────────────────────────────
-
-
-// ─── Family Onboarding Flow ───────────────────────────────────────────────────
-function FamilyOnboarding({open, onClose, familyId, familyName, onDone}) {
-  const [step, setStep]       = useState(0);
-  const [childName, setChildName] = useState('');
-  const [childAvatar, setChildAvatar] = useState('🌟');
-  const [saving, setSaving]   = useState(false);
-
-  const steps = [
-    { id:'welcome',  title:'Welcome to littleloop! 👋' },
-    { id:'child',    title:'Add your first child' },
-    { id:'sitter',   title:'Connect with a sitter' },
-    { id:'done',     title:"You're all set! 🎉" },
-  ];
-
-  async function addChild() {
-    if(!childName.trim()) { setStep(2); return; }
-    setSaving(true);
-    await supabase.from('children').insert({
-      family_id: familyId, name: childName.trim(),
-      avatar: childAvatar, color: '#8B78D4',
-    });
-    setSaving(false);
-    setStep(2);
-  }
-
-  const progress = ((step) / (steps.length - 1)) * 100;
-
-  return (
-    <Modal open={open} onClose={onClose}>
-      {/* Progress bar */}
-      <div style={{height:3,background:'var(--border)',borderRadius:3,marginBottom:24,overflow:'hidden'}}>
-        <div style={{height:'100%',width:`${progress}%`,
-          background:'linear-gradient(90deg,#3A6FD4,#3A9E7A)',
-          borderRadius:3,transition:'width .4s ease'}}/>
-      </div>
-
-      {step===0&&(
-        <div style={{textAlign:'center',padding:'8px 0'}}>
-          <div style={{fontSize:48,marginBottom:12}}>➿</div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:8}}>
-            Welcome to littleloop!
-          </div>
-          <p style={{fontSize:13,color:'var(--text-faint)',lineHeight:1.7,marginBottom:24}}>
-            littleloop connects your family with your childcare provider — posts, messages, invoices, check-ins, and more. Let's get you set up in two quick steps.
-          </p>
-          <button className="bp full" onClick={()=>setStep(1)}>Get started →</button>
-        </div>
-      )}
-
-      {step===1&&(
-        <div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:4}}>
-            Add your first child
-          </div>
-          <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:20,lineHeight:1.6}}>
-            Your sitter will see this when they check in. You can add more later.
-          </p>
-          <div style={{marginBottom:14}}>
-            <label className="fl">Child's name</label>
-            <input className="fi" value={childName} onChange={e=>setChildName(e.target.value)}
-              placeholder="e.g. Emma" autoFocus/>
-          </div>
-          <div style={{marginBottom:20}}>
-            <SectionLabel>Pick an avatar</SectionLabel>
-            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-              {CHILD_AVATARS.map(a=>(
-                <button key={a} type="button" onClick={()=>setChildAvatar(a)}
-                  style={{width:38,height:38,borderRadius:10,fontSize:22,cursor:'pointer',
-                    border:`2px solid ${childAvatar===a?'#7BAAEE':'rgba(255,255,255,.1)'}`,
-                    background:childAvatar===a?'rgba(111,163,232,.15)':'rgba(255,255,255,.04)'}}>
-                  {a}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div style={{display:'flex',gap:10}}>
-            <button className="bp full" onClick={addChild} disabled={saving}>
-              {saving?<Spinner/>:childName.trim()?'Add & continue':'Skip for now'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step===2&&(
-        <div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:4}}>
-            Connect with a sitter
-          </div>
-          <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:20,lineHeight:1.6}}>
-            Search for your sitter by name or username, or skip this and they can invite you.
-          </p>
-          <div style={{background:'var(--card-bg)',borderRadius:12,padding:'14px 16px',border:'1px solid var(--border)',marginBottom:16}}>
-            <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Option 1 — Search for your sitter</div>
-            <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:10}}>
-              If your sitter has a public profile on littleloop, you can find them and send a connection request.
-            </p>
-            <button className="bp" style={{width:'100%'}} onClick={()=>{onDone();/* FindSitterModal opens from home */}}>
-              🔍 Find my sitter
-            </button>
-          </div>
-          <div style={{background:'var(--card-bg)',borderRadius:12,padding:'14px 16px',border:'1px solid var(--border)',marginBottom:20}}>
-            <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Option 2 — Ask your sitter to invite you</div>
-            <p style={{fontSize:12,color:'var(--text-faint)',margin:0}}>
-              Your sitter can invite you by email from their littleloop account. You'll get a link to join automatically.
-            </p>
-          </div>
-          <button className="bg full" onClick={()=>setStep(3)}>Skip for now</button>
-        </div>
-      )}
-
-      {step===3&&(
-        <div style={{textAlign:'center',padding:'8px 0'}}>
-          <div style={{fontSize:48,marginBottom:12}}>🎉</div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:8}}>
-            You're all set!
-          </div>
-          <p style={{fontSize:13,color:'var(--text-faint)',lineHeight:1.7,marginBottom:24}}>
-            Your family profile is ready. Once your sitter connects, you'll see their posts, invoices, and check-ins all in one place.
-          </p>
-          <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20,textAlign:'left'}}>
-            {[
-              {icon:'🌸',label:'Feed — sitter posts updates and photos'},
-              {icon:'💰',label:'Invoices — pay your sitter directly'},
-              {icon:'🟢',label:'Check-ins — see when kids arrive and leave'},
-              {icon:'💬',label:'Messages — chat with your sitter'},
-            ].map(f=>(
-              <div key={f.label} style={{display:'flex',alignItems:'center',gap:10,
-                padding:'8px 12px',borderRadius:10,background:'var(--card-bg)',border:'1px solid var(--border)'}}>
-                <span style={{fontSize:18}}>{f.icon}</span>
-                <span style={{fontSize:12,color:'var(--text-dim)'}}>{f.label}</span>
-              </div>
-            ))}
-          </div>
-          <button className="bp full" onClick={onDone}>Start using littleloop →</button>
-        </div>
-      )}
-    </Modal>
-  );
-}
-
-// ─── Family Icon Picker ──────────────────────────────────────────────────────
-const FAMILY_ICONS = [
-  // Families
-  "👨‍👩‍👧","👨‍👩‍👦","👨‍👩‍👧‍👦","👨‍👩‍👦‍👦","👨‍👩‍👧‍👧",
-  "👩‍👧","👩‍👦","👨‍👧","👨‍👦","👩‍👧‍👦","👩‍👦‍👦","👩‍👧‍👧","👨‍👧‍👦",
-  // Homes
-  "🏠","🏡","🏰","🏯","🛖","⛺","🏕️",
-  // Nature & flowers
-  "🌻","🌸","🌺","🌹","🌷","🌿","🍀","🌳","🌲","🌴",
-  // Animals
-  "🐶","🐱","🐻","🦁","🐼","🦊","🐰","🦋","🐝","🦜",
-  // Stars & sky
-  "⭐","🌟","✨","🌙","☀️","🌈","❄️","🔥",
-  // Hearts & misc
-  "❤️","💜","💙","💚","💛","🧡","🎈","🎀","🎁",
-];
-
-function FamilyIconPicker({open, onClose, familyId, current, onSaved}) {
-  const [selected, setSelected] = useState(current);
-  const [saving, setSaving]     = useState(false);
-
-  useEffect(()=>{ if(open) setSelected(current); },[open,current]);
-
-  async function save() {
-    setSaving(true);
-    await supabase.from('families').update({icon: selected}).eq('id', familyId);
-    setSaving(false);
-    onSaved(selected);
-  }
-
-  return (
-    <Modal open={open} onClose={onClose}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:6}}>
-        Family Icon
-      </div>
-      <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:16}}>Choose an icon for your family.</p>
-
-      {/* Preview */}
-      <div style={{display:'flex',justifyContent:'center',marginBottom:20}}>
-        <div style={{width:72,height:72,borderRadius:20,background:'linear-gradient(135deg,#3A9E7A,#2A7A5A)',
-          display:'flex',alignItems:'center',justifyContent:'center',fontSize:38}}>
-          {selected}
-        </div>
-      </div>
-
-      {/* Grid */}
-      <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:20,maxHeight:280,overflowY:'auto'}}>
-        {FAMILY_ICONS.map(icon=>(
-          <button key={icon} type="button" onClick={()=>setSelected(icon)}
-            style={{width:44,height:44,borderRadius:12,fontSize:24,cursor:'pointer',
-              border:`2px solid ${selected===icon?'#7BAAEE':'rgba(255,255,255,.08)'}`,
-              background:selected===icon?'rgba(111,163,232,.15)':'rgba(255,255,255,.03)',
-              display:'flex',alignItems:'center',justifyContent:'center',
-              transition:'border-color .15s'}}>
-            {icon}
-          </button>
-        ))}
-      </div>
-
-      <div style={{display:'flex',gap:10}}>
-        <button className="bp full" onClick={save} disabled={saving||selected===current}>
-          {saving?<Spinner/>:'Save Icon'}
-        </button>
-        <button className="bg" onClick={onClose}>Cancel</button>
-      </div>
-    </Modal>
-  );
-}
-
-// ─── Find Sitter Modal (family side) ────────────────────────────────────────
-function FindSitterModal({open, onClose, familyId, familyName, onRequested}) {
-  const [query, setQuery]     = useState('');
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [sent, setSent]       = useState({});
-  const [alert, setAlert]     = useState(null);
-
-  useEffect(()=>{ if(!open){setQuery('');setResults([]);setSent({});setAlert(null);} },[open]);
-
-  async function search(e) {
-    e.preventDefault();
-    if(!query.trim()) return;
-    setSearching(true); setAlert(null);
-    const {data} = await supabase.from('sitters')
-      .select('id,name,username,bio,avatar_url,hourly_rate_min,hourly_rate_max')
-      .eq('public_profile', true)
-      .or(`username.ilike.%${query.trim()}%,name.ilike.%${query.trim()}%`)
-      .limit(8);
-    setResults(data||[]);
-    if(!data?.length) setAlert({t:'i',m:'No sitters found. Try a different name or username.'});
-    setSearching(false);
-  }
-
-  async function sendRequest(sitter) {
-    // Check if already connected/requested
-    const {data:existing} = await supabase.from('family_sitters')
-      .select('id,status').eq('family_id', familyId).eq('sitter_id', sitter.id).maybeSingle();
-    if(existing && existing.status !== 'inactive') {
-      setSent(s=>({...s,[sitter.id]: existing.status==='active'?'connected':'requested'}));
-      return;
-    }
-    const {error} = existing
-      ? await supabase.from('family_sitters').update({status:'requested'}).eq('id',existing.id)
-      : await supabase.from('family_sitters').insert({family_id:familyId, sitter_id:sitter.id, status:'requested', initiated_by:'family'});
-    if(!error) {
-      setSent(s=>({...s,[sitter.id]:'requested'}));
-      // Send push to sitter
-      sendPushNotification([sitter.id], `New connection request from ${familyName}`,
-        'Tap to view and accept.', '/?portal=sitter', 'new_request');
-      onRequested?.();
-    }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:6}}>Find a Sitter</div>
-      <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:16,lineHeight:1.6}}>Search by name or username to send a connection request.</p>
-      {alert&&<div className={`al al-${alert.t}`} style={{marginBottom:12}}>{alert.m}</div>}
-      <form onSubmit={search} style={{display:'flex',gap:8,marginBottom:16}}>
-        <input className="fi" value={query} onChange={e=>setQuery(e.target.value)}
-          placeholder="Name or @username" style={{marginBottom:0,flex:1}}/>
-        <button type="submit" className="bp" style={{flexShrink:0}} disabled={searching}>
-          {searching?<Spinner size={14}/>:'Search'}
-        </button>
-      </form>
-      <div style={{display:'flex',flexDirection:'column',gap:8}}>
-        {results.map(s=>{
-          const status = sent[s.id];
-          return (
-            <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',
-              background:'var(--card-bg)',borderRadius:12,border:'1px solid var(--border)'}}>
-              <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',
-                background:'var(--input-bg)',border:'1px solid var(--border)',
-                display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>
-                {s.avatar_url?<img src={s.avatar_url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={s.name}/>:'➿'}
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:600}}>{s.name}</div>
-                {s.username&&<div style={{fontSize:11,color:'var(--text-faint)'}}>@{s.username}</div>}
-                {(s.hourly_rate_min||s.hourly_rate_max)&&(
-                  <div style={{fontSize:11,color:'var(--text-faint)'}}>
-                    ${s.hourly_rate_min||'?'}–${s.hourly_rate_max||'?'}/hr
-                  </div>
-                )}
-              </div>
-              {status==='connected'
-                ? <span className="sb sb-a" style={{fontSize:10}}>Connected</span>
-                : status==='requested'
-                  ? <span className="sb sb-p" style={{fontSize:10}}>Requested</span>
-                  : <button className="bp" style={{fontSize:11,padding:'5px 12px',flexShrink:0}}
-                      onClick={()=>sendRequest(s)}>
-                      + Connect
-                    </button>
-              }
-            </div>
-          );
-        })}
-      </div>
-      <button className="bg" style={{width:'100%',marginTop:16}} onClick={onClose}>Close</button>
-    </Modal>
-  );
-}
-
 function InviteFamilyModal({open,onClose,sitterId,sitterName,onInvited}) {
   const [familyName,setFamilyName]   = useState("");
   const [adminEmail,setAdminEmail]   = useState("");
@@ -1129,6 +737,14 @@ function InviteFamilyModal({open,onClose,sitterId,sitterName,onInvited}) {
         } else {
           await supabase.from("family_sitters").insert({family_id:existing.id,sitter_id:sitterId,status:"pending"});
         }
+        // Notify the family admin that sitter connected
+        supabase.from("members").select("user_id").eq("family_id",existing.id).eq("role","admin").maybeSingle()
+          .then(({data:admin})=>{
+            if(admin?.user_id) {
+              invokeNotification({body:{type:"connection_accepted",payload:{notifyUserId:admin.user_id,sitterName}}}).catch(()=>{});
+              sendPushNotification([admin.user_id],`${sitterName} connected with your family`,"You're now connected on littleloop.",'/?portal=parent','connection_accepted');
+            }
+          });
         setAlert({t:"s",m:`You've been connected to the ${existing.name} family!`});
         setTimeout(()=>{onInvited();onClose();setFamilyName("");setAdminEmail("");setChildrenStr("");setAlert(null);},1800);
         return;
@@ -1340,13 +956,7 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
       </div>
 
       <div style={{marginBottom:20}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-          <SectionLabel>Children</SectionLabel>
-          {children.length>1&&(
-            <MultiCheckInButton children={children} familyId={family.id}
-              currentUserId={sitterId} checkerName={sitterName||"Sitter"} isSitter={true}/>
-          )}
-        </div>
+        <SectionLabel>Children</SectionLabel>
         {children.length===0
           ?<div style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>No children added yet</div>
           :<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -1363,11 +973,8 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
             ))}
           </div>
         }
-        <SessionsList familyId={family.id} childrenMap={{}} showTitle={true}/>
+        <CheckinLog familyId={family.id}/>
       </div>
-
-      {/* Recurring Schedule */}
-      <ScheduleManager sitterId={sitterId} familyId={family.id} familyName={family.name}/>
 
       <div style={{borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:16}}>
         <button className="bd" onClick={()=>setConfirmRemove(true)} disabled={loading}>🔕 Remove from my families</button>
@@ -1375,70 +982,6 @@ function SitterFamilyDetail({family,children,sitterId,sitterName,onDeactivate}) 
 
       <ChildProfileModal open={!!selectedChild} onClose={()=>setSelectedChild(null)} child={selectedChild} sitterId={sitterId} canEdit={false} isParent={false}/>
       <Confirm open={confirmRemove} title="Remove family?" message={`This will disconnect you from ${family.name}. Their data stays intact.`} danger onConfirm={deactivate} onCancel={()=>setConfirmRemove(false)}/>
-    </div>
-  );
-}
-
-
-// ─── Connection Requests (sitter side) ──────────────────────────────────────
-function ConnectionRequests({sitterId, onUpdate}) {
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading]   = useState(true);
-
-  useEffect(()=>{ load(); },[sitterId]);
-
-  async function load() {
-    setLoading(true);
-    const {data} = await supabase.from('family_sitters')
-      .select('id,family_id,families(id,name,admin_email)')
-      .eq('sitter_id', sitterId)
-      .eq('status', 'requested');
-    setRequests(data||[]);
-    setLoading(false);
-  }
-
-  async function respond(id, familyId, accept) {
-    if(accept) {
-      // Activate the connection
-      await supabase.from('family_sitters').update({status:'active'}).eq('id',id);
-      // Activate the family if still pending
-      await supabase.from('families').update({status:'active'}).eq('id',familyId).eq('status','pending');
-    } else {
-      await supabase.from('family_sitters').update({status:'inactive'}).eq('id',id);
-    }
-    setRequests(r=>r.filter(req=>req.id!==id));
-    onUpdate?.();
-  }
-
-  if(loading || requests.length===0) return null;
-
-  return (
-    <div className="card" style={{padding:'16px 18px',marginBottom:14,border:'1px solid rgba(111,163,232,.2)',background:'rgba(111,163,232,.04)'}}>
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-        <span style={{fontSize:16}}>🤝</span>
-        <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600}}>
-          Connection Requests
-        </span>
-        <span style={{background:'#3A6FD4',color:'#fff',borderRadius:'50%',width:18,height:18,
-          display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700}}>
-          {requests.length}
-        </span>
-      </div>
-      <div style={{display:'flex',flexDirection:'column',gap:8}}>
-        {requests.map(r=>(
-          <div key={r.id} style={{display:'flex',alignItems:'center',gap:10,
-            padding:'10px 12px',background:'var(--card-bg)',borderRadius:10,border:'1px solid var(--border)'}}>
-            <div style={{flex:1}}>
-              <div style={{fontSize:13,fontWeight:600}}>{r.families?.name||'A family'}</div>
-              <div style={{fontSize:11,color:'var(--text-faint)'}}>wants to connect with you</div>
-            </div>
-            <button className="bp" style={{fontSize:11,padding:'5px 12px'}}
-              onClick={()=>respond(r.id, r.family_id, true)}>✓ Accept</button>
-            <button className="bg" style={{fontSize:11,padding:'5px 10px'}}
-              onClick={()=>respond(r.id, r.family_id, false)}>✕</button>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -1473,7 +1016,6 @@ function FamiliesTab({sitterId,sitterName}) {
 
   return (
     <div>
-      <ConnectionRequests sitterId={sitterId} onUpdate={load}/>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600}}>
           Families <span style={{fontSize:14,color:"var(--text-faint)",fontFamily:"'DM Sans',sans-serif",fontWeight:400}}>({families.length})</span>
@@ -1538,7 +1080,7 @@ const timeAgo = ts => {
 };
 
 // ─── New Post Modal ───────────────────────────────────────────────────────────
-function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,children,onPosted,startWithPhoto=false}) {
+function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,children,onPosted}) {
   const [type,setType]         = useState("note");
   const [mood,setMood]         = useState("");
   const [text,setText]         = useState("");
@@ -1547,14 +1089,6 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
   const [preview,setPreview]   = useState(null);
   const [loading,setLoading]   = useState(false);
   const [alert,setAlert]       = useState(null);
-  const fileInputRef           = useRef(null);
-
-  // When opened with photo-first, auto-trigger file picker
-  useEffect(()=>{
-    if(open && startWithPhoto) {
-      setTimeout(()=>fileInputRef.current?.click(), 100);
-    }
-  },[open, startWithPhoto]);
 
   function reset(){setType("note");setMood("");setText("");setTagged([]);setPhoto(null);setPreview(null);setAlert(null);}
   function close(){if(loading)return;reset();onClose();}
@@ -1608,12 +1142,8 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
 
   return (
     <Modal open={open} onClose={close}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:4}}>
-        {startWithPhoto&&!preview ? "📷 Add a Photo" : "New Post"}
-      </div>
-      <p style={{fontSize:12,color:"var(--text-faint)",marginBottom:20,lineHeight:1.6}}>
-        {startWithPhoto&&!preview ? "Choose a photo to share with this family." : "Share an update with this family."}
-      </p>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,marginBottom:4}}>New Post</div>
+      <p style={{fontSize:12,color:"var(--text-faint)",marginBottom:20,lineHeight:1.6}}>Share an update with this family.</p>
       {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
       <form onSubmit={submit}>
         <div style={{marginBottom:14}}>
@@ -1652,34 +1182,20 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
           </div>
         )}
         <div>
-          <label className="fl">{startWithPhoto?"Caption (optional)":"Update"}</label>
-          <textarea className="fi" value={text} onChange={e=>setText(e.target.value)}
-            placeholder={startWithPhoto?"Add a caption…":"What's happening today?"}
-            rows={3} style={{resize:"vertical",marginBottom:14}}/>
+          <label className="fl">Update</label>
+          <textarea className="fi" value={text} onChange={e=>setText(e.target.value)} placeholder="What's happening today?" rows={3} style={{resize:"vertical",marginBottom:14}}/>
         </div>
-        {/* Photo — shown prominently at top in photo-first mode */}
-        <div style={{marginBottom:16,order:startWithPhoto?-1:0}}>
-          {!startWithPhoto&&<SectionLabel>Photo (optional)</SectionLabel>}
+        <div style={{marginBottom:16}}>
+          <SectionLabel>Photo (optional)</SectionLabel>
           {preview
             ?<div style={{position:"relative"}}>
-              <img src={preview} alt="preview" style={{width:"100%",maxHeight:startWithPhoto?360:200,objectFit:"cover",borderRadius:12,border:"1px solid var(--border)"}}/>
+              <img src={preview} alt="preview" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:12,border:"1px solid var(--border)"}}/>
               <button type="button" onClick={()=>{setPhoto(null);setPreview(null);}}
                 style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,.6)",border:"none",borderRadius:"50%",width:28,height:28,cursor:"pointer",color:"#fff",fontSize:14}}>✕</button>
-              <label style={{position:"absolute",bottom:8,right:8,background:"rgba(0,0,0,.5)",borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:11,color:"#fff"}}>
-                Change
-                <input type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
-              </label>
             </div>
-            :<label style={{
-              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-              gap:8,padding:startWithPhoto?"40px 16px":"12px 16px",
-              borderRadius:12,border:`1px dashed ${startWithPhoto?"rgba(58,111,212,.4)":"rgba(255,255,255,.15)"}`,
-              cursor:"pointer",color:"var(--text-dim)",fontSize:13,
-              background:startWithPhoto?"rgba(58,111,212,.05)":"transparent"
-            }}>
-              <span style={{fontSize:startWithPhoto?36:20}}>📷</span>
-              <span>{startWithPhoto?"Tap to choose a photo":"Choose a photo"}</span>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
+            :<label style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderRadius:12,border:"1px dashed rgba(255,255,255,.15)",cursor:"pointer",color:"var(--text-dim)",fontSize:13}}>
+              📷 Choose a photo
+              <input type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>
             </label>
           }
         </div>
@@ -1693,33 +1209,6 @@ function NewPostModal({open,onClose,familyId,sitterId,sitterName,familyName,chil
 }
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
-// ─── Photo Lightbox ──────────────────────────────────────────────────────────
-function PhotoLightbox({url, onClose}) {
-  useEffect(()=>{
-    function onKey(e){ if(e.key==='Escape') onClose(); }
-    document.addEventListener('keydown', onKey);
-    return()=>document.removeEventListener('keydown', onKey);
-  },[]);
-  return (
-    <div onClick={onClose} style={{
-      position:'fixed',inset:0,zIndex:1000,
-      background:'rgba(0,0,0,.92)',
-      display:'flex',alignItems:'center',justifyContent:'center',
-      cursor:'zoom-out',
-    }}>
-      <img src={url} alt="post"
-        style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',borderRadius:4}}
-        onClick={e=>e.stopPropagation()}/>
-      <button onClick={onClose} style={{
-        position:'absolute',top:16,right:16,
-        background:'rgba(255,255,255,.15)',border:'none',borderRadius:'50%',
-        width:36,height:36,fontSize:18,cursor:'pointer',color:'#fff',
-        display:'flex',alignItems:'center',justifyContent:'center',
-      }}>✕</button>
-    </div>
-  );
-}
-
 function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted,sitterName='Sitter',currentUserName='',currentUserAvatar='👤'}) {
   const [comments,setComments]     = useState([]);
   const [likes,setLikes]           = useState([]);
@@ -1728,7 +1217,6 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
   const [submitting,setSubmitting] = useState(false);
   const [confirmDel,setConfirmDel] = useState(false);
   const [expanded,setExpanded]     = useState(false);
-  const [lightbox,setLightbox]     = useState(false);
 
   const myLike = likes.find(l=>l.member_id===memberId);
   const liked  = !!myLike;
@@ -1766,38 +1254,9 @@ function PostCard({post,taggedChildren,currentUserId,memberId,isSitter,onDeleted
 
   return (
     <div className="card" style={{padding:0,marginBottom:14,overflow:"hidden"}}>
-      {lightbox&&<PhotoLightbox url={post.photo_url} onClose={()=>setLightbox(false)}/>}
       {post.photo_url&&(
-        <div style={{cursor:"zoom-in",position:"relative"}} onClick={()=>setLightbox(true)}>
-          <img src={post.photo_url} alt="post" style={{
-            width:"100%",
-            maxHeight: post.text ? 360 : 520,
-            minHeight: post.text ? 200 : 280,
-            objectFit:"cover",display:"block"
-          }}/>
-          {/* Overlay author info on photo-only posts */}
-          {!post.text&&(
-            <div style={{
-              position:"absolute",bottom:0,left:0,right:0,
-              background:"linear-gradient(transparent,rgba(0,0,0,.6))",
-              padding:"32px 14px 12px",
-              display:"flex",alignItems:"center",gap:8,
-            }}>
-              <div style={{width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>➿</div>
-              <div>
-                <div style={{fontSize:12,fontWeight:600,color:"#fff"}}>{sitterName}</div>
-                <div style={{fontSize:10,color:"rgba(255,255,255,.6)"}}>{timeAgo(post.created_at)}</div>
-              </div>
-              <div style={{marginLeft:"auto",fontSize:10,color:"rgba(255,255,255,.5)"}}>tap to expand</div>
-            </div>
-          )}
-          {post.text&&(
-            <div style={{
-              position:"absolute",bottom:8,right:8,
-              background:"rgba(0,0,0,.4)",borderRadius:6,padding:"3px 7px",
-              fontSize:10,color:"rgba(255,255,255,.7)"
-            }}>tap to expand</div>
-          )}
+        <div style={{cursor:"pointer"}} onClick={()=>setExpanded(!expanded)}>
+          <img src={post.photo_url} alt="post" style={{width:"100%",maxHeight:expanded?"100vw":280,objectFit:"cover",display:"block",transition:"max-height .3s"}}/>
         </div>
       )}
       <div style={{padding:"14px 16px"}}>
@@ -1872,7 +1331,6 @@ function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMar
   const [postKids,setPostKids] = useState({});
   const [loading,setLoading]   = useState(true);
   const [showNew,setShowNew]   = useState(false);
-  const [photoFirst,setPhotoFirst] = useState(false);
   const [filter,setFilter]     = useState("all");
 
   const load = useCallback(async()=>{
@@ -1910,13 +1368,7 @@ function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMar
           Feed
           {unseenCount>0&&<span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:"#3A6FD4",fontSize:11,fontWeight:700,marginLeft:6}}>{unseenCount}</span>}
         </div>
-        {isSitter&&(
-          <div style={{display:"flex",gap:8}}>
-            <button className="bg" onClick={()=>{setPhotoFirst(true);setShowNew(true);}}
-              style={{padding:"7px 12px",fontSize:13}}>📷</button>
-            <button className="bp" onClick={()=>{setPhotoFirst(false);setShowNew(true);}}>+ Post</button>
-          </div>
-        )}
+        {isSitter&&<button className="bp" onClick={()=>setShowNew(true)}>+ New Post</button>}
       </div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
         {[{id:"all",icon:"📋",label:"All"},...POST_TYPES].map(t=>(
@@ -1942,9 +1394,8 @@ function FeedTab({familyId,sitterId,memberId,isSitter,children,unseenCount,onMar
           ))}</div>
       }
       {isSitter&&(
-        <NewPostModal open={showNew} onClose={()=>{setShowNew(false);setPhotoFirst(false);}}
-          familyId={familyId} sitterId={sitterId} sitterName={sitterName} familyName={familyName||''} children={children} onPosted={load}
-          startWithPhoto={photoFirst}/>
+        <NewPostModal open={showNew} onClose={()=>setShowNew(false)}
+          familyId={familyId} sitterId={sitterId} sitterName={sitterName} familyName={familyName||''} children={children} onPosted={load}/>
       )}
     </div>
   );
@@ -2043,13 +1494,11 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
         {conversation_id:conv.id, user_id:currentUserId, participant_name:isSitter?sitterName:"You", participant_avatar:isSitter?"➿":sitterAvatar||"👤", is_sitter:isSitter},
         ...selected.map(m=>({conversation_id:conv.id, user_id:m.user_id, participant_name:m.name, participant_avatar:m.avatar||"👤", is_sitter:false})),
       ];
-      // If family member starting, add selected sitters (or all if none selected)
+      // If family member starting, also add sitter
       if(!isSitter){
-        const sittersToAdd = selectedSitters.length>0
-          ? availableSitters.filter(s=>selectedSitters.includes(s.id))
-          : availableSitters; // fallback: add all if none selected
-        for(const s of sittersToAdd){
-          participants.push({conversation_id:conv.id, user_id:s.id, participant_name:s.name||"Sitter", participant_avatar:s.avatar_url||"➿", is_sitter:true});
+        const {data:fsRows}=await supabase.from("family_sitters").select("sitter_id, sitters(name,avatar_url)").eq("family_id",selectedFamily||familyId).eq("status","active");
+        for(const fs of (fsRows||[])){
+          participants.push({conversation_id:conv.id, user_id:fs.sitter_id, participant_name:fs.sitters?.name||"Sitter", participant_avatar:fs.sitters?.avatar_url||"➿", is_sitter:true});
         }
       }
       const {error:partErr}=await supabase.from("conversation_participants").insert(participants);
@@ -2061,15 +1510,12 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
   }
 
   const [availableMembers, setAvailableMembers] = useState([]);
-  const [availableSitters, setAvailableSitters] = useState([]);
-  const [selectedSitters, setSelectedSitters] = useState([]);
   const [selectedFamily, setSelectedFamily] = useState(familyId||"");
 
   useEffect(()=>{
     if(!open) return;
     setSelectedFamily(familyId||"");
     setSelected([]);
-    setSelectedSitters([]);
   },[open,familyId]);
 
   useEffect(()=>{
@@ -2078,17 +1524,8 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
       const {data}=await supabase.from("members").select("*").eq("family_id",selectedFamily);
       setAvailableMembers((data||[]).filter(m=>m.user_id&&m.user_id!==currentUserId&&["admin","member"].includes(m.role)));
     }
-    async function loadSitters(){
-      const {data}=await supabase.from("family_sitters")
-        .select("sitter_id, sitters(id,name,avatar_url)")
-        .eq("family_id",selectedFamily).eq("status","active");
-      setAvailableSitters((data||[]).map(r=>({id:r.sitter_id,...r.sitters})));
-      // If only one sitter, auto-select them
-      if((data||[]).length===1) setSelectedSitters([data[0].sitter_id]);
-    }
     loadMembers();
-    if(!isSitter) loadSitters();
-  },[selectedFamily,currentUserId,isSitter]);
+  },[selectedFamily,currentUserId]);
 
   // Available people to add (exclude current user)
   const available = availableMembers;
@@ -2110,38 +1547,10 @@ function NewConversationModal({open, onClose, familyId, currentUserId, isSitter,
             </select>
           </div>
         )}
-        {/* Sitter picker — only shown on family side when multiple sitters */}
-        {!isSitter&&availableSitters.length>1&&(
-          <div style={{marginBottom:14}}>
-            <SectionLabel>Message which sitter?</SectionLabel>
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {availableSitters.map(s=>{
-                const sel=selectedSitters.includes(s.id);
-                return (
-                  <div key={s.id} onClick={()=>setSelectedSitters(prev=>sel?prev.filter(id=>id!==s.id):[...prev,s.id])}
-                    style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:10,cursor:"pointer",
-                      border:`1px solid ${sel?"#7BAAEE":"rgba(255,255,255,.1)"}`,
-                      background:sel?"rgba(111,163,232,.1)":"rgba(255,255,255,.03)"}}>
-                    <div style={{width:32,height:32,borderRadius:"50%",overflow:"hidden",
-                      background:"var(--card-bg)",border:"1px solid var(--border)",
-                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
-                      {s.avatar_url?<img src={s.avatar_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt={s.name}/>:"➿"}
-                    </div>
-                    <span style={{fontSize:13,fontWeight:500,flex:1}}>{s.name}</span>
-                    {sel&&<span style={{fontSize:14,color:"#7BAAEE"}}>✓</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        {!isSitter&&availableSitters.length===0&&(
-          <div className="al al-i" style={{marginBottom:12}}>No connected sitters yet. Connect with a sitter from the Home tab first.</div>
-        )}
         <Field label="Title (optional)" value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Emma's schedule" required={false} autoComplete="off"/>
         <div style={{marginBottom:16}}>
           <SectionLabel>{isSitter?"Add family members":"Add more family members (optional)"}</SectionLabel>
-          {!isSitter&&availableSitters.length===1&&<p style={{fontSize:11,color:"rgba(88,158,122,.8)",marginBottom:8}}>✓ {availableSitters[0]?.name||"Your sitter"} will be included</p>}
+          {!isSitter&&<p style={{fontSize:11,color:"rgba(88,158,122,.8)",marginBottom:8}}>✓ Your sitter will be included automatically</p>}
           {available.length===0
             ?<p style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>{isSitter?"No family members available yet.":"No other members to add."}</p>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -2237,42 +1646,28 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
   const [newMsg, setNewMsg]         = useState("");
   const [sending, setSending]       = useState(false);
   const [showAdd, setShowAdd]       = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
+  const [loading, setLoading]       = useState(true);
   const bottomRef                   = useRef(null);
   const senderName                  = isSitter ? "Your Sitter" : (participants.find(p=>p.user_id===currentUserId)?.participant_name||"You");
   const senderAvatar                = isSitter ? "➿" : (participants.find(p=>p.user_id===currentUserId)?.participant_avatar||"👤");
 
-  // Use a ref so the realtime callback always has the latest version without re-subscribing
-  const loadRef = useRef(null);
-  loadRef.current = async ()=>{
+  const load = useCallback(async()=>{
     const {data}=await supabase.from("messages").select("*").eq("conversation_id",conv.id).order("created_at",{ascending:true});
     setMessages(data||[]);
-    setInitialLoad(false);
+    setLoading(false);
+    // Mark seen
     await supabase.from("message_seen").upsert({conversation_id:conv.id, user_id:currentUserId, last_seen_at:new Date().toISOString()},{onConflict:"conversation_id,user_id"});
     setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),100);
-  };
+  },[conv.id,currentUserId]);
 
-  // Initial load
-  useEffect(()=>{ loadRef.current(); },[conv.id]);
+  useEffect(()=>{load();},[load]);
 
-  // Realtime — append new messages without full reload flash
   useEffect(()=>{
     const sub=supabase.channel(`conv-${conv.id}`)
-      .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",
-        filter:`conversation_id=eq.${conv.id}`},(payload)=>{
-          const msg=payload.new;
-          if(!msg) { loadRef.current(false); return; }
-          if(msg.sender_id!==currentUserId){
-            setMessages(prev=>{
-              if(prev.some(m=>m.id===msg.id)) return prev;
-              return [...prev, msg];
-            });
-            setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),50);
-          }
-        })
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:`conversation_id=eq.${conv.id}`},()=>load())
       .subscribe();
     return()=>supabase.removeChannel(sub);
-  },[conv.id, currentUserId]);
+  },[conv.id]);
 
   async function send(){
     if(!newMsg.trim()) return;
@@ -2314,24 +1709,6 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
     }
   }
 
-  // Track who has seen the conversation
-  const [seenBy, setSeenBy] = useState([]);
-  useEffect(()=>{
-    async function loadSeen(){
-      const {data}=await supabase.from('message_seen')
-        .select('user_id,last_seen_at')
-        .eq('conversation_id',conv.id)
-        .neq('user_id',currentUserId);
-      setSeenBy(data||[]);
-    }
-    loadSeen();
-    const ch=supabase.channel(`seen-${conv.id}`)
-      .on('postgres_changes',{event:'*',schema:'public',table:'message_seen',
-        filter:`conversation_id=eq.${conv.id}`},loadSeen)
-      .subscribe();
-    return()=>supabase.removeChannel(ch);
-  },[conv.id,currentUserId]);
-
   const convTitle = conv.title || participants.filter(p=>p.user_id!==currentUserId).map(p=>p.participant_name).join(", ") || "Conversation";
 
   return (
@@ -2350,7 +1727,9 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
 
       {/* Messages */}
       <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8,paddingBottom:8}}>
-        {messages.length===0&&!initialLoad
+        {loading
+          ?<div style={{textAlign:"center",padding:40}}><Spinner size={20}/></div>
+          :messages.length===0
             ?<div style={{textAlign:"center",padding:40,color:"var(--text-faint)",fontSize:13}}>No messages yet. Say hello! 👋</div>
             :messages.map((m,i)=>{
               const isMe = m.sender_id===currentUserId;
@@ -2365,12 +1744,6 @@ function ConversationThread({conv, currentUserId, isSitter, familyId, onBack, pa
                       {m.text}
                     </div>
                     <div style={{fontSize:10,color:"var(--text-faint)",marginTop:3,textAlign:isMe?"right":"left"}}>{timeAgo(m.created_at)}</div>
-                    {/* Read receipt — show "Seen" under last message from me */}
-                    {isMe && i===messages.length-1 && seenBy.length>0 && (
-                      <div style={{fontSize:9,color:'var(--text-faint)',textAlign:'right',marginTop:1}}>
-                        Seen by {seenBy.map(s=>participants.find(p=>p.user_id===s.user_id)?.participant_name||'them').join(', ')}
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -2454,29 +1827,19 @@ function MessagesTab({currentUserId, isSitter, families=[], memberInfo, allMembe
 
   useEffect(()=>{load();},[load]);
 
-  // Realtime for new messages — update list without full reload
+  // Realtime for new messages
   useEffect(()=>{
     const sub=supabase.channel("messages-list")
-      .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},(p)=>{
-        const msg=p.new;
-        if(!msg) return;
-        // Update last message preview without full reload
-        setLastMessages(prev=>({...prev,[msg.conversation_id]:msg}));
-        // Increment unseen if not from me
-        if(msg.sender_id!==currentUserId){
-          setUnseenCounts(prev=>({...prev,[msg.conversation_id]:(prev[msg.conversation_id]||0)+1}));
-        }
-      })
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},()=>load())
       .subscribe();
     return()=>supabase.removeChannel(sub);
-  },[currentUserId]);
+  },[]);
 
   const totalUnseen=Object.values(unseenCounts).reduce((a,b)=>a+b,0);
   const selectedConvData=convs.find(c=>c.id===selectedConv);
   const selectedParts=participants[selectedConv]||[];
 
-  // Only show spinner on first load, not on background refreshes
-  if(loading&&convs.length===0) return <div style={{textAlign:"center",padding:"60px 0"}}><Spinner size={24}/></div>;
+  if(loading) return <div style={{textAlign:"center",padding:"60px 0"}}><Spinner size={24}/></div>;
 
   // Show thread view
   if(selectedConv&&selectedConvData) return (
@@ -2514,16 +1877,7 @@ function MessagesTab({currentUserId, isSitter, families=[], memberInfo, allMembe
               <div key={c.id} className="fc" onClick={()=>setSelectedConv(c.id)}
                 style={{padding:"14px 16px"}}>
                 <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
-                  {(()=>{
-                    const sitterPart=parts.find(p=>p.is_sitter&&p.user_id!==currentUserId);
-                    const otherPart=parts.find(p=>p.user_id!==currentUserId);
-                    const showPart=sitterPart||otherPart;
-                    return showPart?.participant_avatar&&showPart.participant_avatar.startsWith('http')
-                      ?<img src={showPart.participant_avatar} style={{width:40,height:40,borderRadius:12,objectFit:"cover",flexShrink:0}} alt={showPart.participant_name}/>
-                      :<div style={{width:40,height:40,borderRadius:12,background:"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
-                        {showPart?.participant_avatar||"💬"}
-                      </div>;
-                  })()}
+                  <div style={{width:40,height:40,borderRadius:12,background:"linear-gradient(135deg,#3A6FD4,#3A9E7A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>💬</div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:3}}>
                       <div style={{fontWeight:600,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
@@ -2787,9 +2141,6 @@ function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyC
   const [items, setItems]         = useState([]);
   const [loading, setLoading]     = useState(false);
   const [alert, setAlert]         = useState(null);
-  const [sessions, setSessions]   = useState([]);
-  const [showSessions, setShowSessions] = useState(false);
-  const [importingSession, setImportingSession] = useState(false);
 
   function blankItem(){return {service_date:new Date().toISOString().slice(0,10),end_date:"",child_id:"",child_name:"",rate_type:"hourly",hours:0,rate:0,amount:0,description:""};}
 
@@ -2821,36 +2172,6 @@ function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyC
 
   const total=items.reduce((s,it)=>s+(it.amount||0),0);
   const familyChildren=allFamilyChildren[familyId]||[];
-
-  // Load unreviewed sessions when family is selected
-  useEffect(()=>{
-    if(!familyId || isEdit) return;
-    const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate()-30);
-    supabase.from('sessions')
-      .select('*,children:child_id(id,name,avatar)')
-      .eq('family_id',familyId)
-      .eq('is_open',false)
-      .gte('checked_in_at',monthAgo.toISOString())
-      .order('checked_in_at',{ascending:false})
-      .then(({data})=>setSessions(data||[]));
-  },[familyId]);
-
-  function importSessions() {
-    const imported = sessions.map(s=>({
-      service_date: s.checked_in_at?.slice(0,10)||new Date().toISOString().slice(0,10),
-      end_date: s.checked_out_at?.slice(0,10)||'',
-      child_id: s.child_id||'',
-      child_name: s.children?.name||'',
-      rate_type: 'hourly',
-      hours: Math.round((s.hours||0)*100)/100,
-      rate: 0, // sitter fills in rate
-      amount: 0,
-      description: `${s.children?.name||'Child'} · ${fmtDateTime(s.checked_in_at)} ${fmtTime(s.checked_in_at)}–${fmtTime(s.checked_out_at)}`,
-    }));
-    setItems(imported.length?imported:[blankItem()]);
-    setShowSessions(false);
-    setAlert({t:'i',m:`Imported ${imported.length} session${imported.length!==1?'s':''}. Fill in the hourly rate for each.`});
-  }
 
   async function save(status="draft"){
     if(!familyId){setAlert({t:"e",m:"Select a family."});return;}
@@ -2921,39 +2242,6 @@ function InvoiceModal({open, onClose, sitterId, sitterName, families, allFamilyC
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
           <SectionLabel>Line Items</SectionLabel>
           <button type="button" className="bp" style={{padding:"5px 12px",fontSize:11}} onClick={addItem}>+ Add Item</button>
-          {!isEdit&&sessions.length>0&&(
-            <button type="button" className="bg" style={{padding:"5px 12px",fontSize:11}}
-              onClick={()=>setShowSessions(!showSessions)}>
-              📋 Import Sessions ({sessions.length})
-            </button>
-          )}
-          {showSessions&&(
-            <div style={{marginTop:8,padding:'12px 14px',borderRadius:10,
-              background:'var(--input-bg)',border:'1px solid var(--border)'}}>
-              <div style={{fontSize:12,fontWeight:600,marginBottom:8,color:'var(--text-dim)'}}>
-                Recent sessions (last 30 days)
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:10,maxHeight:200,overflowY:'auto'}}>
-                {sessions.map(s=>(
-                  <div key={s.checkin_id} style={{display:'flex',alignItems:'center',gap:8,
-                    padding:'6px 10px',borderRadius:8,
-                    background:'var(--card-bg)',border:'1px solid var(--border)',fontSize:11}}>
-                    <span style={{fontSize:16}}>{s.children?.avatar||'🧒'}</span>
-                    <div style={{flex:1}}>
-                      <span style={{fontWeight:500}}>{s.children?.name}</span>
-                      <span style={{color:'var(--text-faint)',marginLeft:6}}>
-                        {fmtDateTime(s.checked_in_at)} · {fmtHours(s.hours)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="bp" style={{width:'100%',fontSize:12}}
-                onClick={importSessions}>
-                Import All as Line Items
-              </button>
-            </div>
-          )}
         </div>
         {items.map((it,i)=>(
           <LineItemRow key={i} item={it} index={i} children={familyChildren} onChange={updateItem} onRemove={removeItem}/>
@@ -3055,7 +2343,7 @@ function printInvoice(invoice, items, sitter, family, adminMember) {
 <div class="parties">
   <div class="party">
     <h3>Care Provider</h3>
-    <p><strong>${sitter.legal_name||sitter.name||sitter.sitter_name||'Care Provider'}</strong><br>
+    <p><strong>${sitter.legal_name||sitter.name}</strong><br>
     ${sitter.address_line1||""}<br>
     ${sitter.address_line2?sitter.address_line2+"<br>":""}
     ${[sitter.city,sitter.state,sitter.zip].filter(Boolean).join(", ")}</p>
@@ -3119,7 +2407,6 @@ ${enabledMethods.length>0?`
 
 <div class="no-print" style="text-align:center;margin-top:24px">
   <button onclick="window.print()" style="padding:12px 28px;background:#2550A8;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🖨️ Print / Save as PDF</button>
-  <button onclick="window.close()" style="padding:12px 28px;background:#f0f0f0;color:#333;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-left:10px">✕ Close</button>
 </div>
 </body>
 </html>`;
@@ -3141,8 +2428,7 @@ function SitterInvoicesTab({sitterId, sitterName}) {
   const [showSettings,setShowSettings] = useState(false);
   const [filter,setFilter]       = useState("all");
   const [loading,setLoading]     = useState(true);
-  const [confirmPaid,setConfirmPaid]     = useState(null);
-  const [confirmUnpaid,setConfirmUnpaid] = useState(null);
+  const [confirmPaid,setConfirmPaid] = useState(null);
 
   const load=useCallback(async()=>{
     setLoading(true);
@@ -3151,14 +2437,11 @@ function SitterInvoicesTab({sitterId, sitterName}) {
       supabase.from("invoices").select("*").eq("sitter_id",sitterId).order("created_at",{ascending:false}),
       supabase.from("sitters").select("*").eq("id",sitterId).single(),
     ]);
-    const unwrappedFams=(fams||[]).map(r=>({...r.families,connection_status:r.status})).filter(Boolean);
-    setFamilies(unwrappedFams);setInvoices(invs||[]);
-    // Merge sitterName prop as fallback in case DB name is missing
-    setSitter(sit ? {...sit, name: sit.name||sitterName||'Care Provider'} : {name:sitterName||'Care Provider'});
-    if(unwrappedFams?.length){
+    setFamilies(fams||[]);setInvoices(invs||[]);setSitter(sit);
+    if(fams?.length){
       const [{data:kids},{data:mems}]=await Promise.all([
-        supabase.from("children").select("*").in("family_id",unwrappedFams.map(f=>f.id)),
-        supabase.from("members").select("*").in("family_id",unwrappedFams.map(f=>f.id)),
+        supabase.from("children").select("*").in("family_id",fams.map(f=>f.id)),
+        supabase.from("members").select("*").in("family_id",fams.map(f=>f.id)),
       ]);
       const kg={},mg={};
       (kids||[]).forEach(k=>{if(!kg[k.family_id])kg[k.family_id]=[];kg[k.family_id].push(k);});
@@ -3175,51 +2458,15 @@ function SitterInvoicesTab({sitterId, sitterName}) {
     setConfirmPaid(null);load();
   }
 
-  async function unmarkPaid(inv){
-    await supabase.from("invoices").update({status:"sent",paid_date:null}).eq("id",inv.id);
-    setConfirmUnpaid(null);load();
-  }
-
   async function deleteInv(id){
     await supabase.from("invoices").delete().eq("id",id);load();
-  }
-
-  const [reminderSent, setReminderSent] = useState(null);
-  async function sendReminder(inv){
-    const fam = families.find(f=>f.id===inv.family_id);
-    if(!fam) return;
-    // Pass invoice_id to edge function — it calculates total server-side (no RLS issues)
-    invokeNotification({body:{
-      type:'invoice_reminder',
-      payload:{
-        familyEmail: fam.admin_email,
-        familyName: fam.name,
-        sitterName: sitterName,
-        invoiceNumber: inv.invoice_number,
-        invoiceId: inv.id,
-        dueDate: inv.due_date ? fmtDate(inv.due_date) : null,
-      }
-    }}).catch(console.error);
-    // Push — edge function will handle amount, just notify
-    const {data:members} = await supabase.from('members')
-      .select('user_id').eq('family_id', fam.id).in('role',['admin','member']);
-    if(members?.length) {
-      sendPushNotification(
-        members.map(m=>m.user_id),
-        `Invoice reminder from ${sitterName}`,
-        `Invoice ${inv.invoice_number} is due`,
-        '/?portal=parent', 'invoice_reminder'
-      );
-    }
-    setReminderSent(inv.id);
-    setTimeout(()=>setReminderSent(null), 3000);
   }
 
   async function openPrint(inv){
     const {data:items}=await supabase.from("invoice_items").select("*").eq("invoice_id",inv.id).order("sort_order");
     const family=families.find(f=>f.id===inv.family_id)||{name:"—"};
     const admin=(familyMembers[inv.family_id]||[]).find(m=>m.role==="admin");
-    printInvoice(inv,items||[],{...(sitter||{}),name:sitter?.name||sitterName||'Care Provider'},family,admin);
+    printInvoice(inv,items||[],sitter||{},family,admin);
   }
 
   const filtered=filter==="all"?invoices:invoices.filter(i=>i.status===filter);
@@ -3265,15 +2512,9 @@ function SitterInvoicesTab({sitterId, sitterName}) {
                     {inv.paid_date&&<div style={{fontSize:11,color:"#88D8B8"}}>Paid {fmtDate(inv.paid_date)}</div>}
                   </div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
-                    <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)} title="Print or save as PDF">🖨️ PDF</button>
+                    <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)}>🖨️ Print</button>
                     {inv.status!=="paid"&&<button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>setEditInv(inv)}>✏️ Edit</button>}
                     {inv.status==="sent"&&<button className="bp" style={{padding:"5px 10px",fontSize:11,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)"}} onClick={()=>setConfirmPaid(inv)}>✅ Mark Paid</button>}
-                    {inv.status==="sent"&&<button className="bg" style={{padding:"5px 10px",fontSize:11,
-                      color:reminderSent===inv.id?'#5EE89A':'inherit'}}
-                      onClick={()=>sendReminder(inv)}>
-                      {reminderSent===inv.id?'✓ Sent!':'🔔 Remind'}
-                    </button>}
-                    {inv.status==="paid"&&<button className="bg" style={{padding:"5px 10px",fontSize:11,color:"#F5AAAA"}} onClick={()=>setConfirmUnpaid(inv)}>↩ Unmark Paid</button>}
                     {inv.status==="draft"&&<button className="bd" style={{padding:"5px 10px",fontSize:11}} onClick={()=>deleteInv(inv.id)}>🗑️</button>}
                   </div>
                 </div>
@@ -3287,7 +2528,6 @@ function SitterInvoicesTab({sitterId, sitterName}) {
         sitterId={sitterId} sitterName={sitterName||''} families={families} allFamilyChildren={familyChildren} onSaved={load} editInvoice={editInv||null}/>
       <PaymentSettingsModal open={showSettings} onClose={()=>setShowSettings(false)} sitterId={sitterId} onSaved={load}/>
       <Confirm open={!!confirmPaid} title="Mark as paid?" message={`Mark ${confirmPaid?.invoice_number} as paid today?`} onConfirm={()=>markPaid(confirmPaid)} onCancel={()=>setConfirmPaid(null)}/>
-      <Confirm open={!!confirmUnpaid} title="Unmark as paid?" message={`Mark ${confirmUnpaid?.invoice_number} back to sent? This will remove the paid date.`} danger onConfirm={()=>unmarkPaid(confirmUnpaid)} onCancel={()=>setConfirmUnpaid(null)}/>
     </div>
   );
 }
@@ -3303,15 +2543,14 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
   useEffect(()=>{
     async function load(){
       setLoading(true);
-      const [{data:invs},{data:fam},{data:mem},{data:fsRows}]=await Promise.all([
+      const [{data:invs},{data:fam},{data:mem}]=await Promise.all([
         supabase.from("invoices").select("*").eq("family_id",familyId).in("status",["sent","paid"]).order("created_at",{ascending:false}),
-        supabase.from("families").select("*").eq("id",familyId).single(),
+        supabase.from("families").select("*, sitters(*)").eq("id",familyId).single(),
         supabase.from("members").select("*").eq("family_id",familyId).eq("user_id",currentUserId).maybeSingle(),
-        supabase.from("family_sitters").select("sitters(*)").eq("family_id",familyId).eq("status","active").limit(1),
       ]);
       setInvoices(invs||[]);
       setFamily(fam);
-      setSitter(fsRows?.[0]?.sitters||null);
+      setSitter(fam?.sitters||null);
       setMember(mem);
       setLoading(false);
     }
@@ -3319,11 +2558,8 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
   },[familyId,currentUserId]);
 
   async function openPrint(inv){
-    const [{data:items},{data:sit}]=await Promise.all([
-      supabase.from("invoice_items").select("*").eq("invoice_id",inv.id).order("sort_order"),
-      supabase.from("sitters").select("name,legal_name,address_line1,address_line2,city,state,zip").eq("id",inv.sitter_id).single(),
-    ]);
-    printInvoice(inv,items||[],sit||sitter||{},family||{name:"—"},member);
+    const {data:items}=await supabase.from("invoice_items").select("*").eq("invoice_id",inv.id).order("sort_order");
+    printInvoice(inv,items||[],sitter||{},family||{name:"—"},member);
   }
 
   const statusColors={sent:"#7BAAEE",paid:"#88D8B8"};
@@ -3348,25 +2584,13 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
                   {inv.paid_date&&<div style={{fontSize:11,color:"#88D8B8"}}>Paid {fmtDate(inv.paid_date)}</div>}
                 </div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)} title="Print or save as PDF">🖨️ PDF</button>
+                  <button className="bg" style={{padding:"5px 10px",fontSize:11}} onClick={()=>openPrint(inv)}>🖨️ View / Print</button>
                 </div>
               </div>
 
-              {/* Payment buttons for sent invoices */}
-              {inv.status==="sent"&&(
+              {/* Payment buttons inline for sent invoices */}
+              {inv.status==="sent"&&sitter&&(
                 <PayButtons sitter={sitter} invoice={inv}/>
-              )}
-              {/* Paid confirmation banner */}
-              {inv.status==="paid"&&(
-                <div style={{marginTop:10,padding:"8px 12px",borderRadius:8,
-                  background:"rgba(88,216,184,.1)",border:"1px solid rgba(88,216,184,.25)",
-                  display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:16}}>✅</span>
-                  <div>
-                    <div style={{fontSize:12,fontWeight:600,color:"#88D8B8"}}>Payment Received</div>
-                    {inv.paid_date&&<div style={{fontSize:11,color:"var(--text-faint)"}}>Marked paid on {fmtDate(inv.paid_date)}</div>}
-                  </div>
-                </div>
               )}
             </div>
           ))}
@@ -3376,39 +2600,16 @@ function FamilyInvoicesTab({familyId, currentUserId}) {
   );
 }
 
-// ─── Check-in History Modal (parent side) ────────────────────────────────────
-function CheckinHistoryModal({open, onClose, familyId, children}) {
-  return (
-    <Modal open={open} onClose={onClose}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:4}}>Hours & Check-ins</div>
-      <div style={{fontSize:12,color:'var(--text-faint)',marginBottom:16}}>Sessions, hours logged, and editable times.</div>
-      <SessionsList familyId={familyId} childrenMap={{}} showTitle={true}/>
-    </Modal>
-  );
-}
-
 // ─── Pay Buttons ─────────────────────────────────────────────────────────────
 function PayButtons({sitter, invoice}) {
-  const [items,setItems]   = useState(null);
-  const [payMethods,setPayMethods] = useState(sitter?.payment_methods||null);
-
+  const [items,setItems] = useState(null);
   useEffect(()=>{
-    supabase.from("invoice_items").select("amount,hours,rate,rate_type").eq("invoice_id",invoice.id)
+    supabase.from("invoice_items").select("*").eq("invoice_id",invoice.id)
       .then(({data})=>setItems(data||[]));
   },[invoice.id]);
 
-  // If sitter prop doesn't have payment_methods, fetch via invoice sitter_id
-  useEffect(()=>{
-    if(payMethods) return;
-    if(!invoice.sitter_id) return;
-    supabase.from("sitters").select("payment_methods").eq("id",invoice.sitter_id).single()
-      .then(({data})=>{ if(data) setPayMethods(data.payment_methods||[]); });
-  },[invoice.sitter_id]);
-
-  const total = items ? items.reduce((s,i)=>{
-    return s + (parseFloat(i.amount) || (i.rate_type==='hourly' ? parseFloat(i.hours||0)*parseFloat(i.rate||0) : parseFloat(i.rate||0)));
-  },0) : 0;
-  const enabled=(payMethods||[]).filter(m=>m.enabled);
+  const total=items?items.reduce((s,i)=>s+(i.amount||0),0):0;
+  const enabled=(sitter.payment_methods||[]).filter(m=>m.enabled);
   if(!enabled.length||!items) return null;
 
   return (
@@ -3422,14 +2623,13 @@ function PayButtons({sitter, invoice}) {
           if(!pt) return null;
           const link=pt.deeplink?pt.deeplink(m.handle,total.toFixed(2),invoice.invoice_number):null;
           const weblink=pt.weblink?pt.weblink(m.handle,total.toFixed(2),invoice.invoice_number):link;
-          const isMobile=/android|iphone|ipad/i.test(navigator.userAgent);
-          const href=(isMobile&&link)?link:(weblink||link);
-          return href
+          return link
             ?<div key={m.type} style={{display:"inline-flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                <a href={href} target="_blank" rel="noopener noreferrer"
+                <a href={link} target="_blank" rel="noopener noreferrer"
                   style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"var(--card-bg)",border:"1px solid var(--border)",color:"rgba(255,255,255,.8)",textDecoration:"none",fontSize:12,fontWeight:500}}>
                   {pt.icon} {pt.label}{m.handle?` (${m.handle})`:""}
                 </a>
+                {pt.weblink&&<a href={weblink} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:"var(--text-faint)",textDecoration:"none"}}>open profile ↗</a>}
               </div>
             :<div key={m.type} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,background:"var(--card-bg)",border:"1px solid var(--border)",color:"var(--text-dim)",fontSize:12}}>
                 {pt.icon} {pt.label}{m.handle?`: ${m.handle}`:""}
@@ -3631,233 +2831,6 @@ function ThemePicker({currentTheme, onSelect}) {
 }
 
 // ─── Sitter Profile/Settings Tab ─────────────────────────────────────────────
-// ─── Email Notification Preferences ─────────────────────────────────────────
-const EMAIL_PREFS_SITTER = [
-  { key: 'new_message',  label: 'New messages',         icon: '💬' },
-  { key: 'new_post',     label: 'Family feed activity',  icon: '📝' },
-];
-const EMAIL_PREFS_PARENT = [
-  { key: 'new_message',  label: 'New messages',          icon: '💬' },
-  { key: 'new_invoice',  label: 'New invoices',          icon: '💰' },
-  { key: 'invoice_reminder', label: 'Invoice reminders', icon: '🔔' },
-  { key: 'new_post',     label: 'Feed updates',          icon: '📝' },
-  { key: 'eta',          label: 'On My Way / ETA alerts', icon: '🚗' },
-];
-
-function EmailPreferencesCard({userId, isSitter}) {
-  const PREFS = isSitter ? EMAIL_PREFS_SITTER : EMAIL_PREFS_PARENT;
-  const [prefs, setPrefs]   = useState({});
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved]   = useState(false);
-
-  useEffect(()=>{
-    supabase.from('email_preferences').select('preferences')
-      .eq('user_id', userId).maybeSingle()
-      .then(({data})=>{ if(data) setPrefs(data.preferences||{}); });
-  },[userId]);
-
-  async function save(newPrefs) {
-    setSaving(true);
-    await supabase.from('email_preferences').upsert({
-      user_id: userId, preferences: newPrefs, updated_at: new Date().toISOString(),
-    }, {onConflict:'user_id'});
-    setSaving(false); setSaved(true);
-    setTimeout(()=>setSaved(false), 2000);
-  }
-
-  function toggle(key) {
-    const newPrefs = {...prefs, [key]: prefs[key]===false ? true : false};
-    setPrefs(newPrefs);
-    save(newPrefs);
-  }
-
-  return (
-    <div className="card" style={{padding:"20px 18px",marginBottom:14}}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:4}}>
-        📧 Email Notifications
-      </div>
-      <div style={{fontSize:12,color:'var(--text-faint)',marginBottom:16}}>
-        Choose which emails you'd like to receive.
-      </div>
-      {saved&&<div style={{fontSize:11,color:'#5EE89A',marginBottom:10}}>✓ Saved</div>}
-      <div style={{display:'flex',flexDirection:'column',gap:10}}>
-        {PREFS.map(p=>{
-          const isOn = prefs[p.key] !== false;
-          return (
-            <div key={p.key} style={{display:'flex',alignItems:'center',gap:10,
-              padding:'10px 12px',borderRadius:10,
-              background:'var(--card-bg)',border:'1px solid var(--border)'}}>
-              <span style={{fontSize:18}}>{p.icon}</span>
-              <div style={{flex:1,fontSize:13}}>{p.label}</div>
-              <div onClick={()=>toggle(p.key)} style={{
-                width:40,height:22,borderRadius:11,cursor:'pointer',
-                transition:'background .2s',flexShrink:0,
-                background: isOn ? 'var(--accent)' : 'rgba(255,255,255,.1)',
-                position:'relative'
-              }}>
-                <div style={{
-                  position:'absolute',top:3,
-                  left: isOn ? 21 : 3,
-                  width:16,height:16,borderRadius:'50%',
-                  background:'#fff',transition:'left .2s'
-                }}/>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Push Notification Preferences ───────────────────────────────────────────
-const PUSH_PREFS_SITTER = [
-  { key: 'new_message',  label: 'New messages',        icon: '💬' },
-  { key: 'new_post',     label: 'Family feed activity', icon: '📝' },
-];
-const PUSH_PREFS_PARENT = [
-  { key: 'new_message',  label: 'New messages',          icon: '💬' },
-  { key: 'new_invoice',  label: 'New invoices',          icon: '💰' },
-  { key: 'invoice_reminder', label: 'Invoice reminders', icon: '🔔' },
-  { key: 'new_post',     label: 'Feed updates',          icon: '📝' },
-];
-
-// Sitter push prefs include ETA
-const PUSH_PREFS_SITTER_FULL = [
-  { key: 'new_message',  label: 'New messages',          icon: '💬' },
-  { key: 'new_post',     label: 'Family feed activity',  icon: '📝' },
-  { key: 'eta',          label: 'On My Way / ETA alerts', icon: '🚗' },
-];
-
-function PushPreferencesCard({userId, isSitter}) {
-  const PREFS = isSitter ? PUSH_PREFS_SITTER_FULL : PUSH_PREFS_PARENT;
-  const [enabled, setEnabled]     = useState(true);  // master toggle
-  const [prefs, setPrefs]         = useState({});
-  const [permission, setPermission] = useState(Notification.permission);
-  const [saving, setSaving]       = useState(false);
-  const [saved, setSaved]         = useState(false);
-  const [subbed, setSubbed]       = useState(false);
-
-  useEffect(()=>{
-    async function load() {
-      // Check if subscribed
-      if('serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if(reg) {
-          const sub = await reg.pushManager.getSubscription();
-          setSubbed(!!sub);
-        }
-      }
-      // Load saved prefs
-      const {data} = await supabase.from('push_preferences')
-        .select('preferences').eq('user_id', userId).maybeSingle();
-      if(data) {
-        setPrefs(data.preferences||{});
-        // If any pref is explicitly false, show as individual setting
-      }
-    }
-    load();
-  },[userId]);
-
-  async function requestAndSubscribe() {
-    const perm = await Notification.requestPermission();
-    setPermission(perm);
-    if(perm === 'granted') {
-      await subscribeToPush(userId);
-      setSubbed(true);
-    }
-  }
-
-  async function save(newPrefs) {
-    setSaving(true);
-    await supabase.from('push_preferences').upsert({
-      user_id: userId,
-      preferences: newPrefs,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(()=>setSaved(false), 2000);
-  }
-
-  function toggle(key) {
-    const newPrefs = {...prefs, [key]: prefs[key]===false ? true : false};
-    setPrefs(newPrefs);
-    save(newPrefs);
-  }
-
-  return (
-    <div className="card" style={{padding:"20px 18px",marginBottom:14}}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:4}}>
-        🔔 Push Notifications
-      </div>
-      <div style={{fontSize:12,color:'var(--text-faint)',marginBottom:16}}>
-        Get notified even when littleloop isn't open.
-      </div>
-
-      {permission === 'denied' ? (
-        <div className="al al-e">
-          Notifications are blocked in your browser. To enable, click the lock icon in your address bar and allow notifications for littleloop.xyz.
-        </div>
-      ) : !subbed ? (
-        <div>
-          <div style={{fontSize:12,color:'var(--text-dim)',marginBottom:12}}>
-            You haven't enabled push notifications yet.
-          </div>
-          <button className="bp" onClick={requestAndSubscribe}>
-            Enable Push Notifications
-          </button>
-        </div>
-      ) : (
-        <div>
-          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-            <div style={{width:8,height:8,borderRadius:'50%',background:'#5EE89A'}}/>
-            <div style={{fontSize:12,color:'#5EE89A',fontWeight:500}}>Push notifications enabled</div>
-            {saved&&<div style={{fontSize:11,color:'var(--text-faint)',marginLeft:'auto'}}>✓ Saved</div>}
-          </div>
-          {/* Chrome tip — only show on Android/Chrome */}
-          {/android/i.test(navigator.userAgent)&&(
-            <div style={{marginBottom:12,padding:'10px 12px',borderRadius:8,
-              background:'rgba(58,111,212,.1)',border:'1px solid rgba(58,111,212,.2)',
-              fontSize:11,color:'var(--text-dim)',lineHeight:1.6}}>
-              💡 <strong>Tip:</strong> To get pop-up notifications, open Chrome → tap the lock icon in the address bar → <strong>Notifications</strong> → enable <strong>Pop on screen</strong> and <strong>Vibrate</strong>.
-            </div>
-          )}
-          <div style={{fontSize:11,color:'var(--text-faint)',marginBottom:16}}>
-            Choose which notifications you'd like to receive:
-          </div>
-          <div style={{display:'flex',flexDirection:'column',gap:10}}>
-            {PREFS.map(p=>{
-              const isOn = prefs[p.key] !== false;
-              return (
-                <div key={p.key} style={{display:'flex',alignItems:'center',gap:10,
-                  padding:'10px 12px',borderRadius:10,
-                  background:'var(--card-bg)',border:'1px solid var(--border)'}}>
-                  <span style={{fontSize:18}}>{p.icon}</span>
-                  <div style={{flex:1,fontSize:13}}>{p.label}</div>
-                  <div onClick={()=>toggle(p.key)} style={{
-                    width:40,height:22,borderRadius:11,cursor:'pointer',
-                    transition:'background .2s',flexShrink:0,
-                    background: isOn ? 'var(--accent)' : 'rgba(255,255,255,.1)',
-                    position:'relative'
-                  }}>
-                    <div style={{
-                      position:'absolute',top:3,
-                      left: isOn ? 21 : 3,
-                      width:16,height:16,borderRadius:'50%',
-                      background:'#fff',transition:'left .2s'
-                    }}/>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function SitterProfileTab({sitterId, sitterName, onNameChange}) {
   const [theme, setTheme]       = useState(localStorage.getItem('ll_theme')||'midnight');
   // Profile fields
@@ -3994,12 +2967,6 @@ function SitterProfileTab({sitterId, sitterName, onNameChange}) {
       {/* Public Profile */}
       <PublicProfileEditor sitterId={sitterId} sitterName={sitterName}/>
 
-      {/* Email Notification Preferences */}
-      <EmailPreferencesCard userId={sitterId} isSitter={true}/>
-
-      {/* Push Notification Preferences */}
-      <PushPreferencesCard userId={sitterId} isSitter={true}/>
-
       {/* Delete account */}
       <div className="card" style={{padding:"20px 18px",marginBottom:14,border:"1px solid rgba(192,80,80,.2)",background:"rgba(192,80,80,.04)"}}>
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:8,color:"#F5AAAA"}}>⚠️ Delete Account</div>
@@ -4024,111 +2991,6 @@ function SitterProfileTab({sitterId, sitterName, onNameChange}) {
             </div>
         }
       </div>
-    </div>
-  );
-}
-
-
-// ─── Availability Picker ──────────────────────────────────────────────────────
-const AVAIL_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const AVAIL_TIMES = [
-  {id:'early_morning', label:'Early Morning', sub:'6–9am'},
-  {id:'morning',       label:'Morning',       sub:'9am–12pm'},
-  {id:'afternoon',     label:'Afternoon',     sub:'12–5pm'},
-  {id:'evening',       label:'Evening',       sub:'5–9pm'},
-  {id:'overnight',     label:'Overnight',     sub:'9pm+'},
-];
-
-function AvailabilityPicker({value, onChange}) {
-  // value = { mon:['morning','afternoon'], tue:[], ... }
-  const parsed = (() => {
-    try { return typeof value==='object'&&value?value:JSON.parse(value||'{}'); }
-    catch { return {}; }
-  })();
-
-  function toggle(day, time) {
-    const key = day.toLowerCase();
-    const cur = parsed[key]||[];
-    const next = cur.includes(time) ? cur.filter(t=>t!==time) : [...cur,time];
-    onChange({...parsed, [key]:next});
-  }
-
-  function toggleDay(day) {
-    const key = day.toLowerCase();
-    const cur = parsed[key]||[];
-    const next = cur.length===AVAIL_TIMES.length ? [] : AVAIL_TIMES.map(t=>t.id);
-    onChange({...parsed, [key]:next});
-  }
-
-  return (
-    <div style={{overflowX:'auto'}}>
-      <table style={{borderCollapse:'collapse',width:'100%',minWidth:420}}>
-        <thead>
-          <tr>
-            <th style={{width:60,padding:'6px 8px',textAlign:'left',fontSize:10,color:'var(--text-faint)',fontWeight:600}}></th>
-            {AVAIL_DAYS.map(d=>{
-              const key=d.toLowerCase();
-              const allOn=(parsed[key]||[]).length===AVAIL_TIMES.length;
-              return (
-                <th key={d} style={{padding:'4px 2px',textAlign:'center'}}>
-                  <button type="button" onClick={()=>toggleDay(d)}
-                    style={{padding:'3px 6px',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer',
-                      border:`1px solid ${allOn?'#7BAAEE':'rgba(255,255,255,.1)'}`,
-                      background:allOn?'rgba(111,163,232,.2)':'transparent',
-                      color:allOn?'#7BAAEE':'var(--text-dim)'}}>
-                    {d}
-                  </button>
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {AVAIL_TIMES.map(t=>(
-            <tr key={t.id}>
-              <td style={{padding:'3px 8px',fontSize:10,color:'var(--text-faint)',whiteSpace:'nowrap'}}>
-                <div style={{fontWeight:600,fontSize:10}}>{t.label}</div>
-                <div style={{fontSize:9,opacity:.7}}>{t.sub}</div>
-              </td>
-              {AVAIL_DAYS.map(d=>{
-                const key=d.toLowerCase();
-                const on=(parsed[key]||[]).includes(t.id);
-                return (
-                  <td key={d} style={{padding:'3px 2px',textAlign:'center'}}>
-                    <button type="button" onClick={()=>toggle(d,t.id)}
-                      style={{width:28,height:28,borderRadius:8,cursor:'pointer',
-                        border:`1px solid ${on?'#7BAAEE':'rgba(255,255,255,.08)'}`,
-                        background:on?'rgba(111,163,232,.2)':'rgba(255,255,255,.03)',
-                        fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto'}}>
-                      {on?'✓':''}
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// Display availability compactly (for browse/profile pages)
-function AvailabilityDisplay({value}) {
-  let parsed = {};
-  try { parsed = typeof value==='object'&&value?value:JSON.parse(value||'{}'); } catch {}
-  const days = AVAIL_DAYS.filter(d=>(parsed[d.toLowerCase()]||[]).length>0);
-  if(!days.length) return null;
-  return (
-    <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
-      {days.map(d=>{
-        const slots=(parsed[d.toLowerCase()]||[]).map(id=>AVAIL_TIMES.find(t=>t.id===id)?.label).filter(Boolean);
-        return (
-          <span key={d} className="chip" style={{fontSize:10}}>
-            {d}: {slots.join(', ')}
-          </span>
-        );
-      })}
     </div>
   );
 }
@@ -4170,9 +3032,7 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
         setAgeRanges(d.age_ranges||[]);
         setRateMin(d.hourly_rate_min||'');
         setRateMax(d.hourly_rate_max||'');
-        const rawAvail = d.availability||'';
-        try { setAvail(typeof rawAvail==='string'&&rawAvail.startsWith('{')?JSON.parse(rawAvail):rawAvail); }
-        catch { setAvail(rawAvail); }
+        setAvail(d.availability||'');
         setYears(d.years_experience||'');
         setCerts(d.certifications||[]);
         setAvatarUrl(d.avatar_url||'');
@@ -4225,7 +3085,7 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
       age_ranges: ageRanges.length ? ageRanges : null,
       hourly_rate_min: rateMin ? parseFloat(rateMin) : null,
       hourly_rate_max: rateMax ? parseFloat(rateMax) : null,
-      availability: typeof avail==='object' ? JSON.stringify(avail) : (avail||null),
+      availability: avail.trim()||null,
       years_experience: years ? parseInt(years) : null,
       certifications: certs.length ? certs : null,
     }).eq('id', sitterId);
@@ -4345,8 +3205,9 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
 
           {/* Availability */}
           <div style={{marginBottom:12}}>
-            <label style={{fontSize:11,color:'var(--text-dim)',display:'block',marginBottom:8}}>Availability</label>
-            <AvailabilityPicker value={avail} onChange={v=>setAvail(v)}/>
+            <label style={{fontSize:11,color:'var(--text-dim)',display:'block',marginBottom:4}}>Availability</label>
+            <input className="fi" value={avail} onChange={e=>setAvail(e.target.value)}
+              placeholder="e.g. Weekday evenings and weekends"/>
           </div>
 
           {/* Age ranges */}
@@ -4377,7 +3238,7 @@ function PublicProfileEditor({sitterId, sitterName, sitterCity, sitterState}) {
                 }}>{c}</div>
               ))}
             </div>
-          </div>}
+          </div>
 
           <button type="submit" className="bp" disabled={saving}>
             {saving ? <><Spinner/> Saving…</> : 'Save Public Profile'}
@@ -4415,12 +3276,12 @@ function PublicSitterProfile({username}) {
 
   useEffect(()=>{
     async function load() {
-      const {data:s, error} = await supabase.from('sitters')
+      const {data:s} = await supabase.from('sitters')
         .select('id,name,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,avatar_url,public_profile')
         .eq('username', username)
         .eq('public_profile', true)
-        .maybeSingle();
-      if(!s || error) { setNotFound(true); setLoading(false); return; }
+        .single();
+      if(!s) { setNotFound(true); setLoading(false); return; }
       setSitter(s);
       const {data:r} = await supabase.from('sitter_reviews')
         .select('*').eq('sitter_id', s.id).order('created_at',{ascending:false});
@@ -4492,8 +3353,8 @@ function PublicSitterProfile({username}) {
             </div>
           )}
           {sitter.availability && (
-            <div style={{marginTop:4}}>
-              <AvailabilityDisplay value={sitter.availability}/>
+            <div style={{padding:'6px 12px',borderRadius:20,background:'var(--card-bg)',border:'1px solid var(--border)',fontSize:12}}>
+              🗓 {sitter.availability}
             </div>
           )}
         </div>
@@ -4716,6 +3577,11 @@ function LeaveReviewModal({open, onClose, sitterId, sitterName, familyId, review
       : await supabase.from('sitter_reviews').insert(payload);
     setSaving(false);
     if(error) { setAlert({t:'e',m:error.message}); return; }
+    // Notify sitter of new review (not for edits)
+    if(!existing) {
+      invokeNotification({body:{type:'new_review',payload:{sitterId,familyName:reviewerName,rating}}}).catch(()=>{});
+      sendPushNotification([sitterId],`New review from ${reviewerName}`,'⭐'.repeat(Math.min(rating,5)),'/?portal=sitter','review');
+    }
     setAlert({t:'s',m:'Review saved! Thank you.'});
     setTimeout(onClose, 1200);
   }
@@ -4853,12 +3719,6 @@ function MemberProfileTab({memberId, memberName, onNameChange}) {
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600,marginBottom:16}}>🎨 App Theme</div>
         <ThemePicker currentTheme={theme} onSelect={selectTheme}/>
       </div>
-
-      {/* Email Notification Preferences */}
-      {memberId&&<EmailPreferencesCard userId={memberId} isSitter={false}/>}
-
-      {/* Push Notification Preferences */}
-      {memberId&&<PushPreferencesCard userId={memberId} isSitter={false}/>}
     </div>
   );
 }
@@ -4902,20 +3762,7 @@ function OnMyWayButton({familyId, memberId, memberName}) {
       eta_minutes:minutes, eta_time, expires_at:expires,
     }).select().single();
     setLoading(false);
-    if(!error){
-      setCurrent(data);setSent(true);setExpanded(false);setTimeout(()=>setSent(false),3000);
-      // Notify sitter(s) via push
-      const {data:fsRows}=await supabase.from('family_sitters')
-        .select('sitter_id').eq('family_id',familyId).eq('status','active');
-      if(fsRows?.length){
-        const sitterIds=fsRows.map(r=>r.sitter_id);
-        sendPushNotification(sitterIds,`${memberName} is on the way!`,
-          `ETA: ~${minutes} min`,`/?portal=sitter`,'eta');
-        invokeNotification({body:{type:'eta',payload:{
-          sitterIds, memberName, minutes, familyId
-        }}}).catch(console.error);
-      }
-    }
+    if(!error){setCurrent(data);setSent(true);setExpanded(false);setTimeout(()=>setSent(false),3000);}
   }
 
   async function cancel(){
@@ -4977,749 +3824,6 @@ function OnMyWayButton({familyId, memberId, memberName}) {
   );
 }
 
-
-// ─── Recurring Schedule ────────────────────────────────────────────────────────
-const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const DAYS_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-
-function fmt12(t) {
-  if(!t) return '';
-  const [h,m] = t.split(':').map(Number);
-  const ampm = h >= 12 ? 'pm' : 'am';
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2,'0')}${ampm}`;
-}
-
-// Sitter side: manage schedule for a family
-function ScheduleManager({sitterId, familyId, familyName}) {
-  const [slots, setSlots]         = useState([]);
-  const [showAdd, setShowAdd]     = useState(false);
-  const [editSlot, setEditSlot]   = useState(null);
-  const [loading, setLoading]     = useState(true);
-
-  useEffect(()=>{ load(); },[familyId]);
-
-  async function load() {
-    setLoading(true);
-    const {data} = await supabase.from('schedules')
-      .select('*').eq('family_id', familyId).eq('sitter_id', sitterId)
-      .eq('active', true).order('day_of_week').order('start_time');
-    setSlots(data||[]);
-    setLoading(false);
-  }
-
-  async function deleteSlot(id) {
-    await supabase.from('schedules').delete().eq('id', id);
-    load();
-  }
-
-  return (
-    <div style={{marginBottom:14}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-        <SectionLabel>📅 Recurring Schedule</SectionLabel>
-        <button className="bp" style={{padding:'4px 10px',fontSize:11}} onClick={()=>{setEditSlot(null);setShowAdd(true);}}>+ Add</button>
-      </div>
-      {loading ? <Spinner/> : slots.length === 0
-        ? <div style={{fontSize:12,color:'var(--text-faint)',fontStyle:'italic',padding:'8px 0'}}>No recurring schedule set yet.</div>
-        : <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            {slots.map(s=>(
-              <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',
-                background:'var(--card-bg)',borderRadius:10,border:'1px solid var(--border)'}}>
-                <div style={{width:36,height:36,borderRadius:10,background:'rgba(58,111,212,.12)',
-                  display:'flex',alignItems:'center',justifyContent:'center',
-                  fontSize:11,fontWeight:700,color:'#7BAAEE',flexShrink:0}}>
-                  {DAYS[s.day_of_week]}
-                </div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:500}}>{fmt12(s.start_time)} – {fmt12(s.end_time)}</div>
-                  {s.label&&<div style={{fontSize:11,color:'var(--text-faint)'}}>{s.label}</div>}
-                </div>
-                <button onClick={()=>{setEditSlot(s);setShowAdd(true);}}
-                  style={{background:'none',border:'none',cursor:'pointer',fontSize:13,opacity:.5,padding:'0 4px'}}>✏️</button>
-                <button onClick={()=>deleteSlot(s.id)}
-                  style={{background:'none',border:'none',cursor:'pointer',fontSize:13,opacity:.5,padding:'0 4px'}}>🗑️</button>
-              </div>
-            ))}
-          </div>
-      }
-      <ScheduleSlotModal
-        open={showAdd}
-        onClose={()=>{setShowAdd(false);setEditSlot(null);}}
-        sitterId={sitterId}
-        familyId={familyId}
-        slot={editSlot}
-        onSaved={()=>{setShowAdd(false);setEditSlot(null);load();}}
-      />
-    </div>
-  );
-}
-
-function ScheduleSlotModal({open, onClose, sitterId, familyId, slot, onSaved}) {
-  const [day, setDay]         = useState(slot?.day_of_week ?? 1);
-  const [start, setStart]     = useState(slot?.start_time?.slice(0,5) || '09:00');
-  const [end, setEnd]         = useState(slot?.end_time?.slice(0,5) || '17:00');
-  const [label, setLabel]     = useState(slot?.label || '');
-  const [loading, setLoading] = useState(false);
-  const [alert, setAlert]     = useState(null);
-
-  useEffect(()=>{
-    if(open) {
-      setDay(slot?.day_of_week ?? 1);
-      setStart(slot?.start_time?.slice(0,5) || '09:00');
-      setEnd(slot?.end_time?.slice(0,5) || '17:00');
-      setLabel(slot?.label || '');
-      setAlert(null);
-    }
-  },[open, slot]);
-
-  async function save(e) {
-    e.preventDefault();
-    if(end <= start){setAlert({t:'e',m:'End time must be after start time.'});return;}
-    setLoading(true);
-    const data = {family_id:familyId, sitter_id:sitterId, day_of_week:day, start_time:start, end_time:end, label:label.trim()||null, active:true};
-    const {error} = slot
-      ? await supabase.from('schedules').update(data).eq('id', slot.id)
-      : await supabase.from('schedules').insert(data);
-    setLoading(false);
-    if(error){setAlert({t:'e',m:error.message});return;}
-    onSaved();
-  }
-
-  return (
-    <Modal open={open} onClose={onClose}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,marginBottom:20}}>
-        {slot ? 'Edit Schedule' : 'Add Schedule'}
-      </div>
-      {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
-      <form onSubmit={save}>
-        <div style={{marginBottom:14}}>
-          <SectionLabel>Day of week</SectionLabel>
-          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-            {DAYS.map((d,i)=>(
-              <button key={i} type="button" onClick={()=>setDay(i)}
-                style={{padding:'7px 10px',borderRadius:10,fontSize:12,cursor:'pointer',
-                  border:`1px solid ${day===i?'#7BAAEE':'rgba(255,255,255,.1)'}`,
-                  background:day===i?'rgba(111,163,232,.15)':'rgba(255,255,255,.04)',
-                  color:day===i?'#7BAAEE':'rgba(255,255,255,.5)'}}>
-                {d}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{display:'flex',gap:12,marginBottom:14}}>
-          <div style={{flex:1}}>
-            <label className="fl">Start time</label>
-            <input className="fi" type="time" value={start} onChange={e=>setStart(e.target.value)} required/>
-          </div>
-          <div style={{flex:1}}>
-            <label className="fl">End time</label>
-            <input className="fi" type="time" value={end} onChange={e=>setEnd(e.target.value)} required/>
-          </div>
-        </div>
-        <Field label="Label (optional)" value={label} onChange={e=>setLabel(e.target.value)} placeholder="e.g. After school, Morning"/>
-        <div style={{display:'flex',gap:10,marginTop:4}}>
-          <button type="submit" className="bp full" disabled={loading}>{loading?<Spinner/>:slot?'Save Changes':'Add to Schedule'}</button>
-          <button type="button" className="bg" onClick={onClose}>Cancel</button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-// Parent side: show upcoming schedule for the week
-function WeeklyScheduleCard({familyId, sitters}) {
-  const [slots, setSlots]   = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(()=>{ load(); },[familyId]);
-
-  async function load() {
-    setLoading(true);
-    const {data} = await supabase.from('schedules')
-      .select('*').eq('family_id', familyId).eq('active', true)
-      .order('day_of_week').order('start_time');
-    setSlots(data||[]);
-    setLoading(false);
-  }
-
-  if(loading) return null;
-  if(slots.length === 0) return null;
-
-  // Build next 7 days
-  const today = new Date();
-  const todayDow = today.getDay();
-  const week = Array.from({length:7},(_,i)=>{
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return {dow: d.getDay(), date: d, label: i===0?'Today':i===1?'Tomorrow':DAYS[d.getDay()]};
-  });
-
-  // Map slots to days
-  const byDow = {};
-  slots.forEach(s=>{
-    if(!byDow[s.day_of_week]) byDow[s.day_of_week] = [];
-    byDow[s.day_of_week].push(s);
-  });
-
-  const upcoming = week.filter(d => byDow[d.dow]);
-  if(upcoming.length === 0) return null;
-
-  return (
-    <div className="card fade-up" style={{padding:'16px 18px',marginBottom:16}}>
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
-        <span style={{fontSize:18}}>📅</span>
-        <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600}}>This Week</span>
-      </div>
-      <div style={{display:'flex',flexDirection:'column',gap:8}}>
-        {upcoming.map(({dow, date, label:dayLabel})=>(
-          (byDow[dow]||[]).map((s,i)=>{
-            const sitter = (sitters||[]).find(st=>st.id===s.sitter_id);
-            const isToday = dayLabel==='Today';
-            return (
-              <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,
-                padding:'10px 12px',borderRadius:12,
-                background: isToday ? 'rgba(58,111,212,.1)' : 'var(--input-bg,rgba(255,255,255,.03))',
-                border: isToday ? '1px solid rgba(58,111,212,.3)' : '1px solid var(--border)'}}>
-                <div style={{width:40,textAlign:'center',flexShrink:0}}>
-                  <div style={{fontSize:10,color:'var(--text-faint)',textTransform:'uppercase',letterSpacing:.5}}>{dayLabel==='Today'||dayLabel==='Tomorrow'?DAYS[dow]:DAYS[dow]}</div>
-                  <div style={{fontSize:16,fontWeight:700,color:isToday?'#7BAAEE':'var(--text-dim)',lineHeight:1.2}}>
-                    {date.getDate()}
-                  </div>
-                </div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:500}}>
-                    {fmt12(s.start_time)} – {fmt12(s.end_time)}
-                    {isToday&&<span style={{marginLeft:6,fontSize:10,background:'rgba(58,111,212,.2)',color:'#7BAAEE',borderRadius:4,padding:'1px 6px'}}>Today</span>}
-                  </div>
-                  <div style={{fontSize:11,color:'var(--text-faint)'}}>
-                    {sitter?.name || 'Sitter'}
-                    {s.label && ` · ${s.label}`}
-                  </div>
-                </div>
-                {sitter?.avatar_url
-                  ? <img src={sitter.avatar_url} style={{width:28,height:28,borderRadius:'50%',objectFit:'cover',flexShrink:0}} alt={sitter.name}/>
-                  : <div style={{width:28,height:28,borderRadius:'50%',background:'linear-gradient(135deg,#3A6FD4,#3A9E7A)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}}>➿</div>
-                }
-              </div>
-            );
-          })
-        ))}
-      </div>
-    </div>
-  );
-}
-
-
-// ─── Hours & Sessions ─────────────────────────────────────────────────────────
-
-function fmtHours(h) {
-  if(!h || h < 0) return '0h 0m';
-  const hrs  = Math.floor(h);
-  const mins = Math.round((h - hrs) * 60);
-  return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-}
-
-function fmtTime(iso) {
-  if(!iso) return '—';
-  return new Date(iso).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-}
-
-function fmtDateTime(iso) {
-  if(!iso) return '';
-  return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'});
-}
-
-// Edit a single checkin timestamp
-function EditCheckinModal({open, onClose, entry, label, onSaved}) {
-  const [val, setVal]     = useState('');
-  const [note, setNote]   = useState('');
-  const [saving, setSaving] = useState(false);
-  const [alert, setAlert] = useState(null);
-  const {data:{user}} = supabase.auth.getUser ? {data:{user:null}} : {data:{user:null}};
-  const [userId, setUserId] = useState(null);
-
-  useEffect(()=>{
-    if(open && entry) {
-      const d = new Date(entry.checked_at);
-      // Format for datetime-local input
-      const local = new Date(d.getTime() - d.getTimezoneOffset()*60000)
-        .toISOString().slice(0,16);
-      setVal(local);
-      setNote('');
-      setAlert(null);
-    }
-    supabase.auth.getUser().then(({data:{user}})=>setUserId(user?.id));
-  },[open,entry]);
-
-  async function save(e) {
-    e.preventDefault();
-    if(!val) return;
-    setSaving(true);
-    const newTime = new Date(val).toISOString();
-    const {error} = await supabase.from('checkins').update({
-      checked_at:   newTime,
-      edited:       true,
-      edited_by:    userId,
-      edited_by_name: entry?.checked_by_name,
-      edit_note:    note.trim()||null,
-    }).eq('id', entry.id);
-    setSaving(false);
-    if(error){setAlert({t:'e',m:error.message});return;}
-    onSaved();
-    onClose();
-  }
-
-  return (
-    <Modal open={open} onClose={onClose}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:16}}>
-        Edit {label} Time
-      </div>
-      {alert&&<div className={`al al-${alert.t}`}>{alert.m}</div>}
-      <form onSubmit={save}>
-        <div style={{marginBottom:14}}>
-          <label className="fl">Time</label>
-          <input className="fi" type="datetime-local" value={val}
-            onChange={e=>setVal(e.target.value)} required/>
-        </div>
-        <div style={{marginBottom:16}}>
-          <label className="fl">Reason (optional)</label>
-          <input className="fi" value={note} onChange={e=>setNote(e.target.value)}
-            placeholder="e.g. Forgot to check out"/>
-        </div>
-        <div style={{display:'flex',gap:10}}>
-          <button type="submit" className="bp full" disabled={saving}>
-            {saving?<Spinner/>:'Save'}
-          </button>
-          <button type="button" className="bg" onClick={onClose}>Cancel</button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-// Manual checkout modal for open sessions
-function ManualCheckoutModal({open, onClose, session, familyId, onSaved}) {
-  const [val, setVal]     = useState('');
-  const [note, setNote]   = useState('');
-  const [saving, setSaving] = useState(false);
-
-  useEffect(()=>{
-    if(open) {
-      const now = new Date();
-      const local = new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16);
-      setVal(local);
-      setNote('');
-    }
-  },[open]);
-
-  async function save(e) {
-    e.preventDefault();
-    setSaving(true);
-    const {data:{user}} = await supabase.auth.getUser();
-    await supabase.from('checkins').insert({
-      child_id:       session.child_id,
-      family_id:      familyId,
-      status:         'out',
-      checked_by:     user?.id,
-      checked_by_name: user?.email?.split('@')[0]||'unknown',
-      checked_by_role: 'manual',
-      checked_at:     new Date(val).toISOString(),
-      edited:         true,
-      edit_note:      note.trim()||'Manual checkout',
-    });
-    setSaving(false);
-    onSaved();
-    onClose();
-  }
-
-  return (
-    <Modal open={open} onClose={onClose}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:6}}>
-        Add Missing Checkout
-      </div>
-      <p style={{fontSize:12,color:'var(--text-faint)',marginBottom:16,lineHeight:1.6}}>
-        Set the actual time this child was picked up.
-      </p>
-      <form onSubmit={save}>
-        <div style={{marginBottom:14}}>
-          <label className="fl">Checkout time</label>
-          <input className="fi" type="datetime-local" value={val}
-            onChange={e=>setVal(e.target.value)} required/>
-        </div>
-        <div style={{marginBottom:16}}>
-          <label className="fl">Note (optional)</label>
-          <input className="fi" value={note} onChange={e=>setNote(e.target.value)}
-            placeholder="e.g. Forgot to check out yesterday"/>
-        </div>
-        <div style={{display:'flex',gap:10}}>
-          <button type="submit" className="bp full" disabled={saving}>
-            {saving?<Spinner/>:'Save Checkout'}
-          </button>
-          <button type="button" className="bg" onClick={onClose}>Cancel</button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-// Sessions list — pairs check-ins with check-outs, shows hours, allows editing
-function SessionsList({familyId, childrenMap, dateRange='week', showTitle=true}) {
-  const [sessions, setSessions]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [editEntry, setEditEntry] = useState(null); // {entry, label}
-  const [manualSession, setManualSession] = useState(null);
-  const [filter, setFilter]       = useState(dateRange);
-
-  useEffect(()=>{ load(); },[familyId, filter]);
-
-  async function load() {
-    setLoading(true);
-    let query = supabase.from('sessions')
-      .select('*, children:child_id(name,avatar,color)')
-      .eq('family_id', familyId);
-
-    if(filter==='today'){
-      const start = new Date(); start.setHours(0,0,0,0);
-      query = query.gte('checked_in_at', start.toISOString());
-    } else if(filter==='week'){
-      const start = new Date(); start.setDate(start.getDate()-7);
-      query = query.gte('checked_in_at', start.toISOString());
-    } else if(filter==='month'){
-      const start = new Date(); start.setDate(start.getDate()-30);
-      query = query.gte('checked_in_at', start.toISOString());
-    }
-    query = query.order('checked_in_at',{ascending:false}).limit(100);
-    const {data} = await query;
-    setSessions(data||[]);
-    setLoading(false);
-  }
-
-  const openSessions    = sessions.filter(s=>s.is_open);
-  const needsReview     = sessions.filter(s=>s.needs_review);
-  const closedSessions  = sessions.filter(s=>!s.is_open);
-  const totalHours      = closedSessions.reduce((s,r)=>s+(r.hours||0),0);
-
-  return (
-    <div>
-      {showTitle&&(
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,fontWeight:600}}>⏱ Hours Log</div>
-          <div style={{display:'flex',gap:6}}>
-            {['today','week','month','all'].map(f=>(
-              <button key={f} onClick={()=>setFilter(f)}
-                style={{padding:'4px 9px',borderRadius:20,fontSize:10,cursor:'pointer',
-                  border:`1px solid ${filter===f?'#7BAAEE':'rgba(255,255,255,.1)'}`,
-                  background:filter===f?'rgba(111,163,232,.15)':'transparent',
-                  color:filter===f?'#7BAAEE':'var(--text-faint)',textTransform:'capitalize'}}>
-                {f==='all'?'All':f.charAt(0).toUpperCase()+f.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Needs review warnings */}
-      {needsReview.map(s=>(
-        <div key={s.checkin_id} style={{display:'flex',alignItems:'center',gap:10,
-          padding:'10px 14px',borderRadius:10,marginBottom:8,
-          background:'rgba(200,120,74,.1)',border:'1px solid rgba(200,120,74,.3)'}}>
-          <span style={{fontSize:18}}>⚠️</span>
-          <div style={{flex:1}}>
-            <div style={{fontSize:12,fontWeight:600,color:'#F5C098'}}>Missing checkout</div>
-            <div style={{fontSize:11,color:'var(--text-faint)'}}>
-              {s.children?.name} checked in {fmtDateTime(s.checked_in_at)} at {fmtTime(s.checked_in_at)} — no checkout recorded
-            </div>
-          </div>
-          <button className="bp" style={{fontSize:10,padding:'4px 10px',flexShrink:0}}
-            onClick={()=>setManualSession(s)}>Fix</button>
-        </div>
-      ))}
-
-      {/* Open sessions (checked in today, no checkout yet) */}
-      {openSessions.filter(s=>!s.needs_review).map(s=>(
-        <div key={s.checkin_id} style={{display:'flex',alignItems:'center',gap:10,
-          padding:'10px 14px',borderRadius:10,marginBottom:8,
-          background:'rgba(58,158,122,.08)',border:'1px solid rgba(58,158,122,.25)'}}>
-          <span style={{fontSize:20}}>{s.children?.avatar||'🧒'}</span>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:500}}>{s.children?.name}</div>
-            <div style={{fontSize:11,color:'#88D8B8'}}>Checked in at {fmtTime(s.checked_in_at)} · {fmtHours(s.hours)} so far</div>
-          </div>
-          <span style={{fontSize:10,background:'rgba(58,158,122,.2)',color:'#88D8B8',
-            borderRadius:6,padding:'2px 8px',fontWeight:600}}>Active</span>
-        </div>
-      ))}
-
-      {/* Summary */}
-      {closedSessions.length>0&&(
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-          padding:'8px 14px',borderRadius:10,marginBottom:10,
-          background:'var(--input-bg,rgba(255,255,255,.03))',
-          border:'1px solid var(--border)'}}>
-          <span style={{fontSize:12,color:'var(--text-faint)'}}>
-            {closedSessions.length} session{closedSessions.length!==1?'s':''}
-          </span>
-          <span style={{fontSize:13,fontWeight:600,color:'#7BAAEE'}}>
-            {fmtHours(totalHours)} total
-          </span>
-        </div>
-      )}
-
-      {/* Session rows */}
-      {loading
-        ? <div style={{textAlign:'center',padding:20}}><Spinner size={16}/></div>
-        : closedSessions.length===0 && openSessions.filter(s=>!s.needs_review).length===0 && needsReview.length===0
-          ? <div style={{textAlign:'center',padding:20,color:'var(--text-faint)',fontSize:12}}>No sessions recorded yet.</div>
-          : <div style={{display:'flex',flexDirection:'column',gap:6}}>
-              {closedSessions.map(s=>(
-                <div key={s.checkin_id} style={{padding:'10px 14px',borderRadius:10,
-                  background:'var(--input-bg,rgba(255,255,255,.03))',
-                  border:'1px solid var(--border)'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                    <span style={{fontSize:18,flexShrink:0}}>{s.children?.avatar||'🧒'}</span>
-                    <span style={{fontSize:13,fontWeight:500,flex:1}}>{s.children?.name}</span>
-                    <span style={{fontSize:12,fontWeight:700,color:'#7BAAEE'}}>{fmtHours(s.hours)}</span>
-                  </div>
-                  <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                    {/* Check-in */}
-                    <button onClick={()=>setEditEntry({id:s.checkin_id,checked_at:s.checked_in_at,checked_by_name:s.checked_in_by,label:'Check-in'})}
-                      style={{display:'flex',alignItems:'center',gap:4,padding:'4px 8px',
-                        borderRadius:8,background:'rgba(58,158,122,.1)',border:'1px solid rgba(58,158,122,.2)',
-                        color:'#88D8B8',fontSize:10,cursor:'pointer'}}>
-                      <span>▶ In</span>
-                      <span style={{fontWeight:600}}>{fmtDateTime(s.checked_in_at)} {fmtTime(s.checked_in_at)}</span>
-                      {s.checkin_edited&&<span style={{opacity:.6}}>·edited</span>}
-                      <span style={{opacity:.5}}>✏️</span>
-                    </button>
-                    {/* Check-out */}
-                    <button onClick={()=>setEditEntry({id:s.checkout_id,checked_at:s.checked_out_at,checked_by_name:s.checked_out_by,label:'Check-out'})}
-                      style={{display:'flex',alignItems:'center',gap:4,padding:'4px 8px',
-                        borderRadius:8,background:'rgba(192,80,80,.1)',border:'1px solid rgba(192,80,80,.2)',
-                        color:'#F5AAAA',fontSize:10,cursor:'pointer'}}>
-                      <span>■ Out</span>
-                      <span style={{fontWeight:600}}>{fmtDateTime(s.checked_out_at)} {fmtTime(s.checked_out_at)}</span>
-                      {s.checkout_edited&&<span style={{opacity:.6}}>·edited</span>}
-                      <span style={{opacity:.5}}>✏️</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-      }
-
-      {editEntry&&(
-        <EditCheckinModal open={!!editEntry} onClose={()=>setEditEntry(null)}
-          entry={editEntry} label={editEntry?.label||''}
-          onSaved={()=>{setEditEntry(null);load();}}/>
-      )}
-      {manualSession&&(
-        <ManualCheckoutModal open={!!manualSession} onClose={()=>setManualSession(null)}
-          session={manualSession} familyId={familyId}
-          onSaved={()=>{setManualSession(null);load();}}/>
-      )}
-    </div>
-  );
-}
-
-// Hours summary card for parent home — shows open sessions + week total
-function HoursSummaryCard({familyId, children}) {
-  const [openSessions, setOpenSessions] = useState([]);
-  const [weekHours, setWeekHours]       = useState(0);
-  const [needsReview, setNeedsReview]   = useState([]);
-
-  useEffect(()=>{ load(); },[familyId]);
-
-  async function load() {
-    const weekStart = new Date(); weekStart.setDate(weekStart.getDate()-7);
-    const {data} = await supabase.from('sessions')
-      .select('*,children:child_id(name,avatar)')
-      .eq('family_id',familyId)
-      .gte('checked_in_at',weekStart.toISOString());
-    const open    = (data||[]).filter(s=>s.is_open&&!s.needs_review);
-    const review  = (data||[]).filter(s=>s.needs_review);
-    const closed  = (data||[]).filter(s=>!s.is_open);
-    const total   = closed.reduce((s,r)=>s+(r.hours||0),0);
-    setOpenSessions(open);
-    setNeedsReview(review);
-    setWeekHours(total);
-  }
-
-  if(openSessions.length===0 && weekHours===0 && needsReview.length===0) return null;
-
-  return (
-    <div className="card fade-up" style={{padding:'14px 18px',marginBottom:12}}>
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
-        <span style={{fontSize:16}}>⏱</span>
-        <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontWeight:600}}>Hours This Week</span>
-        <span style={{marginLeft:'auto',fontSize:15,fontWeight:700,color:'#7BAAEE'}}>{fmtHours(weekHours)}</span>
-      </div>
-      {needsReview.map(s=>(
-        <div key={s.checkin_id} style={{fontSize:11,color:'#F5C098',marginBottom:4,
-          padding:'6px 10px',background:'rgba(200,120,74,.08)',borderRadius:8,
-          border:'1px solid rgba(200,120,74,.2)'}}>
-          ⚠️ {s.children?.name} — missing checkout from {fmtDateTime(s.checked_in_at)}
-        </div>
-      ))}
-      {openSessions.map(s=>(
-        <div key={s.checkin_id} style={{display:'flex',alignItems:'center',gap:8,
-          padding:'6px 10px',background:'rgba(58,158,122,.08)',borderRadius:8,
-          border:'1px solid rgba(58,158,122,.2)',marginBottom:4}}>
-          <span style={{fontSize:16}}>{s.children?.avatar||'🧒'}</span>
-          <span style={{fontSize:12,flex:1}}>{s.children?.name} is checked in</span>
-          <span style={{fontSize:11,color:'#88D8B8',fontWeight:600}}>{fmtHours(s.hours)}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-
-
-// ─── In-App Notification Center ──────────────────────────────────────────────
-function NotificationCenter({userId, isSitter, familyId, sitterId}) {
-  const [open, setOpen]       = useState(false);
-  const [notifs, setNotifs]   = useState([]);
-  const [unread, setUnread]   = useState(0);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(()=>{
-    loadUnread();
-    // Poll every 30s
-    const t = setInterval(loadUnread, 30000);
-    return ()=>clearInterval(t);
-  },[userId]);
-
-  async function loadUnread() {
-    const {count} = await supabase.from('notifications')
-      .select('id',{count:'exact',head:true})
-      .eq('user_id',userId).eq('read',false);
-    setUnread(count||0);
-  }
-
-  async function loadNotifs() {
-    setLoading(true);
-    const {data} = await supabase.from('notifications')
-      .select('*').eq('user_id',userId)
-      .order('created_at',{ascending:false}).limit(30);
-    setNotifs(data||[]);
-    setLoading(false);
-    // Mark all as read
-    await supabase.from('notifications').update({read:true})
-      .eq('user_id',userId).eq('read',false);
-    setUnread(0);
-  }
-
-  function handleOpen() {
-    setOpen(true);
-    loadNotifs();
-  }
-
-  function notifIcon(type) {
-    const icons = {
-      new_message:'💬', new_post:'🌸', new_invoice:'💰',
-      invoice_paid:'✅', checkin:'🟢', checkout:'🔴',
-      eta:'🚗', connection_request:'🤝', connection_accepted:'✅',
-      invoice_reminder:'🔔', review:'⭐',
-    };
-    return icons[type]||'🔔';
-  }
-
-  return (
-    <>
-      <button onClick={handleOpen} style={{
-        position:'relative',background:'none',border:'none',cursor:'pointer',
-        padding:'6px 8px',borderRadius:10,color:'var(--text-dim)',fontSize:18,
-        display:'flex',alignItems:'center',justifyContent:'center'}}>
-        🔔
-        {unread>0&&(
-          <span style={{position:'absolute',top:2,right:2,
-            background:'#E05A5A',color:'#fff',borderRadius:'50%',
-            width:16,height:16,fontSize:9,fontWeight:700,
-            display:'flex',alignItems:'center',justifyContent:'center',
-            border:'2px solid var(--body-bg,#0C1420)'}}>
-            {unread>9?'9+':unread}
-          </span>
-        )}
-      </button>
-
-      <Modal open={open} onClose={()=>setOpen(false)}>
-        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:16}}>
-          Notifications
-        </div>
-        {loading
-          ? <div style={{textAlign:'center',padding:40}}><Spinner size={20}/></div>
-          : notifs.length===0
-            ? <div style={{textAlign:'center',padding:40,color:'var(--text-faint)',fontSize:13}}>
-                No notifications yet.
-              </div>
-            : <div style={{display:'flex',flexDirection:'column',gap:2}}>
-                {notifs.map(n=>(
-                  <div key={n.id} style={{
-                    display:'flex',alignItems:'flex-start',gap:10,padding:'10px 12px',
-                    borderRadius:10,background:n.read?'transparent':'rgba(111,163,232,.06)',
-                    border:`1px solid ${n.read?'transparent':'rgba(111,163,232,.12)'}`,
-                  }}>
-                    <span style={{fontSize:18,flexShrink:0,marginTop:1}}>{notifIcon(n.type)}</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:n.read?400:600,color:'var(--text-dim)',lineHeight:1.4}}>
-                        {n.title}
-                      </div>
-                      {n.body&&<div style={{fontSize:11,color:'var(--text-faint)',marginTop:2,lineHeight:1.4}}>
-                        {n.body}
-                      </div>}
-                      <div style={{fontSize:10,color:'var(--text-faint)',marginTop:4}}>
-                        {timeAgo(n.created_at)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-        }
-      </Modal>
-    </>
-  );
-}
-
-// ─── Multi-Child Check-In Button ─────────────────────────────────────────────
-function MultiCheckInButton({children, familyId, currentUserId, checkerName, isSitter}) {
-  const [loading, setLoading] = useState(false);
-  const [done, setDone]       = useState(false);
-
-  async function checkAll() {
-    setLoading(true);
-    const now = new Date().toISOString();
-    // Get latest status for each child
-    const statuses = await Promise.all(children.map(async c => {
-      const {data} = await supabase.from('checkins').select('status')
-        .eq('child_id',c.id).order('checked_at',{ascending:false}).limit(1).maybeSingle();
-      return {child:c, lastStatus: data?.status||null};
-    }));
-    // All checked in? Check everyone out. Otherwise check everyone in.
-    const allIn = statuses.every(s=>s.lastStatus==='in');
-    const newStatus = allIn ? 'out' : 'in';
-    await supabase.from('checkins').insert(
-      statuses.map(({child})=>({
-        child_id:child.id, family_id:familyId, status:newStatus,
-        checked_by:currentUserId, checked_by_name:checkerName,
-        checked_by_role: isSitter?'sitter':'member', checked_at:now,
-      }))
-    );
-    setLoading(false);
-    setDone(true);
-    setTimeout(()=>setDone(false),2000);
-    // Reload page state
-    window.dispatchEvent(new CustomEvent('checkin-update'));
-  }
-
-  return (
-    <button onClick={checkAll} disabled={loading||done}
-      style={{padding:'4px 10px',borderRadius:10,border:'1px solid rgba(58,158,122,.3)',
-        background:'rgba(58,158,122,.1)',color:'#88D8B8',fontSize:10,fontWeight:600,cursor:'pointer'}}>
-      {loading?<Spinner size={10}/>:done?'✓ Done':'⊕ Check in all'}
-    </button>
-  );
-}
-
 function CheckInButton({child, familyId, currentUserId, checkerName, isSitter, onChecked}) {
   const [status, setStatus]   = useState(null); // 'in' | 'out' | null
   const [loading, setLoading] = useState(false);
@@ -5759,6 +3863,27 @@ function CheckInButton({child, familyId, currentUserId, checkerName, isSitter, o
       setStatus(newStatus);
       setLastEntry(inserted||{status:newStatus,checked_at:now,checked_by_name:checkerName});
       if(onChecked) onChecked(child.id, newStatus);
+      // Notify the other party (fire and forget)
+      const icon = newStatus==='in' ? '\u{1F7E2}' : '\u{1F534}';
+      const verb = newStatus==='in' ? 'checked in' : 'checked out';
+      if(isSitter) {
+        supabase.from('members').select('user_id').eq('family_id',familyId).eq('status','active')
+          .then(({data:mems})=>{
+            const ids=(mems||[]).map(m=>m.user_id).filter(Boolean);
+            if(ids.length) {
+              invokeNotification({body:{type:'checkin',payload:{familyId,childName:child.name,status:newStatus,checkerName,notifyUserIds:ids}}}).catch(()=>{});
+              sendPushNotification(ids,`${icon} ${child.name} ${verb}`,`by ${checkerName}`,'/?portal=parent','checkin');
+            }
+          });
+      } else {
+        supabase.from('family_sitters').select('sitter_id').eq('family_id',familyId).eq('status','active').maybeSingle()
+          .then(({data:fs})=>{
+            if(fs?.sitter_id) {
+              invokeNotification({body:{type:'checkin',payload:{familyId,childName:child.name,status:newStatus,checkerName,notifyUserIds:[fs.sitter_id]}}}).catch(()=>{});
+              sendPushNotification([fs.sitter_id],`${icon} ${child.name} ${verb}`,`by ${checkerName}`,'/?portal=sitter','checkin');
+            }
+          });
+      }
     }
     setLoading(false);
   }
@@ -6070,10 +4195,9 @@ function SitterDashboard({session,onSignOut}) {
   const sitterId=session.user.id;
   const [name,setName]=useState(session.user.user_metadata?.name||session.user.email.split("@")[0]);
   const [reviewTarget,setReviewTarget]=useState(null); // {sitterId,sitterName}
-  const [showCheckinHistory,setShowCheckinHistory]=useState(false);
   const [onboarded,setOnboarded]=useState(!!localStorage.getItem(`ll_onboarded_${session.user.id}`));
   const [tab,setTab]=useState("families");
-  const [unread,setUnread]=useState({messages:0,feed:0,eta:0,requests:0});
+  const [unread,setUnread]=useState({messages:0,feed:0,eta:0});
 
   useEffect(()=>{
     if(onboarded) return;
@@ -6098,10 +4222,7 @@ function SitterDashboard({session,onSignOut}) {
         .select('id',{count:'exact',head:true})
         .neq('author_id',sitterId)
         .gt('created_at',lastSeenFeed);
-      const {count:reqCount} = await supabase.from('family_sitters')
-        .select('id',{count:'exact',head:true})
-        .eq('sitter_id',sitterId).eq('status','requested');
-      setUnread({messages:msgCount||0,feed:feedCount||0,requests:reqCount||0});
+      setUnread({messages:msgCount||0,feed:feedCount||0});
     }
     checkUnread();
     // Real-time updates
@@ -6113,11 +4234,7 @@ function SitterDashboard({session,onSignOut}) {
         if(p.new.author_id!==sitterId) setUnread(u=>({...u,feed:u.feed+1}));
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'eta_notifications'},()=>{
-        setUnread(u=>({...u,eta:u.eta+1}));
-      })
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'family_sitters'},(p)=>{
-        if(p.new.sitter_id===sitterId && p.new.status==='requested')
-          setUnread(u=>({...u,requests:u.requests+1}));
+        if(tab!=='families') setUnread(u=>({...u,eta:u.eta+1}));
       }).subscribe();
     return()=>supabase.removeChannel(ch);
   },[sitterId]);
@@ -6141,7 +4258,7 @@ function SitterDashboard({session,onSignOut}) {
   useEffect(()=>{ subscribeToPush(sitterId); },[sitterId]);
 
   const NAV=[
-    {id:"families",icon:"👨‍👩‍👧",label:"Families",badge:(unread.eta||0)+(unread.requests||0)},
+    {id:"families",icon:"👨‍👩‍👧",label:"Families",badge:unread.eta},
     {id:"feed",icon:"🌸",label:"Feed",badge:unread.feed},
     {id:"invoices",icon:"💰",label:"Invoices"},
     {id:"messages",icon:"💬",label:"Messages",badge:unread.messages},
@@ -6159,8 +4276,8 @@ function SitterDashboard({session,onSignOut}) {
           <div className="leaf" style={{fontSize:22,filter:"drop-shadow(0 0 10px rgba(58,158,122,.4))"}}>➿</div>
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <NotificationCenter userId={sitterId}/>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div style={{fontSize:12,color:"var(--text-faint)",display:"none"}} className="hide-mobile-name">{name}</div>
           <button className="bg" style={{padding:"6px 12px",fontSize:12}} onClick={onSignOut}>Sign out</button>
         </div>
       </div>
@@ -6201,10 +4318,6 @@ function ParentDashboard({session,onSignOut}) {
   const [showAddMember,setShowAddMember] = useState(false);
   const [name,setName]=useState(session.user.user_metadata?.name||session.user.email.split("@")[0]);
   const [reviewTarget,setReviewTarget]=useState(null); // {sitterId,sitterName}
-  const [showCheckinHistory,setShowCheckinHistory]=useState(false);
-  const [showFindSitter,setShowFindSitter]=useState(false);
-  const [showIconPicker,setShowIconPicker]=useState(false);
-  const [showOnboarding,setShowOnboarding]=useState(false);
 
   const load = useCallback(async()=>{
     setLoading(true);
@@ -6220,11 +4333,6 @@ function ParentDashboard({session,onSignOut}) {
     const sittersList=(fsRows||[]).map(r=>({...r.sitters,connection_status:r.status})).filter(Boolean);
     const famWithSitters = fam ? {...fam, sitters_list:sittersList, sitter_name:sittersList[0]?.name||'Sitter'} : fam;
     setFamily(famWithSitters);setChildren(kids||[]);setMembers(mems||[]);
-    // Show onboarding for new families with no children and no sitters
-    if(famWithSitters && !(kids||[]).length && !(sittersList||[]).length) {
-      const seen = localStorage.getItem(`ll_onboarded_family_${famWithSitters.id}`);
-      if(!seen) setShowOnboarding(true);
-    }
     setLoading(false);
   },[session.user.id]);
 
@@ -6269,9 +4377,7 @@ function ParentDashboard({session,onSignOut}) {
     checkUnread();
     const ch=supabase.channel('parent-unread')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},(p)=>{
-        if(p.new.sender_id!==session.user.id) {
-          setUnread(u=>({...u,messages:u.messages+1}));
-        }
+        if(p.new.sender_id!==session.user.id) setUnread(u=>({...u,messages:u.messages+1}));
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'posts',filter:`family_id=eq.${family?.id}`},()=>{
         setUnread(u=>({...u,feed:u.feed+1}));
@@ -6323,8 +4429,8 @@ function ParentDashboard({session,onSignOut}) {
           <div className="leaf" style={{fontSize:22,filter:"drop-shadow(0 0 10px rgba(58,158,122,.4))"}}>➿</div>
           <div className="logo-text" style={{fontSize:20}}>littleloop</div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <NotificationCenter userId={session.user.id}/>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div style={{fontSize:12,color:"var(--text-faint)",display:"none"}} className="hide-mobile-name">{name}</div>
           <button className="bg" style={{padding:"6px 12px",fontSize:12}} onClick={onSignOut}>Sign out</button>
         </div>
       </div>
@@ -6348,23 +4454,10 @@ function ParentDashboard({session,onSignOut}) {
             {!family
               ?<div className="es"><div className="ic">👨‍👩‍👧</div><h3>Not connected yet</h3><p>Your account isn't linked to a family yet.<br/>Make sure you signed up with the email your sitter invited.</p></div>
               :<>
-                {/* Weekly schedule */}
-                <WeeklyScheduleCard familyId={family.id} sitters={family.sitters_list||[]}/>
-
-                {/* Hours summary */}
-                <HoursSummaryCard familyId={family.id} children={children}/>
-
                 {/* Family card */}
                 <div className="card fade-up" style={{padding:24,marginBottom:16}}>
                   <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
-                    {isAdmin
-                      ? <button onClick={()=>setShowIconPicker(true)} title="Change family icon"
-                          style={{width:48,height:48,borderRadius:14,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0,border:"none",cursor:"pointer",position:"relative"}}>
-                          {family.icon||"👨‍👩‍👧"}
-                          <span style={{position:"absolute",bottom:-2,right:-2,fontSize:10,background:"var(--card-bg)",borderRadius:"50%",width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid var(--border)"}}>✏️</span>
-                        </button>
-                      : <div style={{width:48,height:48,borderRadius:14,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{family.icon||"👨‍👩‍👧"}</div>
-                    }
+                    <div style={{width:48,height:48,borderRadius:14,background:"linear-gradient(135deg,#3A9E7A,#2A7A5A)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>👨‍👩‍👧</div>
                     <div style={{flex:1,minWidth:0}}>
                       {isAdmin
                         ?<FamilyNameEditor familyId={family.id} name={family.name} onSaved={n=>{setFamily(f=>({...f,name:n}));}}/>
@@ -6408,11 +4501,7 @@ function ParentDashboard({session,onSignOut}) {
 
                   {/* Sitters */}
                   <div style={{marginBottom:20}}>
-                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-                      <SectionLabel>Sitters</SectionLabel>
-                      {isAdmin&&<button className="bp" style={{padding:'4px 10px',fontSize:11}}
-                        onClick={()=>setShowFindSitter(true)}>+ Find Sitter</button>}
-                    </div>
+                    <SectionLabel>Sitters</SectionLabel>
                     {(family?.sitters_list||[]).length===0
                       ?<div style={{fontSize:12,color:"var(--text-faint)",fontStyle:"italic"}}>No sitters connected yet.</div>
                       :<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -6437,29 +4526,15 @@ function ParentDashboard({session,onSignOut}) {
                                 ⭐ Review
                               </button>
                             )}
-                            {s.connection_status!=="active"&&(
-                              <span className="sb sb-p" style={{fontSize:9}}>Pending</span>
-                            )}
+                            <span className={`sb sb-${s.connection_status==="active"?"a":"p"}`} style={{fontSize:9}}>
+                              {s.connection_status==="active"?"Active":"Pending"}
+                            </span>
                           </div>
                           </div>
                         ))}
                       </div>
                     }
                   </div>
-                  <CheckinHistoryModal open={showCheckinHistory} onClose={()=>setShowCheckinHistory(false)}
-                    familyId={family.id} children={children}/>
-                  <FindSitterModal open={showFindSitter} onClose={()=>setShowFindSitter(false)}
-                    familyId={family.id} familyName={family.name} onRequested={load}/>
-                  <FamilyIconPicker open={showIconPicker} onClose={()=>setShowIconPicker(false)}
-                    familyId={family.id} current={family.icon||"👨‍👩‍👧"}
-                    onSaved={icon=>{setFamily(f=>({...f,icon}));setShowIconPicker(false);}}/>
-                  <FamilyOnboarding open={showOnboarding} onClose={()=>{
-                    localStorage.setItem(`ll_onboarded_family_${family.id}`,'1');
-                    setShowOnboarding(false);load();
-                  }} familyId={family.id} familyName={family.name} onDone={()=>{
-                    localStorage.setItem(`ll_onboarded_family_${family.id}`,'1');
-                    setShowOnboarding(false);load();
-                  }}/>
                   {reviewTarget&&<LeaveReviewModal
                     open={!!reviewTarget} onClose={()=>setReviewTarget(null)}
                     sitterId={reviewTarget.sitterId} sitterName={reviewTarget.sitterName}
@@ -6477,9 +4552,7 @@ function ParentDashboard({session,onSignOut}) {
                       {members.map(m=>(
                         <div key={m.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"var(--card-bg)",borderRadius:12,border:"1px solid rgba(255,255,255,.06)"}}>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            {m.photo_url
-                              ?<img src={m.photo_url} style={{width:28,height:28,borderRadius:8,objectFit:"cover"}} alt={m.name}/>
-                              :<span style={{fontSize:22}}>{m.avatar||"👤"}</span>}
+                            <span style={{fontSize:22}}>{m.avatar||"👤"}</span>
                             <div>
                               <div style={{fontSize:13,fontWeight:500}}>{m.name}{m.user_id===session.user.id&&<span style={{fontSize:10,color:"var(--text-faint)",marginLeft:6}}>(you)</span>}</div>
                               <div style={{fontSize:11,color:"var(--text-faint)"}}>{m.email}</div>
@@ -6487,7 +4560,7 @@ function ParentDashboard({session,onSignOut}) {
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                             <span className={`sb sb-${m.status==="active"?"a":"p"}`} style={{fontSize:9}}>{ROLE_LABELS[m.role]||m.role}</span>
-                            {(isAdmin||m.user_id===session.user.id)&&(
+                            {isAdmin&&m.user_id!==session.user.id&&(
                               <button className="bg" style={{padding:"4px 8px",fontSize:11}} onClick={()=>setEditMember(m)}>✏️</button>
                             )}
                           </div>
@@ -6511,8 +4584,7 @@ function ParentDashboard({session,onSignOut}) {
       {/* Modals */}
       <ChildProfileModal open={!!selectedChild} onClose={()=>setSelectedChild(null)} child={selectedChild} sitterId={null} isParent={true}/>
       <ChildModal open={showAddChild||!!editChild} onClose={()=>{setShowAddChild(false);setEditChild(null);}} familyId={family?.id} child={editChild||null} onSaved={load}/>
-      <MemberModal open={showAddMember||!!editMember} onClose={()=>{setShowAddMember(false);setEditMember(null);}} familyId={family?.id} familyName={family?.name} member={editMember||null} adminName={name} onSaved={load}
-        canEditRole={isAdmin&&editMember?.user_id!==session.user.id}/>
+      <MemberModal open={showAddMember||!!editMember} onClose={()=>{setShowAddMember(false);setEditMember(null);}} familyId={family?.id} familyName={family?.name} member={editMember||null} adminName={name} onSaved={load}/>
     </div>
   );
 }
@@ -6557,11 +4629,6 @@ export default function App() {
       setSession(session??null);
       if(session) setUserRole(session.user.user_metadata?.role||"sitter");
       if(event==="PASSWORD_RECOVERY") setUserRole("__reset__");
-      if(event==="TOKEN_REFRESHED" && !session) {
-        // Refresh token invalid — clear storage and reload to login
-        Object.keys(localStorage).filter(k=>k.startsWith('sb-')||k.startsWith('ll_')).forEach(k=>localStorage.removeItem(k));
-        window.location.reload();
-      }
     });
     return()=>subscription.unsubscribe();
   },[]);
