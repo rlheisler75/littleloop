@@ -11,7 +11,7 @@ const FIREBASE_CONFIG = {
   appId: "1:1025731561016:web:4d44b61dced529072f08cd",
 };
 // Firebase VAPID key (from Firebase Console → Project Settings → Cloud Messaging → Web Push certificates)
-const FIREBASE_VAPID_KEY = 'BJQ4O7e_xxg3hxJTYlQjI82o4LKewcaz-T7C5E5Tcd8pcJkU4bujB9B4WjPSKtaokOKvDOPWw_45pjeooxfq07k';
+const FIREBASE_VAPID_KEY = 'BC8hDE8RmkIYX3wYXsxzeNWoU4rr4Zp-0lJkzTKiowOHbHOBinKK_IdXm1j9gjINhC_gZMCK5_eN9YCLJVZt7qI';
 
 // ── Push Notifications ────────────────────────────────────────────────────────
 }
