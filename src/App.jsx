@@ -13,10 +13,6 @@ const FIREBASE_CONFIG = {
 // Firebase VAPID key (from Firebase Console → Project Settings → Cloud Messaging → Web Push certificates)
 const FIREBASE_VAPID_KEY = 'BC8hDE8RmkIYX3wYXsxzeNWoU4rr4Zp-0lJkzTKiowOHbHOBinKK_IdXm1j9gjINhC_gZMCK5_eN9YCLJVZt7qI';
 
-// ── Push Notifications ────────────────────────────────────────────────────────
-}
-
-// ── Firebase Push Notifications ───────────────────────────────────────────────
 let _fbMessaging = null;
 
 async function getFirebaseMessaging() {
