@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const VAPID_PUBLIC_KEY = 'BLj1J-8f4WT9C_ql5m1sX7GFWeCDWZwEbT99LcrvxlJyTdNMO3c1B2lBPdWzKDf17jJLYG8rdktppsYAVa33-Gg';
+const VAPID_PUBLIC_KEY = 'BJQ4O7e_xxg3hxJTYlQjI82o4LKewcaz-T7C5E5Tcd8pcJkU4bujB9B4WjPSKtaokOKvDOPWw_45pjeooxfq07k';
 
 // ── Push Notifications ────────────────────────────────────────────────────────
 async function registerServiceWorker() {
