@@ -1,51 +1,38 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const VAPID_PUBLIC_KEY = 'BJQ4O7e_xxg3hxJTYlQjI82o4LKewcaz-T7C5E5Tcd8pcJkU4bujB9B4WjPSKtaokOKvDOPWw_45pjeooxfq07k';
+// ── Firebase Push Notifications ───────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBfGko5kB7BeSy4kFzaAdfWQiG_Nk62SqU",
+  authDomain: "littleloop-aa558.firebaseapp.com",
+  projectId: "littleloop-aa558",
+  storageBucket: "littleloop-aa558.firebasestorage.app",
+  messagingSenderId: "1025731561016",
+  appId: "1:1025731561016:web:4d44b61dced529072f08cd",
+};
+// Firebase VAPID key (from Firebase Console → Project Settings → Cloud Messaging → Web Push certificates)
+const FIREBASE_VAPID_KEY = 'BJQ4O7e_xxg3hxJTYlQjI82o4LKewcaz-T7C5E5Tcd8pcJkU4bujB9B4WjPSKtaokOKvDOPWw_45pjeooxfq07k';
 
 // ── Push Notifications ────────────────────────────────────────────────────────
-async function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) { console.warn('[Push] serviceWorker not supported'); return null; }
-  if (!('PushManager' in window)) { console.warn('[Push] PushManager not supported'); return null; }
-  try {
-    // Check for existing registration first
-    const existing = await navigator.serviceWorker.getRegistration('/');
-    if (existing?.active) {
-      console.log('[Push] SW already active:', existing.active.scriptURL, 'state:', existing.active.state);
-      return existing;
-    }
-    console.log('[Push] Registering SW...');
-    const reg = await navigator.serviceWorker.register('/sw.js', {scope: '/'});
-    console.log('[Push] SW registered, state:', reg.installing?.state || reg.waiting?.state || reg.active?.state);
-    // Force new SW to activate immediately
-    if (reg.installing) {
-      await new Promise(resolve => {
-        reg.installing.addEventListener('statechange', function() {
-          if (this.state === 'activated') resolve();
-        });
-      });
-    }
-    if (reg.waiting) { reg.waiting.postMessage('SKIP_WAITING'); }
-    reg.addEventListener('updatefound', () => {
-      const newSW = reg.installing;
-      if (newSW) {
-        newSW.addEventListener('statechange', () => {
-          console.log('[Push] SW state change:', newSW.state);
-          if (newSW.state === 'installed') newSW.postMessage('SKIP_WAITING');
-        });
-      }
-    });
-    await navigator.serviceWorker.ready;
-    console.log('[Push] SW ready, controller:', !!navigator.serviceWorker.controller);
-    return reg;
-  } catch (e) { console.error('[Push] SW registration failed:', e); return null; }
 }
 
-function b64urlToUint8(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(base64);
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+// ── Firebase Push Notifications ───────────────────────────────────────────────
+let _fbMessaging = null;
+
+async function getFirebaseMessaging() {
+  if (_fbMessaging) return _fbMessaging;
+  try {
+    const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+    const { getMessaging, getToken, isSupported } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js');
+    const supported = await isSupported();
+    if (!supported) { console.warn('[Push] Firebase Messaging not supported'); return null; }
+    const fbApp = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+    _fbMessaging = { messaging: getMessaging(fbApp), getToken };
+    return _fbMessaging;
+  } catch(e) {
+    console.error('[Push] Firebase import failed:', e);
+    return null;
+  }
 }
 
 async function subscribeToPush(userId) {
@@ -53,47 +40,29 @@ async function subscribeToPush(userId) {
     const {data:{session}} = await supabase.auth.getSession();
     if (!session) return;
 
-    const reg = await registerServiceWorker();
-    if (!reg) return;
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') { console.warn('[Push] Permission denied'); return; }
 
-    // Always get or create a fresh subscription
-    let sub = await reg.pushManager.getSubscription();
+    const reg = await navigator.serviceWorker.ready;
+    const fb = await getFirebaseMessaging();
+    if (!fb) { console.warn('[Push] Firebase not available'); return; }
 
-    // Check if existing sub matches current VAPID key
-    if (sub) {
-      const existingKey = sub.options?.applicationServerKey;
-      const expectedKey = b64urlToUint8(VAPID_PUBLIC_KEY);
-      const existingB64 = existingKey ? btoa(String.fromCharCode(...new Uint8Array(existingKey))) : '';
-      const expectedB64 = btoa(String.fromCharCode(...expectedKey));
-      if (existingB64 !== expectedB64) {
-        console.log('[Push] VAPID key mismatch, resubscribing...');
-        await sub.unsubscribe();
-        sub = null;
-      }
-    }
+    const fcmToken = await fb.getToken(fb.messaging, {
+      vapidKey: FIREBASE_VAPID_KEY,
+      serviceWorkerRegistration: reg,
+    });
+    if (!fcmToken) { console.warn('[Push] No FCM token returned'); return; }
+    console.log('[Push] Firebase token:', fcmToken.slice(0, 20) + '...');
 
-    if (!sub) {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') { console.warn('[Push] Permission denied'); return; }
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: b64urlToUint8(VAPID_PUBLIC_KEY),
-      });
-      console.log('[Push] New subscription created');
-    }
-
-    // Always save current subscription to DB (keeps it in sync with Chrome)
-    const subJson = sub.toJSON();
-    console.log('[Push] Sub endpoint:', sub.endpoint.slice(40, 70));
-    console.log('[Push] Keys present:', !!subJson.keys?.p256dh, !!subJson.keys?.auth);
     const {error} = await supabase.from('push_subscriptions').upsert({
       user_id: userId,
-      subscription: subJson,
+      fcm_token: fcmToken,
+      subscription: { fcm_token: fcmToken, type: 'firebase' },
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
     if (error) console.error('[Push] Save failed:', error);
-    else console.log('[Push] Subscription saved for', userId);
-  } catch (e) { console.warn('[Push] Subscribe failed:', e); }
+    else console.log('[Push] Firebase token saved for', userId);
+  } catch(e) { console.warn('[Push] Subscribe failed:', e); }
 }
 
 async function sendPushNotification(userIds, title, body, url, tag) {
