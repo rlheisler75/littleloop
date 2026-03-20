@@ -50,34 +50,50 @@ function b64urlToUint8(base64String) {
 
 async function subscribeToPush(userId) {
   try {
-    // Verify session is still valid before attempting DB write
     const {data:{session}} = await supabase.auth.getSession();
     if (!session) return;
 
     const reg = await registerServiceWorker();
     if (!reg) return;
 
-    // Check existing subscription
+    // Always get or create a fresh subscription
     let sub = await reg.pushManager.getSubscription();
+
+    // Check if existing sub matches current VAPID key
+    if (sub) {
+      const existingKey = sub.options?.applicationServerKey;
+      const expectedKey = b64urlToUint8(VAPID_PUBLIC_KEY);
+      const existingB64 = existingKey ? btoa(String.fromCharCode(...new Uint8Array(existingKey))) : '';
+      const expectedB64 = btoa(String.fromCharCode(...expectedKey));
+      if (existingB64 !== expectedB64) {
+        console.log('[Push] VAPID key mismatch, resubscribing...');
+        await sub.unsubscribe();
+        sub = null;
+      }
+    }
+
     if (!sub) {
       const permission = await Notification.requestPermission();
-      if (permission !== 'granted') return;
+      if (permission !== 'granted') { console.warn('[Push] Permission denied'); return; }
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: b64urlToUint8(VAPID_PUBLIC_KEY),
       });
+      console.log('[Push] New subscription created');
     }
 
+    // Always save current subscription to DB (keeps it in sync with Chrome)
     const subJson = sub.toJSON();
-    console.log('Push sub keys present:', !!subJson.keys?.p256dh, !!subJson.keys?.auth);
+    console.log('[Push] Sub endpoint:', sub.endpoint.slice(40, 70));
+    console.log('[Push] Keys present:', !!subJson.keys?.p256dh, !!subJson.keys?.auth);
     const {error} = await supabase.from('push_subscriptions').upsert({
       user_id: userId,
       subscription: subJson,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
-    if (error) console.error('Push subscription save failed:', error);
-    else console.log('Push subscription saved for', userId);
-  } catch (e) { console.warn('Push subscribe failed:', e); }
+    if (error) console.error('[Push] Save failed:', error);
+    else console.log('[Push] Subscription saved for', userId);
+  } catch (e) { console.warn('[Push] Subscribe failed:', e); }
 }
 
 async function sendPushNotification(userIds, title, body, url, tag) {
