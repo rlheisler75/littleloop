@@ -5581,13 +5581,27 @@ function NotificationCenter({userId, isSitter, familyId, sitterId}) {
   const [notifs, setNotifs]   = useState([]);
   const [unread, setUnread]   = useState(0);
   const [loading, setLoading] = useState(false);
+  const panelRef              = useRef(null);
 
   useEffect(()=>{
     loadUnread();
-    // Poll every 30s
     const t = setInterval(loadUnread, 30000);
     return ()=>clearInterval(t);
   },[userId]);
+
+  // Close on outside click
+  useEffect(()=>{
+    if(!open) return;
+    function handle(e) {
+      if(panelRef.current && !panelRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handle);
+    document.addEventListener('touchstart', handle);
+    return()=>{
+      document.removeEventListener('mousedown', handle);
+      document.removeEventListener('touchstart', handle);
+    };
+  },[open]);
 
   async function loadUnread() {
     const {count} = await supabase.from('notifications')
@@ -5603,13 +5617,13 @@ function NotificationCenter({userId, isSitter, familyId, sitterId}) {
       .order('created_at',{ascending:false}).limit(30);
     setNotifs(data||[]);
     setLoading(false);
-    // Mark all as read
     await supabase.from('notifications').update({read:true})
       .eq('user_id',userId).eq('read',false);
     setUnread(0);
   }
 
   function handleOpen() {
+    if(open) { setOpen(false); return; }
     setOpen(true);
     loadNotifs();
   }
@@ -5625,7 +5639,7 @@ function NotificationCenter({userId, isSitter, familyId, sitterId}) {
   }
 
   return (
-    <>
+    <div ref={panelRef} style={{position:'relative'}}>
       <button onClick={handleOpen} style={{
         position:'relative',background:'none',border:'none',cursor:'pointer',
         padding:'6px 8px',borderRadius:10,color:'var(--text-dim)',fontSize:18,
@@ -5642,41 +5656,61 @@ function NotificationCenter({userId, isSitter, familyId, sitterId}) {
         )}
       </button>
 
-      <Modal open={open} onClose={()=>setOpen(false)}>
-        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,marginBottom:16}}>
-          Notifications
-        </div>
-        {loading
-          ? <div style={{textAlign:'center',padding:40}}><Spinner size={20}/></div>
-          : notifs.length===0
-            ? <div style={{textAlign:'center',padding:40,color:'var(--text-faint)',fontSize:13}}>
-                No notifications yet.
-              </div>
-            : <div style={{display:'flex',flexDirection:'column',gap:2}}>
-                {notifs.map(n=>(
-                  <div key={n.id} style={{
-                    display:'flex',alignItems:'flex-start',gap:10,padding:'10px 12px',
-                    borderRadius:10,background:n.read?'transparent':'rgba(111,163,232,.06)',
-                    border:`1px solid ${n.read?'transparent':'rgba(111,163,232,.12)'}`,
-                  }}>
-                    <span style={{fontSize:18,flexShrink:0,marginTop:1}}>{notifIcon(n.type)}</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:n.read?400:600,color:'var(--text-dim)',lineHeight:1.4}}>
-                        {n.title}
-                      </div>
-                      {n.body&&<div style={{fontSize:11,color:'var(--text-faint)',marginTop:2,lineHeight:1.4}}>
-                        {n.body}
-                      </div>}
-                      <div style={{fontSize:10,color:'var(--text-faint)',marginTop:4}}>
-                        {timeAgo(n.created_at)}
+      {open&&(
+        <div style={{
+          position:'fixed',top:60,right:12,
+          width:Math.min(360, window.innerWidth-24),
+          maxHeight:'80vh',overflowY:'auto',
+          background:'var(--nav-bg,#111D2E)',
+          border:'1px solid var(--border,rgba(255,255,255,.1))',
+          borderRadius:16,
+          boxShadow:'0 20px 60px rgba(0,0,0,.5)',
+          zIndex:200,
+          padding:'16px 14px',
+        }}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600}}>
+              Notifications
+            </div>
+            <button onClick={()=>setOpen(false)} style={{
+              background:'none',border:'none',cursor:'pointer',
+              fontSize:20,color:'var(--text-faint)',lineHeight:1,padding:'0 4px',
+            }}>✕</button>
+          </div>
+
+          {loading
+            ? <div style={{textAlign:'center',padding:32}}><Spinner size={20}/></div>
+            : notifs.length===0
+              ? <div style={{textAlign:'center',padding:'28px 0',color:'var(--text-faint)',fontSize:13}}>
+                  No notifications yet.
+                </div>
+              : <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                  {notifs.map(n=>(
+                    <div key={n.id} style={{
+                      display:'flex',alignItems:'flex-start',gap:10,padding:'10px 12px',
+                      borderRadius:10,
+                      background:n.read?'transparent':'rgba(111,163,232,.06)',
+                      border:`1px solid ${n.read?'transparent':'rgba(111,163,232,.12)'}`,
+                    }}>
+                      <span style={{fontSize:18,flexShrink:0,marginTop:1}}>{notifIcon(n.type)}</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:n.read?400:600,color:'var(--text-dim)',lineHeight:1.4}}>
+                          {n.title}
+                        </div>
+                        {n.body&&<div style={{fontSize:11,color:'var(--text-faint)',marginTop:2,lineHeight:1.4}}>
+                          {n.body}
+                        </div>}
+                        <div style={{fontSize:10,color:'var(--text-faint)',marginTop:4}}>
+                          {timeAgo(n.created_at)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-        }
-      </Modal>
-    </>
+                  ))}
+                </div>
+          }
+        </div>
+      )}
+    </div>
   );
 }
 
