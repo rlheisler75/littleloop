@@ -5530,7 +5530,12 @@ function HoursSummaryCard({familyId, children}) {
   useEffect(()=>{ load(); },[familyId]);
 
   async function load() {
-    const weekStart = new Date(); weekStart.setDate(weekStart.getDate()-7);
+    // Reset at Sunday 12:00am
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay()); // back to Sunday
+    weekStart.setHours(0,0,0,0);
+
     const {data} = await supabase.from('sessions')
       .select('*,children:child_id(name,avatar)')
       .eq('family_id',familyId)
@@ -5572,8 +5577,6 @@ function HoursSummaryCard({familyId, children}) {
     </div>
   );
 }
-
-
 
 // ─── In-App Notification Center ──────────────────────────────────────────────
 function NotificationCenter({userId, isSitter, familyId, sitterId}) {
@@ -5837,9 +5840,11 @@ function CheckinLog({familyId}) {
       if(filter==='today'){
         const start = new Date(); start.setHours(0,0,0,0);
         query = query.gte('checked_at', start.toISOString());
-      } else if(filter==='week'){
-        const start = new Date(); start.setDate(start.getDate()-7);
-        query = query.gte('checked_at', start.toISOString());
+} else if(filter==='week'){
+      const start = new Date();
+      start.setDate(start.getDate() - start.getDay()); // back to Sunday
+      start.setHours(0,0,0,0);
+      query = query.gte('checked_in_at', start.toISOString());
       }
       const {data} = await query.limit(100);
       setLog(data||[]);
