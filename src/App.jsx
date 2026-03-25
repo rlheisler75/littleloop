@@ -5381,8 +5381,10 @@ function SessionsList({familyId, childrenMap, dateRange='week', showTitle=true})
     if(filter==='today'){
       const start = new Date(); start.setHours(0,0,0,0);
       query = query.gte('checked_in_at', start.toISOString());
-    } else if(filter==='week'){
-      const start = new Date(); start.setDate(start.getDate()-7);
+ } else if(filter==='week'){
+      const start = new Date();
+      start.setDate(start.getDate() - start.getDay()); // back to Sunday
+      start.setHours(0,0,0,0);
       query = query.gte('checked_in_at', start.toISOString());
     } else if(filter==='month'){
       const start = new Date(); start.setDate(start.getDate()-30);
