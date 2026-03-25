@@ -1397,12 +1397,25 @@ function ConnectionRequests({sitterId, onUpdate}) {
     setLoading(false);
   }
 
-  async function respond(id, familyId, accept) {
+ async function respond(id, familyId, accept) {
     if(accept) {
-      // Activate the connection
       await supabase.from('family_sitters').update({status:'active'}).eq('id',id);
-      // Activate the family if still pending
       await supabase.from('families').update({status:'active'}).eq('id',familyId).eq('status','pending');
+      // Notify the family admin their request was accepted
+      const req = requests.find(r=>r.id===id);
+      if(req?.families?.id) {
+        invokeNotification({body:{
+          type:'connection_accepted',
+          payload:{ familyId: req.families.id }
+        }}).catch(console.error);
+        supabase.from('members').select('user_id').eq('family_id', req.families.id)
+          .eq('role','admin').eq('status','active').limit(1)
+          .then(({data:admins})=>{
+            const ids=(admins||[]).map(m=>m.user_id).filter(Boolean);
+            if(ids.length) sendPushNotification(ids,'Connection accepted! 🎉',
+              'Your sitter accepted your connection request.','/?portal=parent','connection_accepted');
+          });
+      }
     } else {
       await supabase.from('family_sitters').update({status:'inactive'}).eq('id',id);
     }
@@ -3170,9 +3183,22 @@ function SitterInvoicesTab({sitterId, sitterName}) {
 
   useEffect(()=>{load();},[load]);
 
-  async function markPaid(inv){
+ async function markPaid(inv){
     await supabase.from("invoices").update({status:"paid",paid_date:new Date().toISOString().slice(0,10)}).eq("id",inv.id);
-    setConfirmPaid(null);load();
+    setConfirmPaid(null);
+    // Notify family invoice is paid
+    invokeNotification({body:{
+      type:'invoice_paid',
+      payload:{ familyId: inv.family_id, invoiceNumber: inv.invoice_number, sitterName }
+    }}).catch(console.error);
+    supabase.from('members').select('user_id').eq('family_id',inv.family_id)
+      .in('role',['admin','member']).eq('status','active')
+      .then(({data:mems})=>{
+        const ids=(mems||[]).map(m=>m.user_id).filter(Boolean);
+        if(ids.length) sendPushNotification(ids,'Invoice marked paid ✅',
+          `Invoice ${inv.invoice_number} has been marked as paid.`,'/?portal=parent','invoice_paid');
+      });
+    load();
   }
 
   async function unmarkPaid(inv){
