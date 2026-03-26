@@ -140,8 +140,11 @@ export function MessagesTab({ currentUserId, isSitter, families = [], memberInfo
   const [participants,  setParticipants]  = useState({});
   const [lastMessages,  setLastMessages]  = useState({});
   const [unseenCounts,  setUnseenCounts]  = useState({});
+  const [hiddenIds,     setHiddenIds]     = useState(new Set());
   const [selectedConv,  setSelectedConv]  = useState(null);
   const [showNew,       setShowNew]       = useState(false);
+  const [showHidden,    setShowHidden]    = useState(false);
+  const [menuOpen,      setMenuOpen]      = useState(null); // conv id with menu open
   const [loading,       setLoading]       = useState(true);
   const [newConvFamId,  setNewConvFamId]  = useState(null);
 
@@ -155,6 +158,11 @@ export function MessagesTab({ currentUserId, isSitter, families = [], memberInfo
     const { data: convData } = await query;
     const filtered = (convData || []).filter(c => isSitter || familyList.find(f => f.id === c.family_id));
     setConvs(filtered);
+
+    // Load which conversations this user has hidden
+    const { data: hiddenRows } = await supabase.from('conversation_hidden')
+      .select('conversation_id').eq('user_id', currentUserId);
+    setHiddenIds(new Set((hiddenRows || []).map(r => r.conversation_id)));
 
     if (filtered.length) {
       const ids = filtered.map(c => c.id);
@@ -188,6 +196,14 @@ export function MessagesTab({ currentUserId, isSitter, families = [], memberInfo
 
   useEffect(() => { load(); }, [load]);
 
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handle() { setMenuOpen(null); }
+    document.addEventListener('click', handle);
+    return () => document.removeEventListener('click', handle);
+  }, [menuOpen]);
+
   useEffect(() => {
     const sub = supabase.channel('messages-list')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => {
@@ -201,7 +217,28 @@ export function MessagesTab({ currentUserId, isSitter, families = [], memberInfo
     return () => supabase.removeChannel(sub);
   }, [currentUserId]);
 
-  const totalUnseen     = Object.values(unseenCounts).reduce((a, b) => a + b, 0);
+  async function hideConv(convId) {
+    setMenuOpen(null);
+    await supabase.from('conversation_hidden').upsert(
+      { user_id: currentUserId, conversation_id: convId },
+      { onConflict: 'user_id,conversation_id' }
+    );
+    setHiddenIds(prev => new Set([...prev, convId]));
+  }
+
+  async function unhideConv(convId) {
+    await supabase.from('conversation_hidden')
+      .delete().eq('user_id', currentUserId).eq('conversation_id', convId);
+    setHiddenIds(prev => { const n = new Set(prev); n.delete(convId); return n; });
+  }
+
+  const visibleConvs = convs.filter(c => !hiddenIds.has(c.id));
+  const hiddenConvs  = convs.filter(c => hiddenIds.has(c.id));
+  const displayConvs = showHidden ? hiddenConvs : visibleConvs;
+  const totalUnseen  = Object.entries(unseenCounts)
+    .filter(([id]) => !hiddenIds.has(id))
+    .reduce((a, [, b]) => a + b, 0);
+
   const selectedConvData = convs.find(c => c.id === selectedConv);
   const selectedParts    = participants[selectedConv] || [];
 
@@ -213,6 +250,75 @@ export function MessagesTab({ currentUserId, isSitter, families = [], memberInfo
       onBack={() => { setSelectedConv(null); load(); }} onParticipantsChanged={load}/>
   );
 
+  function ConvRow({ c, isHidden }) {
+    const parts    = participants[c.id] || [];
+    const last     = lastMessages[c.id];
+    const unseen   = unseenCounts[c.id] || 0;
+    const title    = c.title || parts.filter(p => p.user_id !== currentUserId).map(p => p.participant_name).join(', ') || 'Conversation';
+    const fam      = familyList.find(f => f.id === c.family_id);
+    const showPart = parts.find(p => p.is_sitter && p.user_id !== currentUserId) || parts.find(p => p.user_id !== currentUserId);
+    const isMenuOpen = menuOpen === c.id;
+
+    return (
+      <div key={c.id} style={{ position: 'relative' }}>
+        <div
+          className="fc"
+          onClick={() => { if (menuOpen) { setMenuOpen(null); return; } setSelectedConv(c.id); }}
+          style={{ padding: '14px 16px', opacity: isHidden ? 0.6 : 1 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            {showPart?.participant_avatar?.startsWith('http')
+              ? <img src={showPart.participant_avatar} style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }} alt={showPart.participant_name}/>
+              : <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#3A6FD4,#3A9E7A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{showPart?.participant_avatar || '💬'}</div>
+            }
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {title}
+                  {unseen > 0 && !isHidden && <span style={{ background: '#3A6FD4', borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{unseen}</span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {last && <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>{timeAgo(last.created_at)}</div>}
+                  {/* ··· menu button */}
+                  <button
+                    onClick={e => { e.stopPropagation(); setMenuOpen(isMenuOpen ? null : c.id); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--text-faint)', padding: '0 2px', lineHeight: 1, flexShrink: 0 }}
+                  >
+                    ···
+                  </button>
+                </div>
+              </div>
+              {isSitter && fam && <div style={{ fontSize: 10, color: 'rgba(111,163,232,.6)', marginBottom: 3 }}>{fam.name}</div>}
+              {last
+                ? <div style={{ fontSize: 12, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><strong style={{ color: 'var(--text-dim)' }}>{last.sender_id === currentUserId ? 'You' : last.sender_name}:</strong> {last.text}</div>
+                : <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No messages yet</div>
+              }
+            </div>
+          </div>
+        </div>
+
+        {/* Dropdown menu */}
+        {isMenuOpen && (
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position: 'absolute', top: 44, right: 12, zIndex: 50, background: 'var(--nav-bg,#111D2E)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px 0', boxShadow: '0 8px 24px rgba(0,0,0,.4)', minWidth: 160 }}
+          >
+            {isHidden
+              ? <button onClick={() => { unhideConv(c.id); setMenuOpen(null); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-dim)', textAlign: 'left' }}>
+                  👁️ Unhide
+                </button>
+              : <button onClick={() => hideConv(c.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-dim)', textAlign: 'left' }}>
+                  🙈 Hide conversation
+                </button>
+            }
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -222,42 +328,22 @@ export function MessagesTab({ currentUserId, isSitter, families = [], memberInfo
         <button className="bp" onClick={() => { setNewConvFamId(families[0]?.id || familyId || null); setShowNew(true); }}>+ New</button>
       </div>
 
-      {convs.length === 0
-        ? <div className="es"><div className="ic">💬</div><h3>No conversations yet</h3><p>Start a conversation with {isSitter ? 'a family' : 'your sitter'}.</p><button className="bp" onClick={() => { setNewConvFamId(families[0]?.id || familyId || null); setShowNew(true); }}>+ Start a conversation</button></div>
+      {/* Hidden toggle — only shown when there are hidden convs */}
+      {hiddenConvs.length > 0 && (
+        <button onClick={() => setShowHidden(v => !v)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-faint)', padding: 0 }}>
+          <span>{showHidden ? '▾' : '▸'}</span>
+          {showHidden ? `Showing ${hiddenConvs.length} hidden` : `${hiddenConvs.length} hidden conversation${hiddenConvs.length !== 1 ? 's' : ''}`}
+        </button>
+      )}
+
+      {displayConvs.length === 0
+        ? showHidden
+          ? <div style={{ textAlign: 'center', padding: '20px 0', fontSize: 13, color: 'var(--text-faint)' }}>No hidden conversations.</div>
+          : <div className="es"><div className="ic">💬</div><h3>No conversations yet</h3><p>Start a conversation with {isSitter ? 'a family' : 'your sitter'}.</p><button className="bp" onClick={() => { setNewConvFamId(families[0]?.id || familyId || null); setShowNew(true); }}>+ Start a conversation</button></div>
         : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {convs.map(c => {
-              const parts  = participants[c.id] || [];
-              const last   = lastMessages[c.id];
-              const unseen = unseenCounts[c.id] || 0;
-              const title  = c.title || parts.filter(p => p.user_id !== currentUserId).map(p => p.participant_name).join(', ') || 'Conversation';
-              const fam    = familyList.find(f => f.id === c.family_id);
-              const showPart = parts.find(p => p.is_sitter && p.user_id !== currentUserId) || parts.find(p => p.user_id !== currentUserId);
-              return (
-                <div key={c.id} className="fc" onClick={() => setSelectedConv(c.id)} style={{ padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                    {showPart?.participant_avatar?.startsWith('http')
-                      ? <img src={showPart.participant_avatar} style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }} alt={showPart.participant_name}/>
-                      : <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#3A6FD4,#3A9E7A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{showPart?.participant_avatar || '💬'}</div>
-                    }
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {title}
-                          {unseen > 0 && <span style={{ background: '#3A6FD4', borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{unseen}</span>}
-                        </div>
-                        {last && <div style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>{timeAgo(last.created_at)}</div>}
-                      </div>
-                      {isSitter && fam && <div style={{ fontSize: 10, color: 'rgba(111,163,232,.6)', marginBottom: 3 }}>{fam.name}</div>}
-                      {last
-                        ? <div style={{ fontSize: 12, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><strong style={{ color: 'var(--text-dim)' }}>{last.sender_id === currentUserId ? 'You' : last.sender_name}:</strong> {last.text}</div>
-                        : <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No messages yet</div>
-                      }
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {displayConvs.map(c => <ConvRow key={c.id} c={c} isHidden={hiddenIds.has(c.id)}/>)}
           </div>
         )
       }
