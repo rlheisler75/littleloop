@@ -4,9 +4,9 @@ import { applyTheme } from '../../lib/theme';
 import Field from '../../components/ui/Field';
 import Spinner from '../../components/ui/Spinner';
 import ThemePicker from '../../components/ui/ThemePicker';
-import { EmailPreferencesCard } from '../notifications/EmailPreferencesCard';
-import { PushPreferencesCard } from '../notifications/PushPreferencesCard';
+import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 
+import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 // ─── Inline editable family name ─────────────────────────────────────────────
 
 export function FamilyNameEditor({ familyId, name, onSaved }) {
