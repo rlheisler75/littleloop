@@ -6,7 +6,6 @@ import Spinner from '../../components/ui/Spinner';
 import ThemePicker from '../../components/ui/ThemePicker';
 import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 
-import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 // ─── Inline editable family name ─────────────────────────────────────────────
 
 export function FamilyNameEditor({ familyId, name, onSaved }) {
