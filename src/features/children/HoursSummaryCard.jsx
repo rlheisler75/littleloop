@@ -76,7 +76,7 @@ export function CheckinLog({ familyId }) {
         query = query.gte('checked_at', start.toISOString());
       } else if (filter === 'week') {
         const start = new Date();
-        start.setDate(start.getDate() - start.getDay());
+        start.setDate(start.getDate() - start.getDay()); // back to Sunday
         start.setHours(0, 0, 0, 0);
         query = query.gte('checked_at', start.toISOString());
       }

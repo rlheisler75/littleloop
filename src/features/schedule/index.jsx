@@ -71,8 +71,9 @@ export function ScheduleManager({ sitterId, familyId, familyName }) {
 // ─── Weekly schedule card (parent side) ──────────────────────────────────────
 
 export function WeeklyScheduleCard({ familyId, sitters }) {
-  const [slots,   setSlots]   = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [slots,     setSlots]     = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => { load(); }, [familyId]);
 
@@ -87,8 +88,8 @@ export function WeeklyScheduleCard({ familyId, sitters }) {
 
   if (loading || !slots.length) return null;
 
-  const today    = new Date();
-  const week     = Array.from({ length: 7 }, (_, i) => {
+  const today = new Date();
+  const week  = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     return { dow: d.getDay(), date: d, label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : DAYS[d.getDay()] };
@@ -99,39 +100,55 @@ export function WeeklyScheduleCard({ familyId, sitters }) {
   const upcoming = week.filter(d => byDow[d.dow]);
   if (!upcoming.length) return null;
 
+  // Count today's slots for the collapsed summary
+  const todayCount = (byDow[today.getDay()] || []).length;
+
   return (
     <div className="card fade-up" style={{ padding: '16px 18px', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+      {/* Clickable header — collapses/expands the slot list */}
+      <div
+        onClick={() => setCollapsed(v => !v)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: collapsed ? 0 : 14, cursor: 'pointer', userSelect: 'none' }}
+      >
         <span style={{ fontSize: 18 }}>📅</span>
-        <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 600 }}>This Week</span>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {upcoming.map(({ dow, date, label: dayLabel }) =>
-          (byDow[dow] || []).map(s => {
-            const sitter  = (sitters || []).find(st => st.id === s.sitter_id);
-            const isToday = dayLabel === 'Today';
-            return (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: isToday ? 'rgba(58,111,212,.1)' : 'var(--input-bg)', border: isToday ? '1px solid rgba(58,111,212,.3)' : '1px solid var(--border)' }}>
-                <div style={{ width: 40, textAlign: 'center', flexShrink: 0 }}>
-                  <div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: .5 }}>{DAYS[dow]}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: isToday ? '#7BAAEE' : 'var(--text-dim)', lineHeight: 1.2 }}>{date.getDate()}</div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>
-                    {fmt12(s.start_time)} – {fmt12(s.end_time)}
-                    {isToday && <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(58,111,212,.2)', color: '#7BAAEE', borderRadius: 4, padding: '1px 6px' }}>Today</span>}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{sitter?.name || 'Sitter'}{s.label && ` · ${s.label}`}</div>
-                </div>
-                {sitter?.avatar_url
-                  ? <img src={sitter.avatar_url} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} alt={sitter.name}/>
-                  : <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#3A6FD4,#3A9E7A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>➿</div>
-                }
-              </div>
-            );
-          })
+        <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 600, flex: 1 }}>This Week</span>
+        {collapsed && todayCount > 0 && (
+          <span style={{ fontSize: 11, color: '#7BAAEE', background: 'rgba(111,163,232,.12)', borderRadius: 10, padding: '2px 8px' }}>
+            {todayCount} today
+          </span>
         )}
+        <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{collapsed ? '▸' : '▾'}</span>
       </div>
+
+      {!collapsed && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {upcoming.map(({ dow, date, label: dayLabel }) =>
+            (byDow[dow] || []).map(s => {
+              const sitter  = (sitters || []).find(st => st.id === s.sitter_id);
+              const isToday = dayLabel === 'Today';
+              return (
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: isToday ? 'rgba(58,111,212,.1)' : 'var(--input-bg)', border: isToday ? '1px solid rgba(58,111,212,.3)' : '1px solid var(--border)' }}>
+                  <div style={{ width: 40, textAlign: 'center', flexShrink: 0 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: .5 }}>{DAYS[dow]}</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: isToday ? '#7BAAEE' : 'var(--text-dim)', lineHeight: 1.2 }}>{date.getDate()}</div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>
+                      {fmt12(s.start_time)} – {fmt12(s.end_time)}
+                      {isToday && <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(58,111,212,.2)', color: '#7BAAEE', borderRadius: 4, padding: '1px 6px' }}>Today</span>}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{sitter?.name || 'Sitter'}{s.label && ` · ${s.label}`}</div>
+                  </div>
+                  {sitter?.avatar_url
+                    ? <img src={sitter.avatar_url} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} alt={sitter.name}/>
+                    : <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#3A6FD4,#3A9E7A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>➿</div>
+                  }
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 }
