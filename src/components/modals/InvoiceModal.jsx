@@ -69,6 +69,44 @@ export function LineItemRow({ item, children, onChange, onRemove, index }) {
   );
 }
 
+// ─── Credit Row ───────────────────────────────────────────────────────────────
+
+export function CreditRow({ item, onChange, onRemove, index }) {
+  return (
+    <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(58,158,122,.06)', border: '1px solid rgba(58,158,122,.2)', marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 14 }}>💚</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#88D8B8' }}>Credit / Discount</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px auto', gap: 8, alignItems: 'end' }}>
+        <div>
+          <label className="fl">Description</label>
+          <input className="fi" value={item.description || ''} onChange={e => onChange(index, { description: e.target.value })}
+            placeholder="e.g. Sick day credit, Holiday discount…" style={{ marginBottom: 0 }}/>
+        </div>
+        <div>
+          <label className="fl">Amount ($)</label>
+          <input className="fi" type="number" step="0.01" min="0"
+            value={item.rate === 0 ? '' : Math.abs(parseFloat(item.rate) || 0)}
+            onChange={e => {
+              const val = parseFloat(e.target.value) || 0;
+              // Store as negative — credits reduce the total
+              onChange(index, { rate: -Math.abs(val), amount: -Math.abs(val) });
+            }}
+            placeholder="0.00" style={{ marginBottom: 0 }}/>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 2 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#88D8B8', minWidth: 60, textAlign: 'right' }}>
+            -{fmt(Math.abs(parseFloat(item.rate) || 0))}
+          </div>
+          <button onClick={() => onRemove(index)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, opacity: .4, padding: 4, flexShrink: 0 }}>🗑️</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Invoice Modal ────────────────────────────────────────────────────────────
 
 export function InvoiceModal({ open, onClose, sitterId, sitterName, families, allFamilyChildren, onSaved, editInvoice }) {
@@ -85,6 +123,10 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
 
   function blankItem() {
     return { service_date: new Date().toISOString().slice(0, 10), end_date: '', child_id: '', child_name: '', rate_type: 'hourly', hours: 0, rate: 0, amount: 0, description: '' };
+  }
+
+  function blankCredit() {
+    return { service_date: new Date().toISOString().slice(0, 10), end_date: '', child_id: '', child_name: '', rate_type: 'credit', hours: null, rate: 0, amount: 0, description: '' };
   }
 
   useEffect(() => {
@@ -148,7 +190,7 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
   async function save(status = 'draft') {
     if (!familyId)      { setAlert({ t: 'e', m: 'Select a family.' }); return; }
     if (!items.length)  { setAlert({ t: 'e', m: 'Add at least one line item.' }); return; }
-    const unset = items.find(it => !it.child_id || !it.service_date || (it.rate_type === 'hourly' && !it.hours) || !it.rate);
+    const unset = items.filter(it => it.rate_type !== 'credit').find(it => !it.child_id || !it.service_date || (it.rate_type === 'hourly' && !it.hours) || !it.rate);
     if (unset)          { setAlert({ t: 'e', m: 'Fill in all line item fields.' }); return; }
 
     setLoading(true);
@@ -233,6 +275,7 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
           <SectionLabel>Line Items</SectionLabel>
           <div style={{ display: 'flex', gap: 6 }}>
             <button type="button" className="bp" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setItems(its => [...its, blankItem()])}>+ Add Item</button>
+            <button type="button" className="bg" style={{ padding: '5px 12px', fontSize: 11, color: '#88D8B8', borderColor: 'rgba(58,158,122,.3)' }} onClick={() => setItems(its => [...its, blankCredit()])}>+ Credit</button>
             {!isEdit && sessions.length > 0 && (
               <button type="button" className="bg" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setShowSessions(!showSessions)}>
                 📋 Import Sessions ({sessions.length})
@@ -262,9 +305,25 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
         )}
 
         {items.map((it, i) => (
-          <LineItemRow key={i} item={it} index={i} children={familyChildren} onChange={updateItem} onRemove={i => setItems(its => its.filter((_, idx) => idx !== i))}/>
+          it.rate_type === 'credit'
+            ? <CreditRow key={i} item={it} index={i} onChange={updateItem} onRemove={i => setItems(its => its.filter((_, idx) => idx !== i))}/>
+            : <LineItemRow key={i} item={it} index={i} children={familyChildren} onChange={updateItem} onRemove={i => setItems(its => its.filter((_, idx) => idx !== i))}/>
         ))}
-        <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 600, color: '#88D8B8', marginTop: 8 }}>Total: {fmt(total)}</div>
+
+        {/* Totals — show subtotal + credits breakdown when credits exist */}
+        {(() => {
+          const subtotal = items.filter(it => it.rate_type !== 'credit').reduce((s, it) => s + (it.amount || 0), 0);
+          const credits  = items.filter(it => it.rate_type === 'credit').reduce((s, it) => s + (it.amount || 0), 0);
+          return credits < 0 ? (
+            <div style={{ textAlign: 'right', marginTop: 8 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 2 }}>Subtotal: {fmt(subtotal)}</div>
+              <div style={{ fontSize: 12, color: '#88D8B8', marginBottom: 4 }}>Credits: -{fmt(Math.abs(credits))}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#88D8B8' }}>Total: {fmt(total)}</div>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 600, color: '#88D8B8', marginTop: 8 }}>Total: {fmt(total)}</div>
+          );
+        })()}
       </div>
 
       <div style={{ marginBottom: 14 }}>

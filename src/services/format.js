@@ -74,9 +74,13 @@ export function getTypeIcon(type) {
 
 export function printInvoice(invoice, items, sitter, family, adminMember) {
   const enabledMethods = (sitter.payment_methods || []).filter(m => m.enabled);
-  const total      = items.reduce((s, it) => s + (it.amount || 0), 0);
-  const totalHours = items.filter(i => i.rate_type === 'hourly').reduce((s, i) => s + (i.hours || 0), 0);
-  const dateRange  = fmtDateRange(items);
+  const serviceItems   = items.filter(it => it.rate_type !== 'credit');
+  const creditItems    = items.filter(it => it.rate_type === 'credit');
+  const subtotal       = serviceItems.reduce((s, it) => s + (it.amount || 0), 0);
+  const creditTotal    = creditItems.reduce((s, it) => s + (it.amount || 0), 0);
+  const total          = subtotal + creditTotal;
+  const totalHours     = serviceItems.filter(i => i.rate_type === 'hourly').reduce((s, i) => s + (i.hours || 0), 0);
+  const dateRange      = fmtDateRange(serviceItems.length ? serviceItems : items);
 
   const paymentButtons = enabledMethods.map(m => {
     const pt   = PAYMENT_TYPES.find(p => p.id === m.type);
@@ -111,10 +115,12 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
   th{background:#F4F8FF;padding:6px 8px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#666;border-bottom:1px solid #DDE8F5}
   td{padding:8px;border-bottom:1px solid #EEF3FA;color:#333;vertical-align:top}
   tr:last-child td{border-bottom:none}
+  tr.credit-row td{color:#1A7A55;background:#F5FBF8}
   .amount{text-align:right}
   .totals{margin-left:auto;width:240px;margin-bottom:28px}
   .totals-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#555;border-bottom:1px solid #EEF3FA}
   .totals-row.grand{font-size:16px;font-weight:700;color:#14243A;border-bottom:none;padding-top:10px}
+  .totals-row.credit{color:#1A7A55}
   .status{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
   .status-draft{background:#F5F5F5;color:#888}
   .status-sent{background:#EEF5FF;color:#2550A8}
@@ -176,7 +182,16 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
     </tr>
   </thead>
   <tbody>
-    ${items.map(it => `
+    ${items.map(it => it.rate_type === 'credit' ? `
+    <tr class="credit-row">
+      <td>${fmtDate(it.service_date)}</td>
+      <td>—</td>
+      <td>${it.description || 'Credit'}</td>
+      <td>Credit</td>
+      <td>—</td>
+      <td>—</td>
+      <td class="amount" style="color:#1A7A55">-${fmt(Math.abs(it.amount))}</td>
+    </tr>` : `
     <tr>
       <td>${it.end_date && it.end_date !== it.service_date ? fmtDate(it.service_date) + ' – ' + fmtDate(it.end_date) : fmtDate(it.service_date)}</td>
       <td>${it.child_name}</td>
@@ -191,6 +206,8 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
 
 <div class="totals">
   ${totalHours > 0 ? `<div class="totals-row"><span>Total hours</span><span>${totalHours.toFixed(2)}</span></div>` : ''}
+  ${creditTotal < 0 ? `<div class="totals-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>` : ''}
+  ${creditTotal < 0 ? `<div class="totals-row credit"><span>Credits</span><span>-${fmt(Math.abs(creditTotal))}</span></div>` : ''}
   <div class="totals-row grand"><span>Total Due</span><span>${fmt(total)}</span></div>
 </div>
 
