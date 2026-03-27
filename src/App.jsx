@@ -11,8 +11,12 @@ import ResetPasswordForm from './components/auth/ResetPasswordForm';
 import { PublicSitterProfile, BrowseSitters } from './features/profile/index';
 import SitterDashboard from './SitterDashboard';
 import ParentDashboard from './ParentDashboard';
+import AdminApp from './admin/AdminApp';
 
 export default function App() {
+  // Admin console — own auth, own app
+  if (new URLSearchParams(window.location.search).has('admin')) return <AdminApp/>;
+
   const [session,    setSession]    = useState(undefined);
   const [userRole,   setUserRole]   = useState(null);
   const [inviteData, setInviteData] = useState(null);
