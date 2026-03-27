@@ -190,7 +190,7 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
       if (fsRows?.length) {
         const sitterIds = fsRows.map(r => r.sitter_id);
         sendPushNotification(sitterIds, `${memberName} is on the way!`, `ETA: ~${minutes} min`, '/?portal=sitter', 'eta');
-        invokeNotification({ body: { type: 'eta', payload: { sitterIds, memberName, minutes, familyId } } }).catch(console.error);
+        invokeNotification({ body: { type: 'eta', payload: { sitterIds, memberName, minutes, familyId } } });
       }
     }
   }

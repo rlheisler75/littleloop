@@ -35,7 +35,7 @@ export function ConnectionRequests({ sitterId, onUpdate }) {
       // Notify family the request was accepted
       const req = requests.find(r => r.id === id);
       if (req?.families?.id) {
-        invokeNotification({ body: { type: 'connection_accepted', payload: { familyId: req.families.id } } }).catch(console.error);
+        invokeNotification({ body: { type: 'connection_accepted', payload: { familyId: req.families.id } } });
         supabase.from('members').select('user_id').eq('family_id', req.families.id).eq('role', 'admin').eq('status', 'active').limit(1)
           .then(({ data: admins }) => {
             const ids = (admins || []).map(m => m.user_id).filter(Boolean);

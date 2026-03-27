@@ -73,7 +73,7 @@ export function ConversationThread({ conv, currentUserId, isSitter, familyId, on
 
     const others = participants.filter(p => p.user_id !== currentUserId);
     for (const p of others) {
-      invokeNotification({ body: { type: 'new_message', payload: { recipientId: p.user_id, senderName, messagePreview: msgText, isSitter } } }).catch(console.error);
+      invokeNotification({ body: { type: 'new_message', payload: { recipientId: p.user_id, senderName, messagePreview: msgText, isSitter } } });
       sendPushNotification([p.user_id], `New message from ${senderName}`, msgText.slice(0, 80), '/?portal=' + (isSitter ? 'parent' : 'sitter'), 'new_message');
     }
   }

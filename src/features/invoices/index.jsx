@@ -101,7 +101,7 @@ export function SitterInvoicesTab({ sitterId, sitterName }) {
   async function markPaid(inv) {
     await supabase.from('invoices').update({ status: 'paid', paid_date: new Date().toISOString().slice(0, 10) }).eq('id', inv.id);
     setConfirmPaid(null);
-    invokeNotification({ body: { type: 'invoice_paid', payload: { familyId: inv.family_id, invoiceNumber: inv.invoice_number, sitterName } } }).catch(console.error);
+    invokeNotification({ body: { type: 'invoice_paid', payload: { familyId: inv.family_id, invoiceNumber: inv.invoice_number, sitterName } } });
     supabase.from('members').select('user_id').eq('family_id', inv.family_id).in('role', ['admin', 'member']).eq('status', 'active')
       .then(({ data: mems }) => {
         const ids = (mems || []).map(m => m.user_id).filter(Boolean);
@@ -119,7 +119,7 @@ export function SitterInvoicesTab({ sitterId, sitterName }) {
   async function sendReminder(inv) {
     const fam = families.find(f => f.id === inv.family_id);
     if (!fam) return;
-    invokeNotification({ body: { type: 'invoice_reminder', payload: { familyEmail: fam.admin_email, familyName: fam.name, sitterName, invoiceNumber: inv.invoice_number, invoiceId: inv.id, dueDate: inv.due_date ? fmtDate(inv.due_date) : null } } }).catch(console.error);
+    invokeNotification({ body: { type: 'invoice_reminder', payload: { familyEmail: fam.admin_email, familyName: fam.name, sitterName, invoiceNumber: inv.invoice_number, invoiceId: inv.id, dueDate: inv.due_date ? fmtDate(inv.due_date) : null } } });
     const { data: members } = await supabase.from('members').select('user_id').eq('family_id', fam.id).in('role', ['admin', 'member']);
     if (members?.length) sendPushNotification(members.map(m => m.user_id), `Invoice reminder from ${sitterName}`, `Invoice ${inv.invoice_number} is due`, '/?portal=parent', 'invoice_reminder');
     setReminderSent(inv.id);

@@ -120,7 +120,10 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
     setItems(its => its.map((it, idx) => {
       if (idx !== i) return it;
       const merged = { ...it, ...patch };
-      merged.amount = merged.rate_type === 'hourly' ? (merged.hours || 0) * merged.rate : merged.rate;
+      // Coerce to numbers — input fields hand back strings before parseFloat fires
+      const hours = parseFloat(merged.hours) || 0;
+      const rate  = parseFloat(merged.rate)  || 0;
+      merged.amount = merged.rate_type === 'hourly' ? hours * rate : rate;
       return merged;
     }));
   }
@@ -165,7 +168,7 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
         const total        = items.reduce((s, it) => s + (it.amount || 0), 0);
         const fmtTotal     = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(total);
         const selectedFam  = families.find(f => f.id === familyId);
-        invokeNotification({ body: { type: 'new_invoice', payload: { familyId, sitterName, invoiceNumber: numData, amount: fmtTotal, familyName: selectedFam?.name || '' } } }).catch(console.error);
+        invokeNotification({ body: { type: 'new_invoice', payload: { familyId, sitterName, invoiceNumber: numData, amount: fmtTotal, familyName: selectedFam?.name || '' } } });
         supabase.from('members').select('user_id').eq('family_id', familyId).in('role', ['admin', 'member']).eq('status', 'active')
           .then(({ data: mems }) => {
             const ids = (mems || []).map(m => m.user_id).filter(Boolean);
