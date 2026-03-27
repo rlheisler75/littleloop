@@ -79,9 +79,9 @@ export default function App() {
   // Password reset
   if (userRole === '__reset__') return <><Bg/><ResetPasswordForm/></>;
 
-  // Public routes — no auth required
-  if (sitterParam) return <><Bg/><PublicSitterProfile username={sitterParam}/></>;
-  if (browseParam) return <><Bg/><BrowseSitters/></>;
+  // Public routes — show even when logged in, but pass session context
+  if (sitterParam) return <><Bg/><PublicSitterProfile username={sitterParam} session={session}/></>;
+  if (browseParam) return <><Bg/><BrowseSitters session={session} familyId={null}/></>;
 
   // Invite welcome page
   if (inviteToken && !inviteData && !session) return (

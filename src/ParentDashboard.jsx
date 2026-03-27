@@ -20,6 +20,7 @@ import FindSitterModal from './components/modals/FindSitterModal';
 import { LeaveReviewModal } from './components/modals/LeaveReviewModal';
 import { ChildProfileModal, ChildModal } from './components/modals/ChildModal';
 import MemberModal from './components/modals/MemberModal';
+import { BrowseSitters } from './features/profile/index';
 
 export default function ParentDashboard({ session, onSignOut }) {
   const [member,   setMember]   = useState(null);
@@ -138,6 +139,7 @@ export default function ParentDashboard({ session, onSignOut }) {
     { id: 'feed',     icon: '🌸', label: 'Feed',     badge: unread.feed },
     ...(canView || isAdmin ? [{ id: 'invoices', icon: '💰', label: 'Invoices', badge: unread.invoices }] : []),
     { id: 'messages', icon: '💬', label: 'Messages', badge: unread.messages },
+    { id: 'browse',   icon: '🔍', label: 'Browse',   badge: 0 },
     { id: 'profile',  icon: '⚙️', label: 'Profile',  badge: 0 },
   ];
 
@@ -321,6 +323,7 @@ export default function ParentDashboard({ session, onSignOut }) {
         {tab === 'feed'     && !family && <div className="es"><div className="ic">🌸</div><h3>Not connected</h3><p>No family connected yet.</p></div>}
         {tab === 'messages' && <MessagesTabWrapper currentUserId={session.user.id} member={member} family={family} memberName={name} memberAvatar={member?.avatar || '👤'}/>}
         {tab === 'invoices' && family && <FamilyInvoicesTab familyId={family.id} currentUserId={session.user.id}/>}
+        {tab === 'browse'   && <BrowseSitters session={session} familyId={family?.id} familyName={family?.name} onConnected={load}/>}
         {tab === 'profile'  && <MemberProfileTab memberId={member?.id} memberName={name} onNameChange={setName}/>}
       </div>
 
