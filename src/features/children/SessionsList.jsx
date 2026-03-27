@@ -1,46 +1,69 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { fmtHours, fmtTime, fmtDateTime } from '../../services/format';
 import { EditCheckinModal, ManualCheckoutModal } from '../../components/modals/CheckinModals';
 import Spinner from '../../components/ui/Spinner';
 
+const PAGE_SIZE = 15;
+
 export default function SessionsList({ familyId, childrenMap, dateRange = 'week', showTitle = true }) {
-  const [sessions,       setSessions]       = useState([]);
-  const [loading,        setLoading]        = useState(true);
-  const [editEntry,      setEditEntry]      = useState(null);
-  const [manualSession,  setManualSession]  = useState(null);
-  const [filter,         setFilter]         = useState(dateRange);
+  const [sessions,      setSessions]      = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [loadingMore,   setLoadingMore]   = useState(false);
+  const [totalCount,    setTotalCount]    = useState(0);
+  const [totalHoursAll, setTotalHoursAll] = useState(0);
+  const [editEntry,     setEditEntry]     = useState(null);
+  const [manualSession, setManualSession] = useState(null);
+  const [filter,        setFilter]        = useState(dateRange);
+  const [page,          setPage]          = useState(0);
 
-  useEffect(() => { load(); }, [familyId, filter]);
+  // Reset to page 0 whenever filter or family changes
+  useEffect(() => {
+    setPage(0);
+    setSessions([]);
+  }, [filter, familyId]);
 
-  async function load() {
-    setLoading(true);
-    let query = supabase.from('sessions')
-      .select('*, children:child_id(name,avatar,color)')
-      .eq('family_id', familyId);
+  const loadPage = useCallback(async (pageNum, append = false) => {
+    pageNum === 0 ? setLoading(true) : setLoadingMore(true);
 
-    if (filter === 'today') {
-      const start = new Date(); start.setHours(0, 0, 0, 0);
-      query = query.gte('checked_in_at', start.toISOString());
-    } else if (filter === 'week') {
-      const start = new Date();
-      start.setDate(start.getDate() - start.getDay());
-      start.setHours(0, 0, 0, 0);
-      query = query.gte('checked_in_at', start.toISOString());
-    } else if (filter === 'month') {
-      const start = new Date(); start.setDate(start.getDate() - 30);
-      query = query.gte('checked_in_at', start.toISOString());
+    // For "all" on first page, also fetch total count + total hours for the summary bar
+    if (filter === 'all' && pageNum === 0) {
+      const { data: summary } = await supabase
+        .from('sessions')
+        .select('hours')
+        .eq('family_id', familyId)
+        .eq('is_open', false);
+      setTotalCount((summary || []).length);
+      setTotalHoursAll((summary || []).reduce((s, r) => s + (r.hours || 0), 0));
     }
 
-    const { data } = await query.order('checked_in_at', { ascending: false }).limit(100);
-    setSessions(data || []);
-    setLoading(false);
+    const { data } = await buildBaseQuery(familyId, filter)
+      .order('checked_in_at', { ascending: false })
+      .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+
+    setSessions(prev => append ? [...prev, ...(data || [])] : (data || []));
+    pageNum === 0 ? setLoading(false) : setLoadingMore(false);
+  }, [familyId, filter]);
+
+  useEffect(() => { loadPage(0); }, [loadPage]);
+
+  function loadMore() {
+    const next = page + 1;
+    setPage(next);
+    loadPage(next, true);
   }
 
   const openSessions   = sessions.filter(s => s.is_open);
   const needsReview    = sessions.filter(s => s.needs_review);
   const closedSessions = sessions.filter(s => !s.is_open);
-  const totalHours     = closedSessions.reduce((s, r) => s + (r.hours || 0), 0);
+
+  // Hours: use pre-fetched total on "all", compute from loaded data otherwise
+  const totalHours = filter === 'all'
+    ? totalHoursAll
+    : closedSessions.reduce((s, r) => s + (r.hours || 0), 0);
+
+  const hasMore   = filter === 'all' && closedSessions.length < totalCount;
+  const remaining = totalCount - closedSessions.length;
 
   return (
     <div>
@@ -84,10 +107,14 @@ export default function SessionsList({ familyId, childrenMap, dateRange = 'week'
         </div>
       ))}
 
-      {/* Summary row */}
-      {closedSessions.length > 0 && (
+      {/* Summary bar — session count + total hours */}
+      {(closedSessions.length > 0 || (filter === 'all' && totalCount > 0)) && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderRadius: 10, marginBottom: 10, background: 'var(--input-bg)', border: '1px solid var(--border)' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{closedSessions.length} session{closedSessions.length !== 1 ? 's' : ''}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+            {filter === 'all'
+              ? `${totalCount} session${totalCount !== 1 ? 's' : ''} total`
+              : `${closedSessions.length} session${closedSessions.length !== 1 ? 's' : ''}`}
+          </span>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#7BAAEE' }}>{fmtHours(totalHours)} total</span>
         </div>
       )}
@@ -128,16 +155,50 @@ export default function SessionsList({ familyId, childrenMap, dateRange = 'week'
           )
       }
 
+      {/* Load more button — only on All tab */}
+      {hasMore && (
+        <button onClick={loadMore} disabled={loadingMore}
+          style={{ width: '100%', marginTop: 10, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-faint)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          {loadingMore
+            ? <><Spinner size={12}/> Loading…</>
+            : `Load ${Math.min(remaining, PAGE_SIZE)} more · ${remaining} remaining`}
+        </button>
+      )}
+
       {editEntry && (
         <EditCheckinModal open={!!editEntry} onClose={() => setEditEntry(null)}
           entry={editEntry} label={editEntry?.label || ''}
-          onSaved={() => { setEditEntry(null); load(); }}/>
+          onSaved={() => { setEditEntry(null); loadPage(0); }}/>
       )}
       {manualSession && (
         <ManualCheckoutModal open={!!manualSession} onClose={() => setManualSession(null)}
           session={manualSession} familyId={familyId}
-          onSaved={() => { setManualSession(null); load(); }}/>
+          onSaved={() => { setManualSession(null); loadPage(0); }}/>
       )}
     </div>
   );
+}
+
+// ─── Shared query builder ────────────────────────────────────────────────────
+
+function buildBaseQuery(familyId, filter) {
+  let q = supabase.from('sessions')
+    .select('*, children:child_id(name,avatar,color)')
+    .eq('family_id', familyId);
+
+  if (filter === 'today') {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    q = q.gte('checked_in_at', start.toISOString());
+  } else if (filter === 'week') {
+    const start = new Date();
+    start.setDate(start.getDate() - start.getDay()); // Sunday
+    start.setHours(0, 0, 0, 0);
+    q = q.gte('checked_in_at', start.toISOString());
+  } else if (filter === 'month') {
+    const start = new Date(); start.setDate(start.getDate() - 30);
+    q = q.gte('checked_in_at', start.toISOString());
+  }
+  // 'all' — no date filter, caller applies .range() for pagination
+
+  return q;
 }
