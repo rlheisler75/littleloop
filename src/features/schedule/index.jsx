@@ -6,6 +6,7 @@ import { DAYS, ETA_OPTIONS } from '../../lib/constants';
 import { ScheduleSlotModal } from '../../components/modals/LeaveReviewModal';
 import SectionLabel from '../../components/ui/SectionLabel';
 import Spinner from '../../components/ui/Spinner';
+import SitterAvatar from '../../components/ui/SitterAvatar';
 
 // ─── Schedule manager (sitter side) ──────────────────────────────────────────
 
@@ -139,10 +140,7 @@ export function WeeklyScheduleCard({ familyId, sitters }) {
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{sitter?.name || 'Sitter'}{s.label && ` · ${s.label}`}</div>
                   </div>
-                  {sitter?.avatar_url
-                    ? <img src={sitter.avatar_url} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} alt={sitter.name}/>
-                    : <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#3A6FD4,#3A9E7A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>➿</div>
-                  }
+                  <SitterAvatar url={sitter?.avatar_url} name={sitter?.name || 'Sitter'} size={28}/>
                 </div>
               );
             })

@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { sendPushNotification } from '../../services/push';
 import { Modal } from '../ui/Modal';
 import Spinner from '../ui/Spinner';
+import SitterAvatar from '../ui/SitterAvatar';
 
 export default function FindSitterModal({ open, onClose, familyId, familyName, onRequested }) {
   const [query,     setQuery]     = useState('');
@@ -74,8 +75,8 @@ export default function FindSitterModal({ open, onClose, familyId, familyName, o
           const status = sent[s.id];
           return (
             <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'var(--input-bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
-                {s.avatar_url ? <img src={s.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={s.name}/> : '➿'}
+              <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'var(--input-bg)', border: '1px solid var(--border)', flexShrink: 0 }}>
+                <SitterAvatar url={s.avatar_url} name={s.name} size={40} radius="0"/>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{s.name}</div>

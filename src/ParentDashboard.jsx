@@ -21,6 +21,7 @@ import { LeaveReviewModal } from './components/modals/LeaveReviewModal';
 import { ChildProfileModal, ChildModal } from './components/modals/ChildModal';
 import MemberModal from './components/modals/MemberModal';
 import { BrowseSitters } from './features/profile/index';
+import SitterAvatar from './components/ui/SitterAvatar';
 
 export default function ParentDashboard({ session, onSignOut }) {
   const [member,   setMember]   = useState(null);
@@ -261,8 +262,8 @@ export default function ParentDashboard({ session, onSignOut }) {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {family.sitters_list.map(s => (
                               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--input-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
-                                <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
-                                  {s.avatar_url ? <img src={s.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={s.name}/> : '➿'}
+                                <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--border)', flexShrink: 0 }}>
+                                  <SitterAvatar url={s.avatar_url} name={s.name} size={40} radius="0"/>
                                 </div>
                                 <div style={{ flex: 1 }}>
                                   <div style={{ fontSize: 13, fontWeight: 500 }}>{s.name}</div>

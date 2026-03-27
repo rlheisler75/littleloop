@@ -5,6 +5,7 @@ import { Modal } from '../ui/Modal';
 import Field from '../ui/Field';
 import Spinner from '../ui/Spinner';
 import SectionLabel from '../ui/SectionLabel';
+import SitterAvatar from '../ui/SitterAvatar';
 
 // ─── New Conversation Modal ───────────────────────────────────────────────────
 
@@ -121,8 +122,8 @@ export function NewConversationModal({
                 return (
                   <div key={s.id} onClick={() => setSelectedSitters(prev => sel ? prev.filter(id => id !== s.id) : [...prev, s.id])}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${sel ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: sel ? 'rgba(111,163,232,.1)' : 'rgba(255,255,255,.03)' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                      {s.avatar_url ? <img src={s.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={s.name}/> : '➿'}
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--border)', flexShrink: 0 }}>
+                      <SitterAvatar url={s.avatar_url} name={s.name} size={32} radius="0"/>
                     </div>
                     <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{s.name}</span>
                     {sel && <span style={{ fontSize: 14, color: '#7BAAEE' }}>✓</span>}

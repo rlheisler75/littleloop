@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import Spinner from '../ui/Spinner';
+import SitterAvatar from '../ui/SitterAvatar';
 
 export default function InviteWelcome({ token, onContinue }) {
   const [invite,  setInvite]  = useState(null);
@@ -59,7 +60,7 @@ export default function InviteWelcome({ token, onContinue }) {
         <div className="card" style={{ padding: '28px 24px', marginBottom: 16, textAlign: 'center' }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, marginBottom: 12, margin: '0 auto 12px' }}>
             {sitter?.avatar_url
-              ? <img src={sitter.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={sitter.name}/>
+              ? <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={72} radius="0"/>
               : '➿'
             }
           </div>

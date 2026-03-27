@@ -7,6 +7,7 @@ import ThemePicker from '../../components/ui/ThemePicker';
 import StarRating from '../../components/ui/StarRating';
 import { AvailabilityPicker, AvailabilityDisplay } from '../../components/ui/AvailabilityPicker';
 import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
+import SitterAvatar from '../../components/ui/SitterAvatar';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -434,8 +435,8 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
           <div style={{ marginBottom: 20 }}>
             <label className="fl">Profile photo</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: 'var(--card-bg)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0 }}>
-                {avatarUrl ? <img src={avatarUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/> : '➿'}
+              <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: 'var(--card-bg)', border: '2px solid var(--border)', flexShrink: 0 }}>
+                <SitterAvatar url={avatarUrl} name={sitterName} size={80} radius="0"/>
               </div>
               <div>
                 <label style={{ cursor: 'pointer' }}>
@@ -734,9 +735,9 @@ export function PublicSitterProfile({ username, session = null }) {
       {/* Profile header */}
       <div style={{ padding: '0 16px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: -44, marginBottom: 16 }}>
-          <div style={{ width: 88, height: 88, borderRadius: '50%', border: '3px solid var(--body-bg,#0C1420)', overflow: 'hidden', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, flexShrink: 0, cursor: sitter.avatar_url ? 'pointer' : 'default' }}
+          <div style={{ width: 88, height: 88, borderRadius: '50%', border: '3px solid var(--body-bg,#0C1420)', overflow: 'hidden', background: 'var(--card-bg)', flexShrink: 0, cursor: 'pointer' }}
             onClick={() => sitter.avatar_url && setLightbox(sitter.avatar_url)}>
-            {sitter.avatar_url ? <img src={sitter.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/> : '➿'}
+            <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={88} radius="0"/>
           </div>
           <div style={{ flex: 1, paddingBottom: 4, minWidth: 0 }}>
             <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{sitter.name}</h1>
