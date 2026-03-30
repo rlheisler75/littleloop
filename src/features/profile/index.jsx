@@ -978,62 +978,62 @@ export function BrowseSitters({ session = null, familyId = null, familyName = ''
                 return (
                   <div key={s.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     <div style={{ display: 'flex', gap: 0 }}>
-                      {/* Avatar — clickable to full profile */}
+                      {/* Avatar column */}
                       <div onClick={() => s.username && window.open(`/?sitter=${s.username}`, '_blank')}
-                        style={{ width: 80, flexShrink: 0, background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, cursor: s.username ? 'pointer' : 'default' }}>
-                        {s.avatar_url
-                          ? <img src={s.avatar_url} style={{ width: 80, height: '100%', minHeight: 110, objectFit: 'cover' }}/>
-                          : '➿'
-                        }
+                        style={{ width: 76, flexShrink: 0, cursor: s.username ? 'pointer' : 'default', alignSelf: 'stretch', overflow: 'hidden' }}>
+                        <SitterAvatar url={s.avatar_url} name={s.name} size={76} radius="0"
+                          style={{ width: 76, height: '100%', minHeight: 120 }}/>
                       </div>
-                      {/* Info */}
-                      <div style={{ flex: 1, padding: '14px 16px', minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
-                          <div style={{ minWidth: 0 }}>
-                            <button onClick={() => s.username && window.open(`/?sitter=${s.username}`, '_blank')}
-                              style={{ background: 'none', border: 'none', padding: 0, cursor: s.username ? 'pointer' : 'default', textAlign: 'left' }}>
-                              <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)' }}>{s.name}</div>
-                            </button>
-                            {s.tagline && <div style={{ fontSize: 11, color: 'var(--text-faint)', fontStyle: 'italic', marginTop: 1 }}>{s.tagline}</div>}
-                          </div>
+
+                      {/* Info — stacked column for mobile */}
+                      <div style={{ flex: 1, padding: '12px 14px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {/* Name + rate */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+                          <button onClick={() => s.username && window.open(`/?sitter=${s.username}`, '_blank')}
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: s.username ? 'pointer' : 'default', textAlign: 'left', minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', lineHeight: 1.3 }}>{s.name}</div>
+                          </button>
                           {(s.hourly_rate_min || s.hourly_rate_max) && (
-                            <div style={{ fontSize: 13, fontWeight: 700, color: '#7BAAEE', flexShrink: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#7BAAEE', flexShrink: 0, whiteSpace: 'nowrap' }}>
                               from ${s.hourly_rate_min || s.hourly_rate_max}/hr
                             </div>
                           )}
                         </div>
-                        {s.bio && <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{s.bio}</div>}
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
-                          {s.years_experience > 0 && <Tag label={`🏅 ${s.years_experience}yr exp`}/>}
-                          {s.background_check && <Tag label="✅ Background check" color="rgba(60,180,100,.15)" textColor="#5EE89A" borderColor="rgba(60,180,100,.25)"/>}
+                        {/* Tagline */}
+                        {s.tagline && <div style={{ fontSize: 11, color: 'var(--text-faint)', fontStyle: 'italic', lineHeight: 1.3 }}>{s.tagline}</div>}
+                        {/* Bio — 2 lines max */}
+                        {s.bio && <div style={{ fontSize: 12, color: 'var(--text-dim)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.5 }}>{s.bio}</div>}
+                        {/* Tags */}
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                          {s.years_experience > 0 && <Tag label={`🏅 ${s.years_experience}yr`}/>}
+                          {s.background_check && <Tag label="✅ Checked" color="rgba(60,180,100,.15)" textColor="#5EE89A" borderColor="rgba(60,180,100,.25)"/>}
                           {(s.age_ranges || []).slice(0, 2).map(id => {
                             const r = AGE_RANGES.find(a => a.id === id);
                             return r ? <Tag key={id} label={`${r.icon} ${r.label}`} color="rgba(58,111,212,.1)" textColor="var(--accent,#7BAAEE)" borderColor="rgba(58,111,212,.2)"/> : null;
                           })}
-
-                          {/* CTA — varies by auth state */}
-                          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-                            {s.username && (
-                              <button onClick={() => window.open(`/?sitter=${s.username}`, '_blank')} className="bg" style={{ fontSize: 11, padding: '4px 10px' }}>
-                                View profile
-                              </button>
-                            )}
-                            {isLoggedInFamily && (
-                              connStatus === 'active'
-                                ? <span style={{ fontSize: 11, color: '#88D8B8', fontWeight: 600 }}>✓ Connected</span>
-                                : connStatus === 'requested'
-                                  ? <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Requested…</span>
-                                  : <button className="bp" style={{ fontSize: 11, padding: '4px 12px' }} disabled={requesting[s.id]}
-                                      onClick={() => requestConnection(s)}>
-                                      {requesting[s.id] ? <Spinner size={10}/> : '+ Connect'}
-                                    </button>
-                            )}
-                            {isPublic && (
-                              <button className="bp" style={{ fontSize: 11, padding: '4px 12px' }} onClick={() => window.location.href = '/?portal=parent'}>
-                                Get started
-                              </button>
-                            )}
-                          </div>
+                        </div>
+                        {/* CTA — own row, right-aligned, never overflows */}
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 2 }}>
+                          {s.username && (
+                            <button onClick={() => window.open(`/?sitter=${s.username}`, '_blank')} className="bg" style={{ fontSize: 11, padding: '5px 10px' }}>
+                              View profile
+                            </button>
+                          )}
+                          {isLoggedInFamily && (
+                            connStatus === 'active'
+                              ? <span style={{ fontSize: 11, color: '#88D8B8', fontWeight: 600, alignSelf: 'center' }}>✓ Connected</span>
+                              : connStatus === 'requested'
+                                ? <span style={{ fontSize: 11, color: 'var(--text-faint)', alignSelf: 'center' }}>Requested…</span>
+                                : <button className="bp" style={{ fontSize: 11, padding: '5px 12px' }} disabled={requesting[s.id]}
+                                    onClick={() => requestConnection(s)}>
+                                    {requesting[s.id] ? <Spinner size={10}/> : '+ Connect'}
+                                  </button>
+                          )}
+                          {isPublic && (
+                            <button className="bp" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => window.location.href = '/?portal=parent'}>
+                              Get started
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
