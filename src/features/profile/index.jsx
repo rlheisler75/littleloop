@@ -859,9 +859,9 @@ export function PublicSitterProfile({ username, session = null }) {
 
       {isMobile ? (
         /* ── MOBILE: single column ── */
-        <div style={{ padding: '0 16px 40px' }}>
-          {/* Avatar row overlapping banner */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: -44, marginBottom: 12 }}>
+        <div>
+          {/* Avatar row — sits outside padding so negative margin clears the banner */}
+          <div style={{ padding: '0 16px', display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: -44, marginBottom: 12 }}>
             <div style={{ width: 88, height: 88, borderRadius: '50%', border: '3px solid var(--body-bg,#0C1420)', overflow: 'hidden', background: 'var(--card-bg)', flexShrink: 0, cursor: sitter.avatar_url ? 'pointer' : 'default', boxShadow: '0 4px 16px rgba(0,0,0,.4)' }}
               onClick={() => sitter.avatar_url && setLightbox(sitter.avatar_url)}>
               <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={88} radius="0"/>
@@ -871,9 +871,11 @@ export function PublicSitterProfile({ username, session = null }) {
               {sitter.tagline && <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '3px 0 0', fontStyle: 'italic' }}>{sitter.tagline}</p>}
             </div>
           </div>
-          <div style={{ marginBottom: 14 }}><StatList/></div>
-          <div style={{ marginBottom: 20 }}><CtaBlock compact/></div>
-          <MainContent/>
+          <div style={{ padding: '0 16px 40px' }}>
+            <div style={{ marginBottom: 14 }}><StatList/></div>
+            <div style={{ marginBottom: 20 }}><CtaBlock compact/></div>
+            <MainContent/>
+          </div>
         </div>
       ) : (
         /* ── DESKTOP: two-column ── */
