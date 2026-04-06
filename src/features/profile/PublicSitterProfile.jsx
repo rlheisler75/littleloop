@@ -15,15 +15,15 @@ import Spinner from '../../components/ui/Spinner';
 import SitterAvatar from '../../components/ui/SitterAvatar';
 
 // ── Responsive hook ──────────────────────────────────────────────────────────
-function useIsMobile(breakpoint = 700) {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= breakpoint);
+function useIsMobile(bp = 700) {
+  const [is, setIs] = useState(() => typeof window !== 'undefined' && window.innerWidth <= bp);
   useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
-    const handler = e => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, [breakpoint]);
-  return isMobile;
+    const mq = window.matchMedia(`(max-width: ${bp}px)`);
+    const h = e => setIs(e.matches);
+    mq.addEventListener('change', h);
+    return () => mq.removeEventListener('change', h);
+  }, [bp]);
+  return is;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ export default function PublicSitterProfile({ username, session }) {
   const [expanded, setExpanded] = useState(false);
 
   // Connection state for logged-in families
-  const [connStatus,  setConnStatus]  = useState(null); // null | 'none' | 'pending' | 'active'
+  const [connStatus,  setConnStatus]  = useState(null);
   const [connLoading, setConnLoading] = useState(false);
   const [familyId,    setFamilyId]    = useState(null);
   const isMobile = useIsMobile();
@@ -333,28 +333,28 @@ export default function PublicSitterProfile({ username, session }) {
       <div style={{
         width: '100%',
         height: isMobile ? 160 : 220,
-        background: sitter.headline_photo_url ? undefined : bannerGrad,
+        background: bannerGrad,   /* always show gradient — photo layered on top */
         position: 'relative',
         overflow: 'hidden',
         flexShrink: 0,
       }}>
+        {/* Photo covers gradient when present */}
         {sitter.headline_photo_url && (
           <img
             src={sitter.headline_photo_url}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
           />
         )}
-        {/* Bottom fade so avatar border blends in */}
+        {/* Bottom fade so avatar blends cleanly */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.5) 100%)',
+          background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.55) 100%)',
         }} />
       </div>
 
       {/* ── Page body ───────────────────────────────────────────────────── */}
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: isMobile ? '0 16px 60px' : '0 24px 60px' }}>
-
         <div style={{
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
@@ -362,19 +362,17 @@ export default function PublicSitterProfile({ username, session }) {
           alignItems: 'flex-start',
         }}>
 
-          {/* ── SIDEBAR (desktop) / HEADER ROW (mobile) ───────────────── */}
-          {isMobile ? (
-            /* ── MOBILE: avatar row pulled up over banner ── */
+          {/* ── MOBILE header: avatar row overlapping banner ─────────────── */}
+          {isMobile && (
             <div style={{ width: '100%', marginTop: -44, marginBottom: 16 }}>
-              {/* Avatar + name side by side */}
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginBottom: 10 }}>
                 <div style={{
                   width: 88, height: 88, flexShrink: 0,
                   borderRadius: '50%',
                   border: '3px solid var(--body-bg)',
                   overflow: 'hidden',
                   background: 'var(--card-bg)',
-                  boxShadow: '0 4px 16px rgba(0,0,0,.35)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,.4)',
                 }}>
                   <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={88} style={{ borderRadius: '50%' }} />
                 </div>
@@ -389,22 +387,21 @@ export default function PublicSitterProfile({ username, session }) {
                   )}
                 </div>
               </div>
-              {/* Quick stats row — wraps naturally on small screens */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', marginBottom: 14 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 12px', marginBottom: 14 }}>
                 {(sitter.city || sitter.state) && <Stat icon="📍" text={[sitter.city, sitter.state].filter(Boolean).join(', ')} />}
                 {(sitter.hourly_rate_min || sitter.hourly_rate_max) && <Stat icon="💰" text={`$${sitter.hourly_rate_min || '?'}–$${sitter.hourly_rate_max || '?'}/hr`} />}
-                {sitter.years_experience > 0 && <Stat icon="🏅" text={`${sitter.years_experience} yr${sitter.years_experience !== 1 ? 's' : ''} exp`} />}
+                {sitter.years_experience > 0 && <Stat icon="🏅" text={`${sitter.years_experience} yr${sitter.years_experience !== 1 ? 's' : ''}`} />}
                 {avgRating && <Stat icon="⭐" text={`${avgRating} (${reviews.length})`} />}
                 {sitter.background_check && <Stat icon="✅" text="Background checked" color="#88D8B8" />}
                 {sitter.has_car && <Stat icon="🚗" text="Has car" />}
               </div>
-              {/* CTA inline on mobile */}
               <CtaBlock compact />
             </div>
-          ) : (
-            /* ── DESKTOP: sticky sidebar pulled up over banner ── */
-            <div style={{ flexShrink: 0, width: 260, marginTop: -60, position: 'sticky', top: 80 }}>
-              {/* Avatar */}
+          )}
+
+          {/* ── DESKTOP sidebar: sticky, overlapping banner ──────────────── */}
+          {!isMobile && (
+            <div style={{ flexShrink: 0, width: 260, marginTop: -60, position: 'sticky', top: 72 }}>
               <div style={{
                 width: 120, height: 120,
                 borderRadius: '50%',
@@ -412,11 +409,10 @@ export default function PublicSitterProfile({ username, session }) {
                 overflow: 'hidden',
                 marginBottom: 14,
                 background: 'var(--card-bg)',
-                boxShadow: '0 4px 20px rgba(0,0,0,.3)',
+                boxShadow: '0 4px 20px rgba(0,0,0,.35)',
               }}>
                 <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={120} style={{ borderRadius: '50%' }} />
               </div>
-              {/* Name + tagline */}
               <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 26, fontWeight: 700, lineHeight: 1.2, marginBottom: 4 }}>
                 {sitter.name}
               </h1>
@@ -425,7 +421,6 @@ export default function PublicSitterProfile({ username, session }) {
                   {sitter.tagline}
                 </p>
               )}
-              {/* Quick stats */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
                 {(sitter.city || sitter.state) && <Stat icon="📍" text={[sitter.city, sitter.state].filter(Boolean).join(', ')} />}
                 {(sitter.hourly_rate_min || sitter.hourly_rate_max) && <Stat icon="💰" text={`$${sitter.hourly_rate_min || '?'}–$${sitter.hourly_rate_max || '?'}/hr`} />}
@@ -436,12 +431,11 @@ export default function PublicSitterProfile({ username, session }) {
                 {sitter.has_car && <Stat icon="🚗" text="Has car" />}
                 {sitter.can_drive_kids && <Stat icon="👶" text="Can drive kids" />}
               </div>
-              {/* CTA */}
               <CtaBlock />
             </div>
           )}
 
-          {/* ── MAIN CONTENT ──────────────────────────────────────────── */}
+            {/* ── MAIN CONTENT ──────────────────────────────────────────── */}
           <div style={{ flex: 1, minWidth: 0, paddingTop: isMobile ? 0 : 20 }}>
 
             {/* About */}
@@ -580,6 +574,6 @@ export default function PublicSitterProfile({ username, session }) {
           </div>{/* end main content */}
         </div>{/* end flex row */}
       </div>{/* end page body */}
-    </div>{/* end page root */}
+    </div>
   );
 }
