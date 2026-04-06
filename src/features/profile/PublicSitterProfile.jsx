@@ -14,6 +14,18 @@ import { supabase } from '../../lib/supabase';
 import Spinner from '../../components/ui/Spinner';
 import SitterAvatar from '../../components/ui/SitterAvatar';
 
+// ── Responsive hook ──────────────────────────────────────────────────────────
+function useIsMobile(breakpoint = 700) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= breakpoint);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const handler = e => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function timeAgo(ts) {
@@ -105,6 +117,7 @@ export default function PublicSitterProfile({ username, session }) {
   const [connStatus,  setConnStatus]  = useState(null); // null | 'none' | 'pending' | 'active'
   const [connLoading, setConnLoading] = useState(false);
   const [familyId,    setFamilyId]    = useState(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     load();
@@ -319,10 +332,11 @@ export default function PublicSitterProfile({ username, session }) {
       {/* ── Banner ──────────────────────────────────────────────────────── */}
       <div style={{
         width: '100%',
-        height: 220,
+        height: isMobile ? 160 : 220,
         background: sitter.headline_photo_url ? undefined : bannerGrad,
         position: 'relative',
         overflow: 'hidden',
+        flexShrink: 0,
       }}>
         {sitter.headline_photo_url && (
           <img
@@ -331,103 +345,104 @@ export default function PublicSitterProfile({ username, session }) {
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         )}
-        {/* Subtle bottom fade so avatar sits cleanly on top */}
+        {/* Bottom fade so avatar border blends in */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.45) 100%)',
+          background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.5) 100%)',
         }} />
       </div>
 
       {/* ── Page body ───────────────────────────────────────────────────── */}
-      <div style={{
-        maxWidth: 1040,
-        margin: '0 auto',
-        padding: '0 20px 60px',
-      }}>
+      <div style={{ maxWidth: 1040, margin: '0 auto', padding: isMobile ? '0 16px 60px' : '0 24px 60px' }}>
 
-        {/*
-          Desktop: avatar sits overlapping the banner, pulled up with negative margin.
-          Mobile:  same approach but smaller avatar and tighter spacing.
-        */}
         <div style={{
           display: 'flex',
-          flexDirection: 'row',
-          gap: 32,
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 0 : 32,
           alignItems: 'flex-start',
         }}>
 
-          {/* ── LEFT SIDEBAR (desktop) / HEADER (mobile) ──────────────── */}
-          <div style={{
-            flexShrink: 0,
-            width: 260,
-            marginTop: -60,     // pulls avatar up over banner
-          }}
-            className="profile-sidebar"
-          >
-            {/* Avatar */}
-            <div style={{
-              width: 120, height: 120,
-              borderRadius: '50%',
-              border: '4px solid var(--body-bg)',
-              overflow: 'hidden',
-              marginBottom: 14,
-              background: 'var(--card-bg)',
-              flexShrink: 0,
-              boxShadow: '0 4px 20px rgba(0,0,0,.3)',
-            }}>
-              <SitterAvatar
-                url={sitter.avatar_url}
-                name={sitter.name}
-                size={120}
-                style={{ borderRadius: '50%' }}
-              />
-            </div>
-
-            {/* Name + tagline */}
-            <h1 style={{
-              fontFamily: "'Cormorant Garamond',serif",
-              fontSize: 26, fontWeight: 700, lineHeight: 1.2,
-              marginBottom: 4,
-            }}>
-              {sitter.name}
-            </h1>
-            {sitter.tagline && (
-              <p style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic', marginBottom: 12, lineHeight: 1.4 }}>
-                {sitter.tagline}
-              </p>
-            )}
-
-            {/* Quick stats */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-              {(sitter.city || sitter.state) && <Stat icon="📍" text={[sitter.city, sitter.state].filter(Boolean).join(', ')} />}
-              {(sitter.hourly_rate_min || sitter.hourly_rate_max) && (
-                <Stat icon="💰" text={`$${sitter.hourly_rate_min || '?'}–$${sitter.hourly_rate_max || '?'}/hr`} />
-              )}
-              {sitter.years_experience > 0 && (
-                <Stat icon="🏅" text={`${sitter.years_experience} yr${sitter.years_experience !== 1 ? 's' : ''} exp`} />
-              )}
-              {avgRating && (
-                <Stat icon="⭐" text={`${avgRating} (${reviews.length} review${reviews.length !== 1 ? 's' : ''})`} />
-              )}
-              {sitter.response_time && <Stat icon="⚡" text={sitter.response_time} />}
-              {sitter.background_check && <Stat icon="✅" text="Background checked" color="#88D8B8" />}
-              {sitter.has_car && <Stat icon="🚗" text="Has car" />}
-              {sitter.can_drive_kids && <Stat icon="👶" text="Can drive kids" />}
-            </div>
-
-            {/* CTA — sidebar version (desktop) */}
-            <div className="sidebar-cta">
-              <CtaBlock />
-            </div>
-          </div>
-
-          {/* ── MAIN CONTENT ──────────────────────────────────────────── */}
-          <div style={{ flex: 1, minWidth: 0, paddingTop: 20 }}>
-
-            {/* CTA — inline version (mobile only, shown via CSS) */}
-            <div className="inline-cta" style={{ display: 'none', marginBottom: 20 }}>
+          {/* ── SIDEBAR (desktop) / HEADER ROW (mobile) ───────────────── */}
+          {isMobile ? (
+            /* ── MOBILE: avatar row pulled up over banner ── */
+            <div style={{ width: '100%', marginTop: -44, marginBottom: 16 }}>
+              {/* Avatar + name side by side */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginBottom: 12 }}>
+                <div style={{
+                  width: 88, height: 88, flexShrink: 0,
+                  borderRadius: '50%',
+                  border: '3px solid var(--body-bg)',
+                  overflow: 'hidden',
+                  background: 'var(--card-bg)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,.35)',
+                }}>
+                  <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={88} style={{ borderRadius: '50%' }} />
+                </div>
+                <div style={{ paddingBottom: 4, minWidth: 0 }}>
+                  <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 700, lineHeight: 1.2, marginBottom: 2 }}>
+                    {sitter.name}
+                  </h1>
+                  {sitter.tagline && (
+                    <p style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic', lineHeight: 1.3, margin: 0 }}>
+                      {sitter.tagline}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {/* Quick stats row — wraps naturally on small screens */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', marginBottom: 14 }}>
+                {(sitter.city || sitter.state) && <Stat icon="📍" text={[sitter.city, sitter.state].filter(Boolean).join(', ')} />}
+                {(sitter.hourly_rate_min || sitter.hourly_rate_max) && <Stat icon="💰" text={`$${sitter.hourly_rate_min || '?'}–$${sitter.hourly_rate_max || '?'}/hr`} />}
+                {sitter.years_experience > 0 && <Stat icon="🏅" text={`${sitter.years_experience} yr${sitter.years_experience !== 1 ? 's' : ''} exp`} />}
+                {avgRating && <Stat icon="⭐" text={`${avgRating} (${reviews.length})`} />}
+                {sitter.background_check && <Stat icon="✅" text="Background checked" color="#88D8B8" />}
+                {sitter.has_car && <Stat icon="🚗" text="Has car" />}
+              </div>
+              {/* CTA inline on mobile */}
               <CtaBlock compact />
             </div>
+          ) : (
+            /* ── DESKTOP: sticky sidebar pulled up over banner ── */
+            <div style={{ flexShrink: 0, width: 260, marginTop: -60, position: 'sticky', top: 80 }}>
+              {/* Avatar */}
+              <div style={{
+                width: 120, height: 120,
+                borderRadius: '50%',
+                border: '4px solid var(--body-bg)',
+                overflow: 'hidden',
+                marginBottom: 14,
+                background: 'var(--card-bg)',
+                boxShadow: '0 4px 20px rgba(0,0,0,.3)',
+              }}>
+                <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={120} style={{ borderRadius: '50%' }} />
+              </div>
+              {/* Name + tagline */}
+              <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 26, fontWeight: 700, lineHeight: 1.2, marginBottom: 4 }}>
+                {sitter.name}
+              </h1>
+              {sitter.tagline && (
+                <p style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic', marginBottom: 12, lineHeight: 1.4 }}>
+                  {sitter.tagline}
+                </p>
+              )}
+              {/* Quick stats */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                {(sitter.city || sitter.state) && <Stat icon="📍" text={[sitter.city, sitter.state].filter(Boolean).join(', ')} />}
+                {(sitter.hourly_rate_min || sitter.hourly_rate_max) && <Stat icon="💰" text={`$${sitter.hourly_rate_min || '?'}–$${sitter.hourly_rate_max || '?'}/hr`} />}
+                {sitter.years_experience > 0 && <Stat icon="🏅" text={`${sitter.years_experience} yr${sitter.years_experience !== 1 ? 's' : ''} exp`} />}
+                {avgRating && <Stat icon="⭐" text={`${avgRating} (${reviews.length} review${reviews.length !== 1 ? 's' : ''})`} />}
+                {sitter.response_time && <Stat icon="⚡" text={sitter.response_time} />}
+                {sitter.background_check && <Stat icon="✅" text="Background checked" color="#88D8B8" />}
+                {sitter.has_car && <Stat icon="🚗" text="Has car" />}
+                {sitter.can_drive_kids && <Stat icon="👶" text="Can drive kids" />}
+              </div>
+              {/* CTA */}
+              <CtaBlock />
+            </div>
+          )}
+
+          {/* ── MAIN CONTENT ──────────────────────────────────────────── */}
+          <div style={{ flex: 1, minWidth: 0, paddingTop: isMobile ? 0 : 20 }}>
 
             {/* About */}
             {sitter.bio && (
@@ -562,45 +577,9 @@ export default function PublicSitterProfile({ username, session }) {
               )}
             </Section>
 
-          </div>{/* end main */}
+          </div>{/* end main content */}
         </div>{/* end flex row */}
       </div>{/* end page body */}
-
-      {/* ── Responsive styles injected inline ───────────────────────────── */}
-      <style>{`
-        /* Desktop default — sidebar visible, inline CTA hidden */
-        .profile-sidebar { display: block; }
-        .sidebar-cta     { display: block; }
-        .inline-cta      { display: none !important; }
-
-        @media (max-width: 700px) {
-          /* Mobile — collapse to single column */
-          .profile-sidebar {
-            width: 100% !important;
-            margin-top: -50px !important;
-            display: flex;
-            flex-direction: row;
-            align-items: flex-end;
-            gap: 14px;
-            margin-bottom: 16px;
-          }
-          .profile-sidebar > div:first-child {
-            /* Avatar */
-            width: 88px !important;
-            height: 88px !important;
-            flex-shrink: 0;
-          }
-          .sidebar-cta { display: none !important; }
-          .inline-cta  { display: block !important; }
-
-          /* Name + tagline sit beside avatar on mobile */
-          .profile-sidebar h1 { font-size: 20px !important; }
-
-          /* Quick stats hide on mobile (shown in main flow instead) */
-          .profile-sidebar .stat-col { display: none; }
-        }
-      `}</style>
-
-    </div>
+    </div>{/* end page root */}
   );
 }
