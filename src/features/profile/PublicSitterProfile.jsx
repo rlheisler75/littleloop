@@ -1,5 +1,5 @@
 // src/features/profile/PublicSitterProfile.jsx
-// Public sitter profile page — no auth required.
+// Public sitter profile page —  no auth required.
 // Route: littleloop.xyz/?sitter=username
 //
 // Layout:
