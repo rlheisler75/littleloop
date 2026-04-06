@@ -8,6 +8,7 @@ import StarRating from '../../components/ui/StarRating';
 import { AvailabilityPicker, AvailabilityDisplay } from '../../components/ui/AvailabilityPicker';
 import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 import SitterAvatar from '../../components/ui/SitterAvatar';
+export { default as PublicSitterProfile } from './PublicSitterProfile';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
