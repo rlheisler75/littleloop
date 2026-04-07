@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import AdminOverview   from './sections/AdminOverview';
-import AdminSitters    from './sections/AdminSitters';
-import AdminFamilies   from './sections/AdminFamilies';
-import AdminInvoices   from './sections/AdminInvoices';
+import { useState, useEffect } from 'react';
+import AdminOverview    from './sections/AdminOverview';
+import AdminSitters     from './sections/AdminSitters';
+import AdminFamilies    from './sections/AdminFamilies';
+import AdminInvoices    from './sections/AdminInvoices';
 import AdminConnections from './sections/AdminConnections';
+import AdminBgChecks    from './sections/AdminBgChecks';
+import { supabase }     from '../lib/supabase';
 
 const NAV = [
   { id: 'overview',     icon: '📊', label: 'Overview' },
@@ -11,10 +13,27 @@ const NAV = [
   { id: 'families',     icon: '👨‍👩‍👧', label: 'Families' },
   { id: 'invoices',     icon: '💰', label: 'Invoices' },
   { id: 'connections',  icon: '🔗', label: 'Connections' },
+  { id: 'bgchecks',     icon: '🛡️', label: 'BG Checks' },
 ];
 
 export default function AdminDashboard({ adminUser, onSignOut }) {
   const [section, setSection] = useState('overview');
+  const [pendingBg, setPendingBg] = useState(0);
+
+  useEffect(() => {
+    // Poll for pending background check docs
+    async function checkPending() {
+      const { count } = await supabase.from('sitters')
+        .select('id', { count: 'exact', head: true })
+        .eq('background_check', true)
+        .not('background_check_doc_url', 'is', null)
+        .eq('background_check_verified', false);
+      setPendingBg(count || 0);
+    }
+    checkPending();
+    const interval = setInterval(checkPending, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div style={{ minHeight: '100vh', background: '#0F1923', color: '#E4EAF4', display: 'flex', flexDirection: 'column' }}>
@@ -43,7 +62,12 @@ export default function AdminDashboard({ adminUser, onSignOut }) {
             <button key={n.id} onClick={() => setSection(n.id)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', marginBottom: 2, background: section === n.id ? 'rgba(58,111,212,.2)' : 'transparent', color: section === n.id ? '#7BAAEE' : 'rgba(255,255,255,.45)', fontSize: 13, fontWeight: section === n.id ? 600 : 400, textAlign: 'left', transition: 'all .15s' }}>
               <span style={{ fontSize: 16 }}>{n.icon}</span>
-              {n.label}
+              <span style={{ flex: 1 }}>{n.label}</span>
+              {n.id === 'bgchecks' && pendingBg > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 700, background: '#F5924A', color: '#fff', borderRadius: 10, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>
+                  {pendingBg}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -55,6 +79,7 @@ export default function AdminDashboard({ adminUser, onSignOut }) {
           {section === 'families'    && <AdminFamilies adminRole={adminUser.role}/>}
           {section === 'invoices'    && <AdminInvoices adminRole={adminUser.role}/>}
           {section === 'connections' && <AdminConnections adminRole={adminUser.role}/>}
+          {section === 'bgchecks'    && <AdminBgChecks adminUser={adminUser} onVerified={() => setPendingBg(c => Math.max(0, c - 1))}/>}
         </div>
       </div>
     </div>

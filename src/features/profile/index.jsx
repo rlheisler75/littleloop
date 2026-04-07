@@ -178,6 +178,91 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
   );
 }
 
+// ─── Background Check Upload + Status ────────────────────────────────────────
+
+function BgCheckUploader({ sitterId }) {
+  const [docUrl,     setDocUrl]     = useState(null);
+  const [verified,   setVerified]   = useState(false);
+  const [verifiedAt, setVerifiedAt] = useState(null);
+  const [uploading,  setUploading]  = useState(false);
+  const [alert,      setAlert]      = useState(null);
+
+  useEffect(() => {
+    supabase.from('sitters')
+      .select('background_check_doc_url,background_check_verified,background_check_verified_at')
+      .eq('id', sitterId).single()
+      .then(({ data }) => {
+        if (data) {
+          setDocUrl(data.background_check_doc_url);
+          setVerified(data.background_check_verified || false);
+          setVerifiedAt(data.background_check_verified_at);
+        }
+      });
+  }, [sitterId]);
+
+  async function uploadDoc(file) {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { setAlert({ t: 'e', m: 'File must be under 10MB.' }); return; }
+    setUploading(true); setAlert(null);
+    try {
+      const ext  = file.name.split('.').pop();
+      const path = `${sitterId}/bg-check.${ext}`;
+      const { error: upErr } = await supabase.storage.from('sitter-avatars').upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from('sitter-avatars').getPublicUrl(path);
+      await supabase.from('sitters').update({ background_check_doc_url: publicUrl, background_check_verified: false, background_check_verified_at: null }).eq('id', sitterId);
+      setDocUrl(publicUrl);
+      setVerified(false);
+      setAlert({ t: 's', m: 'Document uploaded! A littleloop admin will review it shortly.' });
+    } catch (err) { setAlert({ t: 'e', m: err.message }); }
+    finally { setUploading(false); }
+  }
+
+  return (
+    <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--card-bg)', border: `1px solid ${verified ? 'rgba(11,165,173,.3)' : 'var(--border)'}` }}>
+      {alert && <div className={`al al-${alert.t}`} style={{ marginBottom: 10 }}>{alert.m}</div>}
+      {verified ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 22 }}>🛡️</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0BA5AD' }}>Verified by littleloop</div>
+            {verifiedAt && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Verified {new Date(verifiedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>}
+          </div>
+        </div>
+      ) : docUrl ? (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 16 }}>⏳</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#F5C098' }}>Pending review</div>
+              <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Your document has been submitted and is awaiting admin review.</div>
+            </div>
+          </div>
+          <a href={docUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none' }}>View uploaded document ↗</a>
+          <div style={{ marginTop: 8 }}>
+            <label style={{ cursor: 'pointer' }}>
+              <span style={{ fontSize: 11, color: 'var(--text-faint)', textDecoration: 'underline' }}>Replace document</span>
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={e => uploadDoc(e.target.files[0])}/>
+            </label>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10, lineHeight: 1.5 }}>
+            Upload your background check document to get a <strong>🛡️ Verified</strong> badge on your public profile. Accepted: PDF, JPG, PNG (max 10MB).
+          </div>
+          <label style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
+            <span className="bg" style={{ display: 'inline-block', padding: '8px 14px', fontSize: 12, opacity: uploading ? .6 : 1 }}>
+              {uploading ? <><Spinner size={11}/> Uploading…</> : '📎 Upload background check'}
+            </span>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} disabled={uploading} onChange={e => uploadDoc(e.target.files[0])}/>
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Public Profile Editor ────────────────────────────────────────────────────
 
 export function PublicProfileEditor({ sitterId, sitterName }) {
@@ -562,11 +647,14 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
           {/* Background check */}
           <div>
             <label className="fl">Background check</label>
-            <ToggleRow label="I have a background check" sub="Families value this" isOn={bgCheck} onToggle={() => setBgCheck(v => !v)}/>
+            <ToggleRow label="I have a background check" sub="Upload your document to get verified by littleloop" isOn={bgCheck} onToggle={() => setBgCheck(v => !v)}/>
             {bgCheck && (
-              <div style={{ marginTop: 8 }}>
-                <label className="fl">Date completed</label>
-                <input className="fi" type="date" value={bgCheckDate} onChange={e => setBgCheckDate(e.target.value)} style={{ maxWidth: 180 }}/>
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <label className="fl">Date completed</label>
+                  <input className="fi" type="date" value={bgCheckDate} onChange={e => setBgCheckDate(e.target.value)} style={{ maxWidth: 180 }}/>
+                </div>
+                <BgCheckUploader sitterId={sitterId}/>
               </div>
             )}
           </div>
@@ -629,7 +717,7 @@ export function PublicSitterProfile({ username, session = null }) {
   useEffect(() => {
     async function load() {
       const { data: s, error } = await supabase.from('sitters')
-        .select('id,name,tagline,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,services,comfortable_with,languages,has_car,can_drive_kids,background_check,background_check_date,response_time,education,avatar_url,headline_photo_url,photo_gallery,public_profile')
+        .select('id,name,tagline,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,services,comfortable_with,languages,has_car,can_drive_kids,background_check,background_check_date,background_check_verified,background_check_verified_at,response_time,education,avatar_url,headline_photo_url,photo_gallery,public_profile')
         .eq('username', username).eq('public_profile', true).maybeSingle();
       if (!s || error) { setNotFound(true); setLoading(false); return; }
       setSitter(s);
@@ -780,6 +868,36 @@ export function PublicSitterProfile({ username, session = null }) {
             </div>
           </ProfileSection>
         )}
+
+        {/* Background check — prominent verified badge */}
+        {sitter.background_check && (
+          <ProfileSection title="Safety">
+            {sitter.background_check_verified ? (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px', borderRadius: 14, background: 'rgba(11,165,173,.08)', border: '2px solid rgba(11,165,173,.3)' }}>
+                <div style={{ fontSize: 28, flexShrink: 0 }}>🛡️</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0BA5AD', marginBottom: 3 }}>Background Check Verified</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+                    This sitter's background check has been reviewed and verified by littleloop.
+                    {sitter.background_check_verified_at && (
+                      <span style={{ color: 'var(--text-faint)', display: 'block', marginTop: 2 }}>
+                        Verified {new Date(sitter.background_check_verified_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(58,158,122,.06)', border: '1px solid rgba(58,158,122,.2)' }}>
+                <span style={{ fontSize: 20 }}>✅</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#88D8B8' }}>Background check on file</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Self-reported · pending verification</div>
+                </div>
+              </div>
+            )}
+          </ProfileSection>
+        )}
         {sitter.availability && (() => {
           try {
             const av = typeof sitter.availability === 'string' ? JSON.parse(sitter.availability) : sitter.availability;
@@ -827,7 +945,11 @@ export function PublicSitterProfile({ username, session = null }) {
         {sitter.years_experience > 0 && <Stat icon="🏅" text={`${sitter.years_experience} yr${sitter.years_experience !== 1 ? 's' : ''} exp`}/>}
         {avgRating && <Stat icon="⭐" text={`${avgRating} (${reviews.length} review${reviews.length !== 1 ? 's' : ''})`}/>}
         {sitter.response_time && <Stat icon="⚡" text={sitter.response_time}/>}
-        {sitter.background_check && <Stat icon="✅" text="Background checked" color="#88D8B8"/>}
+        {sitter.background_check && (
+          sitter.background_check_verified
+            ? <Stat icon="🛡️" text="Background check verified" color="#0BA5AD"/>
+            : <Stat icon="✅" text="Background checked" color="#88D8B8"/>
+        )}
         {sitter.has_car && <Stat icon="🚗" text="Has car"/>}
       </div>
     );
@@ -861,7 +983,7 @@ export function PublicSitterProfile({ username, session = null }) {
         /* ── MOBILE: single column ── */
         <div>
           {/* Avatar row — sits outside padding so negative margin clears the banner */}
-          <div style={{ padding: '0 16px', display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: -44, marginBottom: 12 }}>
+          <div style={{ padding: '0 16px', display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: -54, marginBottom: 12 }}>
             <div style={{ width: 88, height: 88, borderRadius: '50%', border: '3px solid var(--body-bg,#0C1420)', overflow: 'hidden', background: 'var(--card-bg)', flexShrink: 0, cursor: sitter.avatar_url ? 'pointer' : 'default', boxShadow: '0 4px 16px rgba(0,0,0,.4)' }}
               onClick={() => sitter.avatar_url && setLightbox(sitter.avatar_url)}>
               <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={88} radius="0"/>
