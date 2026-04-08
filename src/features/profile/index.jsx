@@ -14,7 +14,7 @@ import SitterAvatar from '../../components/ui/SitterAvatar';
 // Check browser DevTools → Console for the teal line to confirm the right
 // version is live. If the console still shows an old version after deploying,
 // the service worker cache needs clearing.
-const FILE_VERSION = 'profile/index.jsx @ 2026-04-08-v2';
+const FILE_VERSION = 'profile/index.jsx @ 2026-04-08-v3';
 if (typeof window !== 'undefined') {
   console.log(
     '%c✅ ' + FILE_VERSION,
@@ -619,6 +619,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
   // Qualifications
   const [ageRanges,       setAgeRanges]       = useState([]);
   const [certs,           setCerts]           = useState([]);
+  const [verifiedCerts,   setVerifiedCerts]   = useState([]);
   const [services,        setServices]        = useState([]);
   const [comfortable,     setComfortable]     = useState([]);
   const [languages,       setLanguages]       = useState([]);
@@ -651,6 +652,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
         setGallery(d.photo_gallery || []);
         setAgeRanges(d.age_ranges || []);
         setCerts(d.certifications || []);
+        setVerifiedCerts(d.verified_certifications || []);
         setServices(d.services || []);
         setComfortable(d.comfortable_with || []);
         setLanguages(d.languages || []);
@@ -921,14 +923,29 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
           {/* Certifications */}
           <div style={{ marginBottom: 18 }}>
             <label className="fl">Certifications & training</label>
+            <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 8 }}>
+              🛡️ = verified by littleloop · ✅ = self-reported · Upload documents in the Qualifications tab to get verified.
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {CERTIFICATIONS.map(c => (
-                <button key={c.id} type="button" onClick={() => toggle(certs, setCerts, c.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: `1px solid ${certs.includes(c.id) ? 'rgba(60,180,100,.4)' : 'var(--border)'}`, background: certs.includes(c.id) ? 'rgba(60,180,100,.12)' : 'var(--card-bg)', cursor: 'pointer' }}>
-                  <span style={{ fontSize: 15 }}>{c.icon}</span>
-                  <span style={{ fontSize: 12, color: certs.includes(c.id) ? '#5EE89A' : 'var(--text-dim)' }}>{c.label}</span>
-                </button>
-              ))}
+              {CERTIFICATIONS.map(c => {
+                const isVerified = verifiedCerts.includes(c.id);
+                const isSelected = certs.includes(c.id);
+                return (
+                  <button key={c.id} type="button"
+                    onClick={() => { if (!isVerified) toggle(certs, setCerts, c.id); }}
+                    title={isVerified ? 'Verified by littleloop — cannot be removed manually' : ''}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20,
+                      border: `1px solid ${isVerified ? 'rgba(11,165,173,.5)' : isSelected ? 'rgba(60,180,100,.4)' : 'var(--border)'}`,
+                      background: isVerified ? 'rgba(11,165,173,.12)' : isSelected ? 'rgba(60,180,100,.12)' : 'var(--card-bg)',
+                      cursor: isVerified ? 'default' : 'pointer',
+                    }}>
+                    <span style={{ fontSize: 15 }}>{c.icon}</span>
+                    <span style={{ fontSize: 12, color: isVerified ? '#0BA5AD' : isSelected ? '#5EE89A' : 'var(--text-dim)' }}>{c.label}</span>
+                    {isVerified && <span style={{ fontSize: 11 }}>🛡️</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -1040,7 +1057,7 @@ export function PublicSitterProfile({ username, session = null }) {
   useEffect(() => {
     async function load() {
       const { data: s, error } = await supabase.from('sitters')
-        .select('id,name,tagline,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,services,comfortable_with,languages,has_car,can_drive_kids,background_check,background_check_date,background_check_verified,background_check_verified_at,response_time,education,avatar_url,headline_photo_url,photo_gallery,public_profile')
+        .select('id,name,tagline,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,verified_certifications,services,comfortable_with,languages,has_car,can_drive_kids,background_check,background_check_date,background_check_verified,background_check_verified_at,response_time,education,avatar_url,headline_photo_url,photo_gallery,public_profile')
         .eq('username', username).eq('public_profile', true).maybeSingle();
       if (!s || error) { setNotFound(true); setLoading(false); return; }
       setSitter(s);
@@ -1171,14 +1188,28 @@ export function PublicSitterProfile({ username, session = null }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {sitter.certifications.map(id => {
                 const c = certMap[id];
+                const isVerified = sitter.verified_certifications?.includes(id);
                 return (
-                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, background: 'rgba(60,180,100,.08)', border: '1px solid rgba(60,180,100,.2)' }}>
+                  <div key={id} style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20,
+                    background: isVerified ? 'rgba(11,165,173,.1)' : 'rgba(60,180,100,.08)',
+                    border: `1px solid ${isVerified ? 'rgba(11,165,173,.35)' : 'rgba(60,180,100,.2)'}`,
+                  }}>
                     <span style={{ fontSize: 14 }}>{c?.icon || '✅'}</span>
-                    <span style={{ fontSize: 12, color: '#5EE89A' }}>{c?.label || id}</span>
+                    <span style={{ fontSize: 12, color: isVerified ? '#0BA5AD' : '#5EE89A' }}>{c?.label || id}</span>
+                    {isVerified
+                      ? <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: 'rgba(11,165,173,.2)', color: '#0BA5AD' }}>🛡️ Verified</span>
+                      : <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', fontStyle: 'italic' }}>self-reported</span>
+                    }
                   </div>
                 );
               })}
             </div>
+            {sitter.certifications.some(id => !sitter.verified_certifications?.includes(id)) && (
+              <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 8, fontStyle: 'italic' }}>
+                Self-reported certifications have not been verified by littleloop.
+              </div>
+            )}
           </ProfileSection>
         )}
         {(sitter.education || sitter.languages?.length || sitter.comfortable_with?.length || sitter.has_car || sitter.can_drive_kids) && (
