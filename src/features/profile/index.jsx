@@ -9,11 +9,20 @@ import { AvailabilityPicker, AvailabilityDisplay } from '../../components/ui/Ava
 import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 import SitterAvatar from '../../components/ui/SitterAvatar';
 
-// ─── File version (bump this to confirm deployments) ─────────────────────────
-const FILE_VERSION = 'profile/index.jsx @ 2026-04-08-v3';
-console.log('%c✅ ' + FILE_VERSION, 'color:#0BA5AD;font-weight:bold;font-size:13px');
+// ─── Version stamp ────────────────────────────────────────────────────────────
+// Bump this string every time you deploy a new version of this file.
+// Check browser DevTools → Console for the teal line to confirm the right
+// version is live. If the console still shows an old version after deploying,
+// the service worker cache needs clearing.
+const FILE_VERSION = 'profile/index.jsx @ 2026-04-08-v1';
+if (typeof window !== 'undefined') {
+  console.log(
+    '%c✅ ' + FILE_VERSION,
+    'color:#0BA5AD;font-weight:700;font-size:13px;background:#0D1F1E;padding:2px 8px;border-radius:4px'
+  );
+}
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const AGE_RANGES = [
   { id: 'infants',    label: 'Infants',     sub: '0–1 yr',   icon: '👶' },
@@ -48,31 +57,27 @@ const LANGUAGES = ['English', 'Spanish', 'French', 'Mandarin', 'Portuguese', 'Ar
 
 const RESPONSE_TIMES = ['Within an hour', 'Within a few hours', 'Same day', 'Within 2 days'];
 
-// ─── Theme Section (picker + custom builder) ──────────────────────────────────
+// ─── Theme Section (preset picker + custom builder) ───────────────────────────
 
 const CUSTOM_ID = 'custom';
 
-function ThemeSection({ currentTheme, onSelect, sitterId }) {
-  const [tab, setTab] = useState('presets'); // 'presets' | 'custom'
-
-  // Custom theme state — loaded from localStorage on mount
+function ThemeSection({ currentTheme, onSelect }) {
+  const [tab, setTab] = useState('presets');
   const [customColors, setCustomColors] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('ll_custom_theme') || 'null') || {
-        body:    '#0D1B2A',
-        card:    '#1A2A3A',
-        accent:  '#7BAAEE',
-        accent2: '#4A7FCC',
-        nav:     '#0A1520',
-      };
-    } catch { return { body: '#0D1B2A', card: '#1A2A3A', accent: '#7BAAEE', accent2: '#4A7FCC', nav: '#0A1520' }; }
+    try { return JSON.parse(localStorage.getItem('ll_custom_theme') || 'null') || defaultCustom(); }
+    catch { return defaultCustom(); }
   });
-  const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('ll_custom_dark') !== 'false';
-  });
-  const [customName, setCustomName] = useState(() =>
-    localStorage.getItem('ll_custom_name') || 'My Theme'
-  );
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('ll_custom_dark') !== 'false');
+  const [customName, setCustomName] = useState(() => localStorage.getItem('ll_custom_name') || 'My Theme');
+
+  function defaultCustom() {
+    return { body: '#0D1B2A', card: '#1A2A3A', accent: '#7BAAEE', accent2: '#4A7FCC', nav: '#0A1520' };
+  }
+
+  function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
 
   function applyCustom(colors = customColors, dark = isDark) {
     const root = document.documentElement;
@@ -85,40 +90,35 @@ function ThemeSection({ currentTheme, onSelect, sitterId }) {
     root.style.setProperty('--orb1',        hexToRgba(colors.accent, 0.2));
     root.style.setProperty('--orb2',        hexToRgba(colors.accent2, 0.15));
     if (dark) {
-      root.style.setProperty('--text',           '#E4EAF4');
-      root.style.setProperty('--text-dim',       'rgba(255,255,255,.55)');
-      root.style.setProperty('--text-faint',     'rgba(255,255,255,.32)');
-      root.style.setProperty('--border',         'rgba(255,255,255,.08)');
-      root.style.setProperty('--input-bg',       'rgba(255,255,255,.05)');
-      root.style.setProperty('--input-border',   'rgba(255,255,255,.10)');
-      root.style.setProperty('--pill-bg',        'rgba(255,255,255,.10)');
-      root.style.setProperty('--pill-text',      '#E4EAF4');
-      root.style.setProperty('--badge-text',     '#E4EAF4');
-      root.style.setProperty('--btn-text',       '#FFFFFF');
-      root.style.setProperty('--shadow',         '0 2px 16px rgba(0,0,0,.35)');
+      root.style.setProperty('--text',         '#E4EAF4');
+      root.style.setProperty('--text-dim',     'rgba(255,255,255,.55)');
+      root.style.setProperty('--text-faint',   'rgba(255,255,255,.32)');
+      root.style.setProperty('--border',       'rgba(255,255,255,.08)');
+      root.style.setProperty('--input-bg',     'rgba(255,255,255,.05)');
+      root.style.setProperty('--input-border', 'rgba(255,255,255,.10)');
+      root.style.setProperty('--pill-bg',      'rgba(255,255,255,.10)');
+      root.style.setProperty('--pill-text',    '#E4EAF4');
+      root.style.setProperty('--badge-text',   '#E4EAF4');
+      root.style.setProperty('--btn-text',     '#FFFFFF');
+      root.style.setProperty('--shadow',       '0 2px 16px rgba(0,0,0,.35)');
     } else {
-      root.style.setProperty('--text',           '#14243A');
-      root.style.setProperty('--text-dim',       'rgba(20,36,58,.58)');
-      root.style.setProperty('--text-faint',     'rgba(20,36,58,.35)');
-      root.style.setProperty('--border',         'rgba(20,36,58,.10)');
-      root.style.setProperty('--input-bg',       'rgba(20,36,58,.04)');
-      root.style.setProperty('--input-border',   'rgba(20,36,58,.14)');
-      root.style.setProperty('--pill-bg',        'rgba(20,36,58,.08)');
-      root.style.setProperty('--pill-text',      '#14243A');
-      root.style.setProperty('--badge-text',     '#14243A');
-      root.style.setProperty('--btn-text',       '#FFFFFF');
-      root.style.setProperty('--shadow',         '0 2px 12px rgba(20,36,58,.10)');
+      root.style.setProperty('--text',         '#14243A');
+      root.style.setProperty('--text-dim',     'rgba(20,36,58,.58)');
+      root.style.setProperty('--text-faint',   'rgba(20,36,58,.35)');
+      root.style.setProperty('--border',       'rgba(20,36,58,.10)');
+      root.style.setProperty('--input-bg',     'rgba(20,36,58,.04)');
+      root.style.setProperty('--input-border', 'rgba(20,36,58,.14)');
+      root.style.setProperty('--pill-bg',      'rgba(20,36,58,.08)');
+      root.style.setProperty('--pill-text',    '#14243A');
+      root.style.setProperty('--badge-text',   '#14243A');
+      root.style.setProperty('--btn-text',     '#FFFFFF');
+      root.style.setProperty('--shadow',       '0 2px 12px rgba(20,36,58,.10)');
     }
     document.body.style.background = colors.body;
     document.body.style.color = dark ? '#E4EAF4' : '#14243A';
   }
 
-  function hexToRgba(hex, alpha) {
-    const r = parseInt(hex.slice(1,3),16);
-    const g = parseInt(hex.slice(3,5),16);
-    const b = parseInt(hex.slice(5,7),16);
-    return `rgba(${r},${g},${b},${alpha})`;
-  }
+  useEffect(() => { if (currentTheme === CUSTOM_ID) applyCustom(); }, []);
 
   function handleColorChange(key, val) {
     const next = { ...customColors, [key]: val };
@@ -140,33 +140,34 @@ function ThemeSection({ currentTheme, onSelect, sitterId }) {
     onSelect(CUSTOM_ID);
   }
 
-  // If custom theme is active on mount, re-apply it
-  useEffect(() => {
-    if (currentTheme === CUSTOM_ID) applyCustom(customColors, isDark);
-  }, []);
-
   const colorFields = [
-    { key: 'body',    label: 'Background',   hint: 'Main page background' },
-    { key: 'card',    label: 'Card surface',  hint: 'Cards and panels' },
-    { key: 'accent',  label: 'Accent (from)', hint: 'Buttons, links, active states' },
-    { key: 'accent2', label: 'Accent (to)',   hint: 'Gradient end color' },
-    { key: 'nav',     label: 'Nav bar',       hint: 'Top and bottom navigation' },
+    { key: 'body',    label: 'Background',    hint: 'Main page background' },
+    { key: 'card',    label: 'Card surface',   hint: 'Cards and panels' },
+    { key: 'accent',  label: 'Accent (from)',  hint: 'Buttons, links, active states' },
+    { key: 'accent2', label: 'Accent (to)',    hint: 'Gradient end colour' },
+    { key: 'nav',     label: 'Nav bar',        hint: 'Top and bottom navigation' },
+  ];
+
+  const seeds = [
+    { label: 'Navy',    colors: { body:'#0D1B2A', card:'#1A2A3A', accent:'#7BAAEE', accent2:'#4A7FCC', nav:'#0A1520' }, dark: true  },
+    { label: 'Forest',  colors: { body:'#0D1F1A', card:'#1A2E22', accent:'#4CD99A', accent2:'#28A870', nav:'#0A1810' }, dark: true  },
+    { label: 'Galaxy',  colors: { body:'#0A0814', card:'#180F28', accent:'#C8A0FF', accent2:'#FF70B8', nav:'#080610' }, dark: true  },
+    { label: 'Sunrise', colors: { body:'#FFF8F0', card:'#FFFFFF', accent:'#C85020', accent2:'#A03010', nav:'#FFF0E8' }, dark: false },
+    { label: 'Ocean',   colors: { body:'#EEF6FB', card:'#FFFFFF', accent:'#0A68A8', accent2:'#004880', nav:'#E8F4FA' }, dark: false },
+    { label: 'Meadow',  colors: { body:'#EFF8F4', card:'#FFFFFF', accent:'#1E7A4A', accent2:'#125030', nav:'#E8F5F0' }, dark: false },
   ];
 
   return (
     <div className="card" style={{ padding: '20px 18px', marginBottom: 14 }}>
       <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🎨 App Theme</div>
-      <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Choose a preset or build your own.</div>
+      <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 14 }}>Choose a preset or build your own.</div>
 
-      {/* Tab row */}
+      {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 18 }}>
-        {[
-          { id: 'presets', label: '🗂 Presets' },
-          { id: 'custom',  label: '🎛 Custom' },
-        ].map(t => (
+        {[{ id: 'presets', label: '🗂 Presets' }, { id: 'custom', label: '🎛 Custom' }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
-            padding: '7px 16px', border: 'none', cursor: 'pointer',
-            background: 'transparent', fontSize: 13, fontWeight: tab === t.id ? 700 : 400,
+            padding: '7px 16px', border: 'none', cursor: 'pointer', background: 'transparent',
+            fontSize: 13, fontWeight: tab === t.id ? 700 : 400,
             color: tab === t.id ? 'var(--accent)' : 'var(--text-faint)',
             borderBottom: `2px solid ${tab === t.id ? 'var(--accent)' : 'transparent'}`,
             marginBottom: -1, transition: 'all .15s',
@@ -174,28 +175,23 @@ function ThemeSection({ currentTheme, onSelect, sitterId }) {
         ))}
       </div>
 
-      {tab === 'presets' && (
-        <ThemePicker currentTheme={currentTheme} onSelect={onSelect}/>
-      )}
+      {tab === 'presets' && <ThemePicker currentTheme={currentTheme} onSelect={onSelect}/>}
 
       {tab === 'custom' && (
         <div>
           {/* Live preview bar */}
-          <div style={{
-            height: 48, borderRadius: 10, marginBottom: 18, overflow: 'hidden',
-            display: 'flex', border: '1px solid var(--border)',
-          }}>
+          <div style={{ height: 44, borderRadius: 10, marginBottom: 16, overflow: 'hidden', display: 'flex', border: '1px solid var(--border)' }}>
             <div style={{ flex: 1, background: customColors.body }}/>
             <div style={{ flex: 1, background: customColors.nav }}/>
             <div style={{ flex: 1, background: customColors.card }}/>
             <div style={{ flex: 2, background: `linear-gradient(90deg,${customColors.accent},${customColors.accent2})` }}/>
           </div>
 
-          {/* Dark/light toggle */}
+          {/* Dark / light toggle */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--input-bg)', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 14 }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>Theme mode</div>
-              <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Affects text colour and surface contrast</div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>Mode</div>
+              <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Affects text and surface contrast</div>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               {[{ val: true, label: '🌙 Dark' }, { val: false, label: '☀️ Light' }].map(o => (
@@ -203,7 +199,7 @@ function ThemeSection({ currentTheme, onSelect, sitterId }) {
                   padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
                   cursor: 'pointer', border: '1px solid var(--border)', transition: 'all .15s',
                   background: isDark === o.val ? 'var(--accent)' : 'var(--input-bg)',
-                  color: isDark === o.val ? 'var(--btn-text)' : 'var(--text-dim)',
+                  color: isDark === o.val ? '#fff' : 'var(--text-dim)',
                 }}>{o.label}</button>
               ))}
             </div>
@@ -212,90 +208,51 @@ function ThemeSection({ currentTheme, onSelect, sitterId }) {
           {/* Theme name */}
           <div style={{ marginBottom: 14 }}>
             <label className="fl">Theme name</label>
-            <input
-              className="fi"
-              value={customName}
-              onChange={e => setCustomName(e.target.value)}
-              placeholder="My Theme"
-              style={{ marginBottom: 0 }}
-            />
+            <input className="fi" value={customName} onChange={e => setCustomName(e.target.value)} placeholder="My Theme" style={{ marginBottom: 0 }}/>
           </div>
 
-          {/* Color pickers */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+          {/* Colour pickers */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
             {colorFields.map(({ key, label, hint }) => (
               <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'var(--input-bg)', borderRadius: 10, border: '1px solid var(--border)' }}>
-                {/* Colour swatch / native picker */}
                 <label style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 8,
-                    background: customColors[key],
-                    border: '2px solid var(--border)',
-                    boxShadow: '0 1px 4px rgba(0,0,0,.2)',
-                  }}/>
-                  <input
-                    type="color"
-                    value={customColors[key]}
-                    onChange={e => handleColorChange(key, e.target.value)}
-                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-                  />
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: customColors[key], border: '2px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }}/>
+                  <input type="color" value={customColors[key]} onChange={e => handleColorChange(key, e.target.value)}
+                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}/>
                 </label>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 1 }}>{label}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{hint}</div>
                 </div>
-                {/* Hex input */}
-                <input
-                  value={customColors[key]}
-                  onChange={e => {
-                    const v = e.target.value;
-                    if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) handleColorChange(key, v);
-                  }}
-                  style={{
-                    width: 84, padding: '5px 8px', borderRadius: 7, fontSize: 12,
-                    fontFamily: 'monospace', background: 'var(--input-bg)',
-                    border: '1px solid var(--input-border)', color: 'var(--text)',
-                    outline: 'none',
-                  }}
-                />
+                <input value={customColors[key]}
+                  onChange={e => { const v = e.target.value; if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) handleColorChange(key, v); }}
+                  style={{ width: 80, padding: '5px 8px', borderRadius: 7, fontSize: 12, fontFamily: 'monospace',
+                    background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text)', outline: 'none' }}/>
               </div>
             ))}
           </div>
 
-          {/* Quick presets row — seed from existing palette bodies */}
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.8px', color: 'var(--text-faint)', textTransform: 'uppercase', marginBottom: 8 }}>Quick seeds</div>
+          {/* Quick seeds */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.8px', color: 'var(--text-faint)', textTransform: 'uppercase', marginBottom: 8 }}>Quick seeds</div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {[
-                { label: 'Navy',     colors: { body:'#0D1B2A', card:'#1A2A3A', accent:'#7BAAEE', accent2:'#4A7FCC', nav:'#0A1520' }, dark: true  },
-                { label: 'Forest',   colors: { body:'#0D1F1A', card:'#1A2E22', accent:'#4CD99A', accent2:'#28A870', nav:'#0A1810' }, dark: true  },
-                { label: 'Galaxy',   colors: { body:'#0A0814', card:'#180F28', accent:'#C8A0FF', accent2:'#FF70B8', nav:'#080610' }, dark: true  },
-                { label: 'Sunrise',  colors: { body:'#FFF8F0', card:'#FFFFFF', accent:'#C85020', accent2:'#A03010', nav:'#FFF0E8' }, dark: false },
-                { label: 'Ocean',    colors: { body:'#EEF6FB', card:'#FFFFFF', accent:'#0A68A8', accent2:'#004880', nav:'#E8F4FA' }, dark: false },
-                { label: 'Meadow',   colors: { body:'#EFF8F4', card:'#FFFFFF', accent:'#1E7A4A', accent2:'#125030', nav:'#E8F5F0' }, dark: false },
-              ].map(seed => (
-                <button key={seed.label} onClick={() => {
-                  setCustomColors(seed.colors);
-                  setIsDark(seed.dark);
-                  if (currentTheme === CUSTOM_ID) applyCustom(seed.colors, seed.dark);
-                }} style={{
-                  padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                  cursor: 'pointer', border: '1px solid var(--border)',
-                  background: seed.colors.body, transition: 'all .15s',
-                  color: seed.dark ? 'rgba(255,255,255,.8)' : 'rgba(20,36,58,.7)',
-                }}>{seed.label}</button>
+              {seeds.map(s => (
+                <button key={s.label} onClick={() => { setCustomColors(s.colors); setIsDark(s.dark); if (currentTheme === CUSTOM_ID) applyCustom(s.colors, s.dark); }}
+                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    border: '1px solid var(--border)', background: s.colors.body, transition: 'all .15s',
+                    color: s.dark ? 'rgba(255,255,255,.8)' : 'rgba(20,36,58,.7)' }}>
+                  {s.label}
+                </button>
               ))}
             </div>
           </div>
 
-          {/* Apply button */}
+          {/* Apply */}
           <button className="bp full" onClick={saveAndApply} style={{ fontSize: 13 }}>
-            ✓ Apply Custom Theme{customName !== 'My Theme' ? ` "${customName}"` : ''}
+            ✓ Apply{customName && customName !== 'My Theme' ? ` "${customName}"` : ' Custom Theme'}
           </button>
           {currentTheme === CUSTOM_ID && (
-            <div style={{ fontSize: 11, color: 'var(--text-faint)', textAlign: 'center', marginTop: 8 }}>
-              Custom theme is active
-            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-faint)', textAlign: 'center', marginTop: 8 }}>Custom theme is active</div>
           )}
         </div>
       )}
@@ -415,6 +372,11 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
 
       <ThemeSection currentTheme={theme} onSelect={selectTheme} sitterId={sitterId}/>
 
+      {/* Version stamp — visible in UI until deployment is reliable */}
+      <div style={{ fontSize: 9, color: 'var(--text-faint)', textAlign: 'center', marginBottom: 8, opacity: .5, letterSpacing: '.5px' }}>
+        {FILE_VERSION}
+      </div>
+
       <div className="card" style={{ padding: '20px 18px', marginBottom: 14, border: '1px solid rgba(192,80,80,.2)', background: 'rgba(192,80,80,.04)' }}>
         <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 8, color: '#F5AAAA' }}>⚠️ Delete Account</div>
         <p style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.6, marginBottom: 16 }}>Permanently deletes your account and all data. Cannot be undone.</p>
@@ -434,7 +396,7 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
   );
 }
 
-// ─── Background Check Upload + Status ──────────────────────────────────────── 
+// ─── Background Check Upload + Status ────────────────────────────────────────
 
 function BgCheckUploader({ sitterId }) {
   const [docUrl,     setDocUrl]     = useState(null);
