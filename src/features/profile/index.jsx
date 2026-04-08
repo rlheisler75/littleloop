@@ -9,7 +9,7 @@ import { AvailabilityPicker, AvailabilityDisplay } from '../../components/ui/Ava
 import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 import SitterAvatar from '../../components/ui/SitterAvatar';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const AGE_RANGES = [
   { id: 'infants',    label: 'Infants',     sub: '0–1 yr',   icon: '👶' },
