@@ -966,15 +966,33 @@ export function PublicSitterProfile({ username, session = null }) {
       )}
 
       {/* Banner — always shows gradient, photo layered on top if present */}
-      <div style={{ width: '100%', height: isMobile ? 160 : 220, background: bannerGrad, position: 'relative', overflow: 'hidden' }}>
-        {sitter.headline_photo_url && <img src={sitter.headline_photo_url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}/>}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.55) 100%)' }}/>
-        <div style={{ position: 'absolute', top: 12, left: 14 }}>
+      <div style={{ width: '100%', height: isMobile ? 160 : 220, background: bannerGrad, position: 'relative', overflow: isMobile ? 'visible' : 'hidden', flexShrink: 0 }}>
+        {/* Clip only the photo/gradient, not the avatar */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          {sitter.headline_photo_url && <img src={sitter.headline_photo_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.55) 100%)' }}/>
+        </div>
+        <div style={{ position: 'absolute', top: 12, left: 14, zIndex: 2 }}>
           <button className="bg" onClick={() => window.history.back()} style={{ padding: '6px 12px', fontSize: 12, background: 'rgba(0,0,0,.4)', border: '1px solid rgba(255,255,255,.15)' }}>← Back</button>
         </div>
         {!session && (
-          <div style={{ position: 'absolute', top: 12, right: 14 }}>
+          <div style={{ position: 'absolute', top: 12, right: 14, zIndex: 2 }}>
             <button className="bp" onClick={() => window.location.href = '/?portal=parent'} style={{ fontSize: 12 }}>Join littleloop</button>
+          </div>
+        )}
+        {/* Mobile avatar — absolutely positioned to straddle the banner bottom */}
+        {isMobile && (
+          <div
+            onClick={() => sitter.avatar_url && setLightbox(sitter.avatar_url)}
+            style={{
+              position: 'absolute', bottom: -44, left: 16, zIndex: 4,
+              width: 88, height: 88, borderRadius: '50%',
+              border: '3px solid var(--body-bg,#0C1420)',
+              overflow: 'hidden', background: 'var(--card-bg)',
+              boxShadow: '0 4px 16px rgba(0,0,0,.4)',
+              cursor: sitter.avatar_url ? 'pointer' : 'default',
+            }}>
+            <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={88} radius="0"/>
           </div>
         )}
       </div>
@@ -982,16 +1000,12 @@ export function PublicSitterProfile({ username, session = null }) {
       {isMobile ? (
         /* ── MOBILE: single column ── */
         <div>
-          {/* Avatar row — sits outside padding so negative margin clears the banner */}
-          <div style={{ padding: '0 16px', display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: -54, marginBottom: 12 }}>
-            <div style={{ width: 88, height: 88, borderRadius: '50%', border: '3px solid var(--body-bg,#0C1420)', overflow: 'hidden', background: 'var(--card-bg)', flexShrink: 0, cursor: sitter.avatar_url ? 'pointer' : 'default', boxShadow: '0 4px 16px rgba(0,0,0,.4)' }}
-              onClick={() => sitter.avatar_url && setLightbox(sitter.avatar_url)}>
-              <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={88} radius="0"/>
-            </div>
-            <div style={{ paddingBottom: 4, minWidth: 0 }}>
-              <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{sitter.name}</h1>
-              {sitter.tagline && <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '3px 0 0', fontStyle: 'italic' }}>{sitter.tagline}</p>}
-            </div>
+          {/* Spacer to clear the avatar that overlaps from banner */}
+          <div style={{ height: 52 }}/>
+          {/* Name + tagline beside avatar (avatar is position:absolute so name floats right) */}
+          <div style={{ padding: '0 16px', paddingLeft: 120, minHeight: 44, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{sitter.name}</h1>
+            {sitter.tagline && <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '3px 0 0', fontStyle: 'italic' }}>{sitter.tagline}</p>}
           </div>
           <div style={{ padding: '0 16px 40px' }}>
             <div style={{ marginBottom: 14 }}><StatList/></div>
