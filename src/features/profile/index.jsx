@@ -178,91 +178,6 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
   );
 }
 
-// ─── Background Check Upload + Status ────────────────────────────────────────
-
-function BgCheckUploader({ sitterId }) {
-  const [docUrl,     setDocUrl]     = useState(null);
-  const [verified,   setVerified]   = useState(false);
-  const [verifiedAt, setVerifiedAt] = useState(null);
-  const [uploading,  setUploading]  = useState(false);
-  const [alert,      setAlert]      = useState(null);
-
-  useEffect(() => {
-    supabase.from('sitters')
-      .select('background_check_doc_url,background_check_verified,background_check_verified_at')
-      .eq('id', sitterId).single()
-      .then(({ data }) => {
-        if (data) {
-          setDocUrl(data.background_check_doc_url);
-          setVerified(data.background_check_verified || false);
-          setVerifiedAt(data.background_check_verified_at);
-        }
-      });
-  }, [sitterId]);
-
-  async function uploadDoc(file) {
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setAlert({ t: 'e', m: 'File must be under 10MB.' }); return; }
-    setUploading(true); setAlert(null);
-    try {
-      const ext  = file.name.split('.').pop();
-      const path = `${sitterId}/bg-check.${ext}`;
-      const { error: upErr } = await supabase.storage.from('sitter-avatars').upload(path, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: { publicUrl } } = supabase.storage.from('sitter-avatars').getPublicUrl(path);
-      await supabase.from('sitters').update({ background_check_doc_url: publicUrl, background_check_verified: false, background_check_verified_at: null }).eq('id', sitterId);
-      setDocUrl(publicUrl);
-      setVerified(false);
-      setAlert({ t: 's', m: 'Document uploaded! A littleloop admin will review it shortly.' });
-    } catch (err) { setAlert({ t: 'e', m: err.message }); }
-    finally { setUploading(false); }
-  }
-
-  return (
-    <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--card-bg)', border: `1px solid ${verified ? 'rgba(11,165,173,.3)' : 'var(--border)'}` }}>
-      {alert && <div className={`al al-${alert.t}`} style={{ marginBottom: 10 }}>{alert.m}</div>}
-      {verified ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 22 }}>🛡️</span>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0BA5AD' }}>Verified by littleloop</div>
-            {verifiedAt && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Verified {new Date(verifiedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>}
-          </div>
-        </div>
-      ) : docUrl ? (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 16 }}>⏳</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#F5C098' }}>Pending review</div>
-              <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Your document has been submitted and is awaiting admin review.</div>
-            </div>
-          </div>
-          <a href={docUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none' }}>View uploaded document ↗</a>
-          <div style={{ marginTop: 8 }}>
-            <label style={{ cursor: 'pointer' }}>
-              <span style={{ fontSize: 11, color: 'var(--text-faint)', textDecoration: 'underline' }}>Replace document</span>
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={e => uploadDoc(e.target.files[0])}/>
-            </label>
-          </div>
-        </div>
-      ) : (
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10, lineHeight: 1.5 }}>
-            Upload your background check document to get a <strong>🛡️ Verified</strong> badge on your public profile. Accepted: PDF, JPG, PNG (max 10MB).
-          </div>
-          <label style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
-            <span className="bg" style={{ display: 'inline-block', padding: '8px 14px', fontSize: 12, opacity: uploading ? .6 : 1 }}>
-              {uploading ? <><Spinner size={11}/> Uploading…</> : '📎 Upload background check'}
-            </span>
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} disabled={uploading} onChange={e => uploadDoc(e.target.files[0])}/>
-          </label>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Public Profile Editor ────────────────────────────────────────────────────
 
 export function PublicProfileEditor({ sitterId, sitterName }) {
@@ -647,14 +562,11 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
           {/* Background check */}
           <div>
             <label className="fl">Background check</label>
-            <ToggleRow label="I have a background check" sub="Upload your document to get verified by littleloop" isOn={bgCheck} onToggle={() => setBgCheck(v => !v)}/>
+            <ToggleRow label="I have a background check" sub="Families value this" isOn={bgCheck} onToggle={() => setBgCheck(v => !v)}/>
             {bgCheck && (
-              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div>
-                  <label className="fl">Date completed</label>
-                  <input className="fi" type="date" value={bgCheckDate} onChange={e => setBgCheckDate(e.target.value)} style={{ maxWidth: 180 }}/>
-                </div>
-                <BgCheckUploader sitterId={sitterId}/>
+              <div style={{ marginTop: 8 }}>
+                <label className="fl">Date completed</label>
+                <input className="fi" type="date" value={bgCheckDate} onChange={e => setBgCheckDate(e.target.value)} style={{ maxWidth: 180 }}/>
               </div>
             )}
           </div>
@@ -678,30 +590,6 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
 
 // ─── Public Sitter Profile page ───────────────────────────────────────────────
 
-// Deterministic gradient fallback — no blank banners ever
-function nameToBannerGradient(name = '') {
-  const g = [
-    'linear-gradient(135deg,#0D1F1E 0%,#0BA5AD 60%,#8869F7 100%)',
-    'linear-gradient(135deg,#0D1B2A 0%,#7BAAEE 60%,#4A7FCC 100%)',
-    'linear-gradient(135deg,#0D1F1A 0%,#4CD99A 60%,#28A870 100%)',
-    'linear-gradient(135deg,#1A0F20 0%,#C084F5 60%,#9050D0 100%)',
-    'linear-gradient(135deg,#1C1008 0%,#F5924A 60%,#C86020 100%)',
-    'linear-gradient(135deg,#091520 0%,#2AA8D4 60%,#1580A8 100%)',
-  ];
-  return g[(name.charCodeAt(0) || 0) % g.length];
-}
-
-function useIsMobile(bp = 700) {
-  const [is, setIs] = useState(() => typeof window !== 'undefined' && window.innerWidth <= bp);
-  useEffect(() => {
-    const mq = window.matchMedia(`(max-width:${bp}px)`);
-    const h = e => setIs(e.matches);
-    mq.addEventListener('change', h);
-    return () => mq.removeEventListener('change', h);
-  }, [bp]);
-  return is;
-}
-
 export function PublicSitterProfile({ username, session = null }) {
   const [sitter,     setSitter]     = useState(null);
   const [reviews,    setReviews]    = useState([]);
@@ -709,20 +597,22 @@ export function PublicSitterProfile({ username, session = null }) {
   const [notFound,   setNotFound]   = useState(false);
   const [expanded,   setExpanded]   = useState(false);
   const [lightbox,   setLightbox]   = useState(null);
-  const [connStatus, setConnStatus] = useState(null);
+  const [connStatus, setConnStatus] = useState(null);   // null | 'requested' | 'active'
   const [familyId,   setFamilyId]   = useState(null);
   const [requesting, setRequesting] = useState(false);
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function load() {
       const { data: s, error } = await supabase.from('sitters')
-        .select('id,name,tagline,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,services,comfortable_with,languages,has_car,can_drive_kids,background_check,background_check_date,background_check_verified,background_check_verified_at,response_time,education,avatar_url,headline_photo_url,photo_gallery,public_profile')
+        .select('id,name,tagline,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,services,comfortable_with,languages,has_car,can_drive_kids,background_check,background_check_date,response_time,education,avatar_url,headline_photo_url,photo_gallery,public_profile')
         .eq('username', username).eq('public_profile', true).maybeSingle();
       if (!s || error) { setNotFound(true); setLoading(false); return; }
       setSitter(s);
+
       const { data: r } = await supabase.from('sitter_reviews').select('*').eq('sitter_id', s.id).order('created_at', { ascending: false });
       setReviews(r || []);
+
+      // If logged in as parent, check connection status
       if (session) {
         const { data: mem } = await supabase.from('members').select('family_id').eq('user_id', session.user.id).maybeSingle();
         if (mem?.family_id) {
@@ -732,6 +622,7 @@ export function PublicSitterProfile({ username, session = null }) {
           setConnStatus(conn?.status || null);
         }
       }
+
       setLoading(false);
     }
     load();
@@ -766,52 +657,116 @@ export function PublicSitterProfile({ username, session = null }) {
   const ageMap     = Object.fromEntries(AGE_RANGES.map(r => [r.id, r]));
   const bioShort   = sitter.bio?.slice(0, 240);
   const hasBioMore = sitter.bio?.length > 240;
-  const bannerGrad = nameToBannerGradient(sitter.name);
+
+  // Determine CTA based on auth state
   const isLoggedInFamily = session && familyId;
   const isLoggedInSitter = session && !familyId;
-  const firstName  = sitter.name?.split(' ')[0] || 'this sitter';
 
-  function CtaBlock({ compact = false }) {
-    if (isLoggedInSitter) return null;
-    const pad = compact ? '14px 16px' : '16px';
-    if (!session) return (
-      <div style={{ padding: pad, borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--border)', textAlign: 'center' }}>
-        <div style={{ fontSize: compact ? 13 : 14, fontWeight: 600, marginBottom: 4 }}>Interested in {firstName}?</div>
-        <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 12 }}>Join littleloop to connect and manage your childcare in one place.</div>
-        <button className="bp full" onClick={() => window.location.href = '/?portal=parent'} style={{ fontSize: 13 }}>Get Started — it's free</button>
-      </div>
-    );
-    if (connStatus === 'active') return (
-      <div style={{ padding: pad, borderRadius: 14, background: 'rgba(58,158,122,.08)', border: '1px solid rgba(58,158,122,.25)', textAlign: 'center' }}>
-        <div style={{ fontSize: 13, color: '#88D8B8', fontWeight: 600 }}>✅ Connected with {firstName}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Message them from the Messages tab</div>
-      </div>
-    );
-    if (connStatus === 'requested') return (
-      <div style={{ padding: pad, borderRadius: 14, background: 'rgba(200,120,74,.08)', border: '1px solid rgba(200,120,74,.25)', textAlign: 'center' }}>
-        <div style={{ fontSize: 13, color: '#F5C098', fontWeight: 600 }}>⏳ Request sent to {firstName}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Waiting for them to accept</div>
-      </div>
-    );
+  function renderCTA() {
+    if (isLoggedInSitter) {
+      // Viewing as a sitter — just show back link
+      return null;
+    }
+    if (!session) {
+      return (
+        <>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Interested in {sitter.name.split(' ')[0]}?</div>
+          <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 12 }}>Join littleloop to connect and manage your childcare in one place.</div>
+          <button className="bp" onClick={() => window.location.href = '/?portal=parent'} style={{ fontSize: 13 }}>Get Started — it's free</button>
+        </>
+      );
+    }
+    if (connStatus === 'active') {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center' }}>
+          <span style={{ fontSize: 18 }}>✅</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#88D8B8' }}>You're connected with {sitter.name.split(' ')[0]}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>Message them from the Messages tab</div>
+          </div>
+        </div>
+      );
+    }
+    if (connStatus === 'requested') {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center' }}>
+          <span style={{ fontSize: 18 }}>⏳</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#F5C098' }}>Connection request sent</div>
+            <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>Waiting for {sitter.name.split(' ')[0]} to accept</div>
+          </div>
+        </div>
+      );
+    }
+    // Logged in family, not yet connected
     return (
-      <div style={{ padding: pad, borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--border)', textAlign: 'center' }}>
-        <div style={{ fontSize: compact ? 13 : 14, fontWeight: 600, marginBottom: 4 }}>Interested in {firstName}?</div>
+      <>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Interested in {sitter.name.split(' ')[0]}?</div>
         <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 12 }}>Send a connection request to get started.</div>
-        <button className="bp full" onClick={requestConnection} disabled={requesting} style={{ fontSize: 13 }}>
+        <button className="bp" onClick={requestConnection} disabled={requesting} style={{ fontSize: 13 }}>
           {requesting ? <><Spinner size={12}/> Sending…</> : '🤝 Request Connection'}
         </button>
-      </div>
+      </>
     );
   }
 
-  // Shared content sections (used in both mobile and desktop)
-  function MainContent() {
-    return (
-      <>
+  return (
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 0 40px', position: 'relative', zIndex: 1 }}>
+      {/* Lightbox */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <img src={lightbox} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}/>
+          <button onClick={() => setLightbox(null)} style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 18, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </div>
+      )}
+
+      {/* Cover photo */}
+      <div style={{ height: 200, background: sitter.headline_photo_url ? 'transparent' : 'linear-gradient(135deg,#0C1420,#1A2E4A)', position: 'relative', overflow: 'hidden' }}>
+        {sitter.headline_photo_url && <img src={sitter.headline_photo_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.6))' }}/>
+        <div style={{ position: 'absolute', top: 12, left: 14, display: 'flex', gap: 8 }}>
+          <button className="bg" onClick={() => window.location.href = '/?browse'} style={{ padding: '6px 12px', fontSize: 12, background: 'rgba(0,0,0,.4)', border: '1px solid rgba(255,255,255,.15)' }}>← Back</button>
+        </div>
+        <div style={{ position: 'absolute', top: 12, right: 14 }}>
+          <button className="bp" onClick={() => window.location.href = '/?portal=parent'} style={{ fontSize: 12 }}>Join littleloop</button>
+        </div>
+      </div>
+
+      {/* Profile header */}
+      <div style={{ padding: '0 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: -44, marginBottom: 16 }}>
+          <div style={{ width: 88, height: 88, borderRadius: '50%', border: '3px solid var(--body-bg,#0C1420)', overflow: 'hidden', background: 'var(--card-bg)', flexShrink: 0, cursor: 'pointer' }}
+            onClick={() => sitter.avatar_url && setLightbox(sitter.avatar_url)}>
+            <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={88} radius="0"/>
+          </div>
+          <div style={{ flex: 1, paddingBottom: 4, minWidth: 0 }}>
+            <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{sitter.name}</h1>
+            {sitter.tagline && <p style={{ fontSize: 13, color: 'var(--text-faint)', margin: '3px 0 0', fontStyle: 'italic' }}>{sitter.tagline}</p>}
+          </div>
+        </div>
+
+        {/* Quick stats row */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+          {(sitter.city || sitter.state) && <Stat icon="📍" text={[sitter.city, sitter.state].filter(Boolean).join(', ')}/>}
+          {(sitter.hourly_rate_min || sitter.hourly_rate_max) && <Stat icon="💰" text={`from $${sitter.hourly_rate_min || sitter.hourly_rate_max}/hr`}/>}
+          {sitter.years_experience > 0 && <Stat icon="🏅" text={`${sitter.years_experience} yr${sitter.years_experience !== 1 ? 's' : ''} experience`}/>}
+          {avgRating && <Stat icon="⭐" text={`${avgRating} (${reviews.length} review${reviews.length !== 1 ? 's' : ''})`}/>}
+          {sitter.response_time && <Stat icon="⚡" text={sitter.response_time}/>}
+          {sitter.background_check && <Stat icon="✅" text="Background checked" color="#88D8B8"/>}
+          {sitter.has_car && <Stat icon="🚗" text="Has car"/>}
+        </div>
+
+        {/* CTA */}
+        <div style={{ marginBottom: 20, padding: '16px', borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--border)', textAlign: 'center' }}>
+          {renderCTA()}
+        </div>
+
+        {/* About */}
         {sitter.bio && (
           <ProfileSection title="About">
             <p style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--text-dim)', margin: 0 }}>
-              {expanded ? sitter.bio : bioShort}{hasBioMore && !expanded && '…'}
+              {expanded ? sitter.bio : bioShort}
+              {hasBioMore && !expanded && '…'}
             </p>
             {hasBioMore && (
               <button onClick={() => setExpanded(v => !v)} style={{ background: 'none', border: 'none', color: 'var(--accent,#7BAAEE)', fontSize: 12, cursor: 'pointer', padding: '6px 0 0', fontWeight: 600 }}>
@@ -820,6 +775,8 @@ export function PublicSitterProfile({ username, session = null }) {
             )}
           </ProfileSection>
         )}
+
+        {/* Services */}
         {sitter.services?.length > 0 && (
           <ProfileSection title="Services">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -827,6 +784,8 @@ export function PublicSitterProfile({ username, session = null }) {
             </div>
           </ProfileSection>
         )}
+
+        {/* Works with */}
         {sitter.age_ranges?.length > 0 && (
           <ProfileSection title="Works with">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -843,6 +802,8 @@ export function PublicSitterProfile({ username, session = null }) {
             </div>
           </ProfileSection>
         )}
+
+        {/* Certifications */}
         {sitter.certifications?.length > 0 && (
           <ProfileSection title="Certifications">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -858,6 +819,8 @@ export function PublicSitterProfile({ username, session = null }) {
             </div>
           </ProfileSection>
         )}
+
+        {/* Details grid */}
         {(sitter.education || sitter.languages?.length || sitter.comfortable_with?.length || sitter.has_car || sitter.can_drive_kids) && (
           <ProfileSection title="Details">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -869,35 +832,7 @@ export function PublicSitterProfile({ username, session = null }) {
           </ProfileSection>
         )}
 
-        {/* Background check — prominent verified badge */}
-        {sitter.background_check && (
-          <ProfileSection title="Safety">
-            {sitter.background_check_verified ? (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px', borderRadius: 14, background: 'rgba(11,165,173,.08)', border: '2px solid rgba(11,165,173,.3)' }}>
-                <div style={{ fontSize: 28, flexShrink: 0 }}>🛡️</div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0BA5AD', marginBottom: 3 }}>Background Check Verified</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-                    This sitter's background check has been reviewed and verified by littleloop.
-                    {sitter.background_check_verified_at && (
-                      <span style={{ color: 'var(--text-faint)', display: 'block', marginTop: 2 }}>
-                        Verified {new Date(sitter.background_check_verified_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(58,158,122,.06)', border: '1px solid rgba(58,158,122,.2)' }}>
-                <span style={{ fontSize: 20 }}>✅</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#88D8B8' }}>Background check on file</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Self-reported · pending verification</div>
-                </div>
-              </div>
-            )}
-          </ProfileSection>
-        )}
+        {/* Availability */}
         {sitter.availability && (() => {
           try {
             const av = typeof sitter.availability === 'string' ? JSON.parse(sitter.availability) : sitter.availability;
@@ -906,9 +841,11 @@ export function PublicSitterProfile({ username, session = null }) {
             return <ProfileSection title="Availability"><AvailabilityDisplay value={av}/></ProfileSection>;
           } catch { return null; }
         })()}
+
+        {/* Gallery */}
         {sitter.photo_gallery?.length > 0 && (
           <ProfileSection title="Photos">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {sitter.photo_gallery.map((url, i) => (
                 <div key={i} onClick={() => setLightbox(url)} style={{ aspectRatio: '1', borderRadius: 10, overflow: 'hidden', cursor: 'zoom-in' }}>
                   <img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
@@ -917,6 +854,8 @@ export function PublicSitterProfile({ username, session = null }) {
             </div>
           </ProfileSection>
         )}
+
+        {/* Reviews */}
         <ProfileSection title={`Reviews${reviews.length ? ` (${reviews.length})` : ''}`}>
           {reviews.length === 0
             ? <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>No reviews yet.</div>
@@ -932,93 +871,8 @@ export function PublicSitterProfile({ username, session = null }) {
             ))
           }
         </ProfileSection>
-      </>
-    );
-  }
 
-  // ── Shared stat list ──
-  function StatList({ column = false }) {
-    return (
-      <div style={{ display: 'flex', flexDirection: column ? 'column' : 'row', flexWrap: 'wrap', gap: column ? 6 : 10 }}>
-        {(sitter.city || sitter.state) && <Stat icon="📍" text={[sitter.city, sitter.state].filter(Boolean).join(', ')}/>}
-        {(sitter.hourly_rate_min || sitter.hourly_rate_max) && <Stat icon="💰" text={`from $${sitter.hourly_rate_min || sitter.hourly_rate_max}/hr`}/>}
-        {sitter.years_experience > 0 && <Stat icon="🏅" text={`${sitter.years_experience} yr${sitter.years_experience !== 1 ? 's' : ''} exp`}/>}
-        {avgRating && <Stat icon="⭐" text={`${avgRating} (${reviews.length} review${reviews.length !== 1 ? 's' : ''})`}/>}
-        {sitter.response_time && <Stat icon="⚡" text={sitter.response_time}/>}
-        {sitter.background_check && (
-          sitter.background_check_verified
-            ? <Stat icon="🛡️" text="Background check verified" color="#0BA5AD"/>
-            : <Stat icon="✅" text="Background checked" color="#88D8B8"/>
-        )}
-        {sitter.has_car && <Stat icon="🚗" text="Has car"/>}
       </div>
-    );
-  }
-
-  return (
-    <div style={{ minHeight: '100vh', position: 'relative', zIndex: 1 }}>
-      {/* Lightbox */}
-      {lightbox && (
-        <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <img src={lightbox} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}/>
-          <button onClick={() => setLightbox(null)} style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 18, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-        </div>
-      )}
-
-      {/* Banner — always shows gradient, photo layered on top if present */}
-      <div style={{ width: '100%', height: isMobile ? 160 : 220, background: bannerGrad, position: 'relative', overflow: 'hidden' }}>
-        {sitter.headline_photo_url && <img src={sitter.headline_photo_url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}/>}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.55) 100%)' }}/>
-        <div style={{ position: 'absolute', top: 12, left: 14 }}>
-          <button className="bg" onClick={() => window.history.back()} style={{ padding: '6px 12px', fontSize: 12, background: 'rgba(0,0,0,.4)', border: '1px solid rgba(255,255,255,.15)' }}>← Back</button>
-        </div>
-        {!session && (
-          <div style={{ position: 'absolute', top: 12, right: 14 }}>
-            <button className="bp" onClick={() => window.location.href = '/?portal=parent'} style={{ fontSize: 12 }}>Join littleloop</button>
-          </div>
-        )}
-      </div>
-
-      {isMobile ? (
-        /* ── MOBILE: single column ── */
-        <div>
-          {/* Avatar row — sits outside padding so negative margin clears the banner */}
-          <div style={{ padding: '0 16px', display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: -54, marginBottom: 12 }}>
-            <div style={{ width: 88, height: 88, borderRadius: '50%', border: '3px solid var(--body-bg,#0C1420)', overflow: 'hidden', background: 'var(--card-bg)', flexShrink: 0, cursor: sitter.avatar_url ? 'pointer' : 'default', boxShadow: '0 4px 16px rgba(0,0,0,.4)' }}
-              onClick={() => sitter.avatar_url && setLightbox(sitter.avatar_url)}>
-              <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={88} radius="0"/>
-            </div>
-            <div style={{ paddingBottom: 4, minWidth: 0 }}>
-              <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{sitter.name}</h1>
-              {sitter.tagline && <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '3px 0 0', fontStyle: 'italic' }}>{sitter.tagline}</p>}
-            </div>
-          </div>
-          <div style={{ padding: '0 16px 40px' }}>
-            <div style={{ marginBottom: 14 }}><StatList/></div>
-            <div style={{ marginBottom: 20 }}><CtaBlock compact/></div>
-            <MainContent/>
-          </div>
-        </div>
-      ) : (
-        /* ── DESKTOP: two-column ── */
-        <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 24px 60px', display: 'flex', gap: 32, alignItems: 'flex-start' }}>
-          {/* Sticky sidebar */}
-          <div style={{ flexShrink: 0, width: 260, marginTop: -60, position: 'sticky', top: 20 }}>
-            <div style={{ width: 120, height: 120, borderRadius: '50%', border: '4px solid var(--body-bg,#0C1420)', overflow: 'hidden', marginBottom: 14, background: 'var(--card-bg)', boxShadow: '0 4px 20px rgba(0,0,0,.35)', cursor: sitter.avatar_url ? 'pointer' : 'default' }}
-              onClick={() => sitter.avatar_url && setLightbox(sitter.avatar_url)}>
-              <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={120} radius="0"/>
-            </div>
-            <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 26, fontWeight: 700, lineHeight: 1.2, marginBottom: 4 }}>{sitter.name}</h1>
-            {sitter.tagline && <p style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic', marginBottom: 12, lineHeight: 1.4 }}>{sitter.tagline}</p>}
-            <div style={{ marginBottom: 16 }}><StatList column/></div>
-            <CtaBlock/>
-          </div>
-          {/* Main content */}
-          <div style={{ flex: 1, minWidth: 0, paddingTop: 20 }}>
-            <MainContent/>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
