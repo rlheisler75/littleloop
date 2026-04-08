@@ -574,6 +574,10 @@ export default function PublicSitterProfile({ username, session }) {
           </div>{/* end main content */}
         </div>{/* end flex row */}
       </div>{/* end page body */}
+{/* Version stamp — remove once deployment is reliable */}
+<div style={{ fontSize: 9, color: 'var(--text-faint)', textAlign: 'center', marginTop: 8, opacity: .4 }}>
+  {FILE_VERSION}
+</div>
     </div>
   );
 }

@@ -9,6 +9,10 @@ import { AvailabilityPicker, AvailabilityDisplay } from '../../components/ui/Ava
 import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 import SitterAvatar from '../../components/ui/SitterAvatar';
 
+// ─── File version (bump this to confirm deployments) ─────────────────────────
+const FILE_VERSION = 'profile/index.jsx @ 2026-04-08-v3';
+console.log('%c✅ ' + FILE_VERSION, 'color:#0BA5AD;font-weight:bold;font-size:13px');
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const AGE_RANGES = [
