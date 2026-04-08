@@ -52,6 +52,74 @@ import { getPalette } from '../styles/themes';
  * @param {string|object} palette  palette id string, or a palette object directly
  */
 export function applyTheme(palette) {
+
+  // ── Custom theme — restore from localStorage instead of looking up a palette
+  if (palette === 'custom') {
+    try {
+      const colors  = JSON.parse(localStorage.getItem('ll_custom_theme') || 'null');
+      const isDark  = localStorage.getItem('ll_custom_dark') !== 'false';
+      if (colors) {
+        const root = document.documentElement;
+        function hexToRgba(hex, alpha) {
+          const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+          return `rgba(${r},${g},${b},${alpha})`;
+        }
+        root.style.setProperty('--body-bg',     colors.body);
+        root.style.setProperty('--card-bg',     hexToRgba(colors.card, 0.85));
+        root.style.setProperty('--accent',      colors.accent);
+        root.style.setProperty('--accent-grad', `linear-gradient(135deg,${colors.accent},${colors.accent2})`);
+        root.style.setProperty('--nav-bg',      hexToRgba(colors.nav, 0.85));
+        root.style.setProperty('--logo-grad',   `linear-gradient(90deg,${colors.accent},${colors.accent2},${colors.accent})`);
+        root.style.setProperty('--orb1',        hexToRgba(colors.accent, 0.2));
+        root.style.setProperty('--orb2',        hexToRgba(colors.accent2, 0.15));
+        if (isDark) {
+          root.style.setProperty('--text',           '#E4EAF4');
+          root.style.setProperty('--text-dim',       'rgba(255,255,255,.55)');
+          root.style.setProperty('--text-faint',     'rgba(255,255,255,.32)');
+          root.style.setProperty('--border',         'rgba(255,255,255,.08)');
+          root.style.setProperty('--input-bg',       'rgba(255,255,255,.05)');
+          root.style.setProperty('--input-border',   'rgba(255,255,255,.10)');
+          root.style.setProperty('--dot-color',      'rgba(255,255,255,.05)');
+          root.style.setProperty('--pill-bg',        'rgba(255,255,255,.10)');
+          root.style.setProperty('--pill-text',      '#E4EAF4');
+          root.style.setProperty('--badge-text',     '#E4EAF4');
+          root.style.setProperty('--nav-text',       'rgba(255,255,255,.60)');
+          root.style.setProperty('--nav-text-active','#FFFFFF');
+          root.style.setProperty('--btn-text',       '#FFFFFF');
+          root.style.setProperty('--shadow',         '0 2px 16px rgba(0,0,0,.35)');
+        } else {
+          root.style.setProperty('--text',           '#14243A');
+          root.style.setProperty('--text-dim',       'rgba(20,36,58,.58)');
+          root.style.setProperty('--text-faint',     'rgba(20,36,58,.35)');
+          root.style.setProperty('--border',         'rgba(20,36,58,.10)');
+          root.style.setProperty('--input-bg',       'rgba(20,36,58,.04)');
+          root.style.setProperty('--input-border',   'rgba(20,36,58,.14)');
+          root.style.setProperty('--dot-color',      'rgba(20,36,58,.06)');
+          root.style.setProperty('--pill-bg',        'rgba(20,36,58,.08)');
+          root.style.setProperty('--pill-text',      '#14243A');
+          root.style.setProperty('--badge-text',     '#14243A');
+          root.style.setProperty('--nav-text',       'rgba(20,36,58,.65)');
+          root.style.setProperty('--nav-text-active','#14243A');
+          root.style.setProperty('--btn-text',       '#FFFFFF');
+          root.style.setProperty('--shadow',         '0 2px 12px rgba(20,36,58,.10)');
+        }
+        // Accent extras — use accent as all secondary vars for custom themes
+        root.style.setProperty('--accent-secondary',    colors.accent);
+        root.style.setProperty('--accent-warm',         colors.accent2);
+        root.style.setProperty('--accent-warm-deep',    colors.accent2);
+        root.style.setProperty('--accent-success',      isDark ? '#4CD99A' : '#1E7A4A');
+        root.style.setProperty('--accent-success-deep', isDark ? '#4CD99A' : '#1E7A4A');
+        root.style.setProperty('--accent-danger',       isDark ? '#F08080' : '#A03820');
+        document.body.style.background = colors.body;
+        document.body.style.color      = isDark ? '#E4EAF4' : '#14243A';
+        return; // ← skip the normal palette lookup
+      }
+    } catch (e) {
+      console.warn('applyTheme: failed to restore custom theme', e);
+    }
+    // If custom theme data is missing, fall through to midnight
+  }
+
   const p   = typeof palette === 'string' ? getPalette(palette) : palette;
   const root = document.documentElement;
 
