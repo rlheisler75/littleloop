@@ -430,7 +430,7 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
   );
 }
 
-// ─── Background Check Upload + Status ────────────────────────────────────────
+// ─── Background Check Upload + Status ──────────────────────────────────────── 
 
 function BgCheckUploader({ sitterId }) {
   const [docUrl,     setDocUrl]     = useState(null);
