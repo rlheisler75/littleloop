@@ -144,7 +144,7 @@ function MessageModal({ sitter, adminUser, onClose, onSent }) {
 
 // ── Sitter row ────────────────────────────────────────────────────────────────
 
-function SitterRow({ sitter, isVerified, working, onVerify, onUnverify, onMessage }) {
+function SitterRow({ sitter, isVerified, working, onVerify, onUnverify, onMessage, onRefresh }) {
   const [lightbox, setLightbox] = useState(null);
   const isPdf    = sitter.background_check_doc_url?.toLowerCase().includes('.pdf');
   const bgStatus = sitter.bg_status || (isVerified ? 'valid' : 'unverified');
@@ -217,6 +217,38 @@ function SitterRow({ sitter, isVerified, working, onVerify, onUnverify, onMessag
           )}
         </div>
       </div>
+
+      {/* Multi-doc list */}
+      {sitter.documents?.length > 0 && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,.06)', marginTop: 0 }}>
+          {sitter.documents.map(doc => {
+            const docLabels = { background_check:'🛡️ Background Check', government_id:'🪪 Government ID', cpr_card:'❤️‍🔥 CPR Card', first_aid:'🩹 First Aid', other:'📄 Other' };
+            const isPdfDoc = doc.file_url?.toLowerCase().endsWith('.pdf');
+            return (
+              <div key={doc.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 16px', borderBottom:'1px solid rgba(255,255,255,.04)' }}>
+                <span style={{ fontSize:14 }}>{docLabels[doc.doc_type]?.split(' ')[0] || '📄'}</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <span style={{ fontSize:12, fontWeight:500 }}>{doc.label || docLabels[doc.doc_type]?.split(' ').slice(1).join(' ') || doc.doc_type}</span>
+                  {doc.file_name && <span style={{ fontSize:11, color:'rgba(255,255,255,.35)', marginLeft:8 }}>{doc.file_name}</span>}
+                </div>
+                <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:10,
+                  background: doc.status==='approved'?'rgba(11,165,173,.15)':doc.status==='rejected'?'rgba(192,80,80,.15)':'rgba(245,146,74,.12)',
+                  color:      doc.status==='approved'?'#0BA5AD'             :doc.status==='rejected'?'#F5AAAA'             :'#F5C098' }}>
+                  {doc.status==='approved'?'✓ Approved':doc.status==='rejected'?'✗ Rejected':'⏳ Pending'}
+                </span>
+                {isPdfDoc
+                  ? <a href={doc.file_url} target="_blank" rel="noreferrer" style={{ fontSize:11, padding:'3px 8px', borderRadius:6, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', color:'rgba(255,255,255,.6)', textDecoration:'none' }}>View</a>
+                  : <button onClick={()=>setLightbox(doc.file_url)} style={{ fontSize:11, padding:'3px 8px', borderRadius:6, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', color:'rgba(255,255,255,.6)', cursor:'pointer' }}>View</button>
+                }
+                <button onClick={async()=>{ await supabase.from('sitter_documents').update({status:'approved',reviewed_at:new Date().toISOString()}).eq('id',doc.id); onRefresh?.(); }}
+                  style={{ fontSize:11, padding:'3px 8px', borderRadius:6, background:'rgba(11,165,173,.12)', border:'1px solid rgba(11,165,173,.25)', color:'#0BA5AD', cursor:'pointer' }}>✓</button>
+                <button onClick={async()=>{ await supabase.from('sitter_documents').update({status:'rejected',reviewed_at:new Date().toISOString()}).eq('id',doc.id); onRefresh?.(); }}
+                  style={{ fontSize:11, padding:'3px 8px', borderRadius:6, background:'rgba(192,80,80,.1)', border:'1px solid rgba(192,80,80,.2)', color:'#F5AAAA', cursor:'pointer' }}>✗</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }
@@ -243,8 +275,22 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
       .select('*')
       .order('name');
 
-    const all = data || [];
-    setPending(all.filter(s => !s.background_check_verified && s.background_check_doc_url));
+    // Also fetch all documents from the new multi-doc table
+    const { data: allDocs } = await supabase
+      .from('sitter_documents')
+      .select('*')
+      .order('uploaded_at', { ascending: false });
+
+    const docsMap = {};
+    (allDocs || []).forEach(d => {
+      if (!docsMap[d.sitter_id]) docsMap[d.sitter_id] = [];
+      docsMap[d.sitter_id].push(d);
+    });
+
+    const all = (data || []).map(s => ({ ...s, documents: docsMap[s.id] || [] }));
+
+    // Show sitters in pending if they have any docs (old or new)
+    setPending(all.filter(s => !s.background_check_verified && (s.background_check_doc_url || s.documents.length > 0)));
     setVerified(all.filter(s => s.background_check_verified && s.bg_status !== 'expired'));
     setExpired(all.filter(s => s.bg_status === 'expired'));
     setLoading(false);
@@ -363,7 +409,8 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
           {currentList.map(s => (
             <SitterRow key={s.id} sitter={s} isVerified={isVerifiedTab}
               working={working[s.id] || false}
-              onVerify={verify} onUnverify={unverify} onMessage={setMessaging}/>
+              onVerify={verify} onUnverify={unverify} onMessage={setMessaging}
+              onRefresh={load}/>
           ))}
         </div>
       )}

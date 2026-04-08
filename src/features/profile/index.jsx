@@ -14,7 +14,7 @@ import SitterAvatar from '../../components/ui/SitterAvatar';
 // Check browser DevTools → Console for the teal line to confirm the right
 // version is live. If the console still shows an old version after deploying,
 // the service worker cache needs clearing.
-const FILE_VERSION = 'profile/index.jsx @ 2026-04-08-v1';
+const FILE_VERSION = 'profile/index.jsx @ 2026-04-08-v2';
 if (typeof window !== 'undefined') {
   console.log(
     '%c✅ ' + FILE_VERSION,
@@ -398,83 +398,188 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
 
 // ─── Background Check Upload + Status ────────────────────────────────────────
 
+// ─── Document type definitions ───────────────────────────────────────────────
+
+const DOC_TYPES = [
+  { id: 'background_check', label: 'Background Check', icon: '🛡️', desc: 'Criminal background check from an accredited provider' },
+  { id: 'government_id',    label: 'Government ID',    icon: '🪪', desc: 'Driver\'s license, passport, or state ID' },
+  { id: 'cpr_card',         label: 'CPR Card',         icon: '❤️‍🔥', desc: 'Current CPR certification card' },
+  { id: 'first_aid',        label: 'First Aid',        icon: '🩹', desc: 'First aid certification' },
+  { id: 'other',            label: 'Other',            icon: '📄', desc: 'Any other relevant document' },
+];
+
+// ─── Verification Documents Uploader ─────────────────────────────────────────
+
 function BgCheckUploader({ sitterId }) {
-  const [docUrl,     setDocUrl]     = useState(null);
+  const [docs,       setDocs]       = useState([]);
   const [verified,   setVerified]   = useState(false);
   const [verifiedAt, setVerifiedAt] = useState(null);
-  const [uploading,  setUploading]  = useState(false);
+  const [uploading,  setUploading]  = useState(null); // doc_type being uploaded
   const [alert,      setAlert]      = useState(null);
+  const [customLabel,setCustomLabel]= useState('');
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [addType,    setAddType]    = useState('background_check');
 
-  useEffect(() => {
-    supabase.from('sitters')
-      .select('background_check_doc_url,background_check_verified,background_check_verified_at')
-      .eq('id', sitterId).single()
-      .then(({ data }) => {
-        if (data) {
-          setDocUrl(data.background_check_doc_url);
-          setVerified(data.background_check_verified || false);
-          setVerifiedAt(data.background_check_verified_at);
-        }
-      });
-  }, [sitterId]);
+  useEffect(() => { load(); }, [sitterId]);
 
-  async function uploadDoc(file) {
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setAlert({ t: 'e', m: 'File must be under 10MB.' }); return; }
-    setUploading(true); setAlert(null);
-    try {
-      const ext  = file.name.split('.').pop();
-      const path = `${sitterId}/bg-check.${ext}`;
-      const { error: upErr } = await supabase.storage.from('sitter-avatars').upload(path, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: { publicUrl } } = supabase.storage.from('sitter-avatars').getPublicUrl(path);
-      await supabase.from('sitters').update({ background_check_doc_url: publicUrl, background_check_verified: false, background_check_verified_at: null }).eq('id', sitterId);
-      setDocUrl(publicUrl);
-      setVerified(false);
-      setAlert({ t: 's', m: 'Document uploaded! A littleloop admin will review it shortly.' });
-    } catch (err) { setAlert({ t: 'e', m: err.message }); }
-    finally { setUploading(false); }
+  async function load() {
+    // Load verification status
+    const { data: s } = await supabase.from('sitters')
+      .select('background_check_verified,background_check_verified_at')
+      .eq('id', sitterId).single();
+    if (s) { setVerified(s.background_check_verified || false); setVerifiedAt(s.background_check_verified_at); }
+
+    // Load all uploaded docs
+    const { data: d } = await supabase.from('sitter_documents')
+      .select('*').eq('sitter_id', sitterId).order('uploaded_at', { ascending: false });
+    setDocs(d || []);
   }
 
+  async function uploadDoc(file, docType, label) {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { setAlert({ t: 'e', m: 'File must be under 10MB.' }); return; }
+    setUploading(docType); setAlert(null);
+    try {
+      const ext  = file.name.split('.').pop().toLowerCase();
+      const path = `${sitterId}/docs/${docType}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('sitter-avatars').upload(path, file, { upsert: false });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from('sitter-avatars').getPublicUrl(path);
+
+      const { error: dbErr } = await supabase.from('sitter_documents').insert({
+        sitter_id: sitterId,
+        doc_type:  docType,
+        label:     docType === 'other' ? (label || 'Other document') : null,
+        file_url:  publicUrl,
+        file_name: file.name,
+        file_size: file.size,
+        status:    'pending',
+      });
+      if (dbErr) throw dbErr;
+
+      // If it's a background check, also update the legacy column for backwards compat
+      if (docType === 'background_check') {
+        await supabase.from('sitters').update({
+          background_check_doc_url:    publicUrl,
+          background_check_verified:   false,
+          background_check_verified_at: null,
+        }).eq('id', sitterId);
+        setVerified(false);
+      }
+
+      setAlert({ t: 's', m: `${DOC_TYPES.find(d => d.id === docType)?.label || 'Document'} uploaded! An admin will review it shortly.` });
+      setShowAdd(false);
+      setCustomLabel('');
+      load();
+    } catch (err) { setAlert({ t: 'e', m: err.message }); }
+    finally { setUploading(null); }
+  }
+
+  async function deleteDoc(doc) {
+    if (!window.confirm(`Remove this ${DOC_TYPES.find(d => d.id === doc.doc_type)?.label || 'document'}?`)) return;
+    await supabase.from('sitter_documents').delete().eq('id', doc.id);
+    setDocs(prev => prev.filter(d => d.id !== doc.id));
+  }
+
+  function fmtSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024*1024) return `${(bytes/1024).toFixed(0)}KB`;
+    return `${(bytes/1024/1024).toFixed(1)}MB`;
+  }
+
+  const isPdf = url => url?.toLowerCase().includes('.pdf');
+
   return (
-    <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--card-bg)', border: `1px solid ${verified ? 'rgba(11,165,173,.3)' : 'var(--border)'}` }}>
-      {alert && <div className={`al al-${alert.t}`} style={{ marginBottom: 10 }}>{alert.m}</div>}
-      {verified ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 22 }}>🛡️</span>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0BA5AD' }}>Verified by littleloop</div>
-            {verifiedAt && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Verified {new Date(verifiedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>}
-          </div>
-        </div>
-      ) : docUrl ? (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 16 }}>⏳</span>
+    <div style={{ borderRadius: 12, background: 'var(--card-bg)', border: `1px solid ${verified ? 'rgba(11,165,173,.3)' : 'var(--border)'}`, overflow: 'hidden' }}>
+
+      {/* Header */}
+      <div style={{ padding: '12px 14px', borderBottom: docs.length > 0 || showAdd ? '1px solid var(--border)' : 'none' }}>
+        {alert && <div className={`al al-${alert.t}`} style={{ marginBottom: 10 }}>{alert.m}</div>}
+        {verified ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22 }}>🛡️</span>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#F5C098' }}>Pending review</div>
-              <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Your document has been submitted and is awaiting admin review.</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0BA5AD' }}>Verified by littleloop</div>
+              {verifiedAt && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Verified {new Date(verifiedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>}
             </div>
           </div>
-          <a href={docUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none' }}>View uploaded document ↗</a>
-          <div style={{ marginTop: 8 }}>
-            <label style={{ cursor: 'pointer' }}>
-              <span style={{ fontSize: 11, color: 'var(--text-faint)', textDecoration: 'underline' }}>Replace document</span>
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={e => uploadDoc(e.target.files[0])}/>
+        ) : (
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+            Upload your verification documents to get a <strong>🛡️ Verified</strong> badge on your public profile.
+            You can upload multiple documents — background check, ID, CPR card, etc. Accepted: PDF, JPG, PNG (max 10MB each).
+          </div>
+        )}
+      </div>
+
+      {/* Document list */}
+      {docs.map(doc => {
+        const type = DOC_TYPES.find(d => d.id === doc.doc_type) || { icon: '📄', label: 'Document' };
+        const displayLabel = doc.doc_type === 'other' ? (doc.label || 'Other') : type.label;
+        return (
+          <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>{type.icon}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{displayLabel}</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{doc.file_name}{doc.file_size ? ` · ${fmtSize(doc.file_size)}` : ''}</span>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10,
+                  background: doc.status === 'approved' ? 'rgba(11,165,173,.15)' : doc.status === 'rejected' ? 'rgba(192,80,80,.15)' : 'rgba(245,146,74,.12)',
+                  color:      doc.status === 'approved' ? '#0BA5AD'               : doc.status === 'rejected' ? '#F5AAAA'              : '#F5C098',
+                }}>
+                  {doc.status === 'approved' ? '✓ Approved' : doc.status === 'rejected' ? '✗ Rejected' : '⏳ Pending'}
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              {isPdf(doc.file_url)
+                ? <a href={doc.file_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--accent)', textDecoration: 'none' }}>View</a>
+                : <button onClick={() => window.open(doc.file_url, '_blank')} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--accent)', cursor: 'pointer' }}>View</button>
+              }
+              <button onClick={() => deleteDoc(doc)} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'rgba(192,80,80,.08)', border: '1px solid rgba(192,80,80,.2)', color: '#F5AAAA', cursor: 'pointer' }}>Remove</button>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Add document row */}
+      {showAdd ? (
+        <div style={{ padding: '12px 14px', background: 'var(--input-bg)' }}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: 'var(--text-dim)' }}>Select document type</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+            {DOC_TYPES.map(t => (
+              <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: addType === t.id ? 'rgba(11,165,173,.1)' : 'transparent', border: `1px solid ${addType === t.id ? 'rgba(11,165,173,.3)' : 'transparent'}` }}>
+                <input type="radio" name="doctype" value={t.id} checked={addType === t.id} onChange={() => setAddType(t.id)} style={{ accentColor: '#0BA5AD' }}/>
+                <span style={{ fontSize: 16 }}>{t.icon}</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600 }}>{t.label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t.desc}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+          {addType === 'other' && (
+            <div style={{ marginBottom: 10 }}>
+              <input className="fi" value={customLabel} onChange={e => setCustomLabel(e.target.value)} placeholder="Document name (e.g. Teaching Certificate)" style={{ marginBottom: 0 }}/>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <label style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
+              <span className="bp" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '8px 14px', opacity: uploading ? .6 : 1 }}>
+                {uploading === addType ? <><Spinner size={11}/> Uploading…</> : '📎 Choose file'}
+              </span>
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} disabled={!!uploading}
+                onChange={e => uploadDoc(e.target.files[0], addType, customLabel)}/>
             </label>
+            <button className="bg" onClick={() => { setShowAdd(false); setCustomLabel(''); }} style={{ fontSize: 12, padding: '8px 14px' }}>Cancel</button>
           </div>
         </div>
       ) : (
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10, lineHeight: 1.5 }}>
-            Upload your background check document to get a <strong>🛡️ Verified</strong> badge on your public profile. Accepted: PDF, JPG, PNG (max 10MB).
-          </div>
-          <label style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
-            <span className="bg" style={{ display: 'inline-block', padding: '8px 14px', fontSize: 12, opacity: uploading ? .6 : 1 }}>
-              {uploading ? <><Spinner size={11}/> Uploading…</> : '📎 Upload background check'}
-            </span>
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} disabled={uploading} onChange={e => uploadDoc(e.target.files[0])}/>
-          </label>
+        <div style={{ padding: '10px 14px' }}>
+          <button className="bg" onClick={() => setShowAdd(true)} style={{ fontSize: 12, padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            ＋ Add document
+          </button>
         </div>
       )}
     </div>
