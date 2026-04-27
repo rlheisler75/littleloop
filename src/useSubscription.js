@@ -11,7 +11,7 @@ export function useSubscription(session) {
     if (!session) return;
     try {
       const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/stripe?action=status`,
+        `${SUPABASE_URL}/functions/v1/stripe-handler?action=status`,
         { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
       const data = await res.json();

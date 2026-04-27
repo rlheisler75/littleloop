@@ -10,7 +10,7 @@ export default function BillingTab({ session, subscriptionData }) {
   const openPortal = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe?action=portal`, {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe-handler?action=portal`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
