@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 import { supabase } from './lib/supabase';
 
 export function useSubscription(session) {
@@ -9,7 +11,7 @@ export function useSubscription(session) {
     if (!session) return;
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe/status`,
+        `${SUPABASE_URL}/functions/v1/stripe?action=status`,
         { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
       const data = await res.json();

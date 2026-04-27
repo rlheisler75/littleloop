@@ -12,7 +12,7 @@ export default function SubscribePage({ session, onBack }) {
     setError(null);
     try {
       const origin = window.location.origin;
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe/checkout`, {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe?action=checkout`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
