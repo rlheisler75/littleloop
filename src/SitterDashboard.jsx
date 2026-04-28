@@ -116,8 +116,8 @@ export default function SitterDashboard({ session, onSignOut }) {
     </>
   );
 
-  // Show subscribe page if no active sub and no status yet (never subscribed)
-  if (!subLoading && !status?.subscription_status) {
+  // Show subscribe page only AFTER onboarding and if no subscription exists
+  if (onboarded && !subLoading && !status?.subscription_status) {
     return (
       <>
         <Bg/>
