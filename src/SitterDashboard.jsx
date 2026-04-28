@@ -28,8 +28,14 @@ export default function SitterDashboard({ session, onSignOut }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('subscribed')) {
-      refreshSub();
       window.history.replaceState({}, '', '/');
+      // Poll until webhook updates the subscription status (up to 20 seconds)
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        await refreshSub();
+        if (attempts >= 10) clearInterval(poll);
+      }, 2000);
     }
   }, []);
 
