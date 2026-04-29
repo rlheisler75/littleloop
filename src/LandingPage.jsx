@@ -514,7 +514,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
 
         {/* HOW IT WORKS */}
         <section className="ll-section ll-how" id="how-it-works">
-          <div data-id="how-label" className={reveal('how-label')} style={{textAlign:'center'}}>
+          <div data-id="how-label" className={`hidden ${reveal('how-label')}`} style={{textAlign:'center'}}>
             <div className="ll-section-label" style={{display:'flex',justifyContent:'center'}}>How It Works</div>
             <h2 className="ll-section-title" style={{textAlign:'center'}}>Simple by <em>design.</em></h2>
           </div>
@@ -524,7 +524,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
               { n:'02', icon:'🔎', title:'Families discover you', desc:'Local families browse sitters on Littleloop, filter by what matters to them, and reach out directly through the app.' },
               { n:'03', icon:'🤝', title:'You connect & get booked', desc:'Chat, confirm details, and manage the relationship — invoices, session notes, and all — right from your dashboard.' },
             ].map((s, i) => (
-              <div key={s.n} className={`ll-step hidden`} data-id={`step-${i}`} style={{transitionDelay:`${i * .15}s`}}>
+              <div key={s.n} className={`ll-step hidden ${reveal('step-' + i)}`} data-id={`step-${i}`} style={{transitionDelay:`${i * .15}s`}}>
                 <div className="ll-step-num">{s.n}</div>
                 <div className="ll-step-icon">{s.icon}</div>
                 <div className="ll-step-title">{s.title}</div>
