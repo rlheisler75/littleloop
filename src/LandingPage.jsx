@@ -55,7 +55,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         /* NAV */
         .ll-nav {
           position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-          padding: 18px 48px;
+          padding: 20px 48px;
           display: flex; align-items: center; justify-content: space-between;
           transition: all .3s ease;
         }
@@ -63,10 +63,10 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
           background: rgba(247,243,238,.92);
           backdrop-filter: blur(16px);
           border-bottom: 1px solid rgba(74,124,101,.12);
-          padding: 14px 48px;
+          padding: 16px 48px;
         }
-        .ll-nav-brand { display: flex; flex-direction: column; line-height: 1; }
-        .ll-nav-logo { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 500; color: var(--sage); letter-spacing: -.3px; }
+        .ll-nav-brand { display: flex; flex-direction: column; line-height: 1; padding: 4px 0; }
+        .ll-nav-logo { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 500; color: var(--sage); letter-spacing: -.3px; display: flex; align-items: center; gap: 8px; }
         .ll-nav-sub { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
         .ll-nav-links { display: flex; align-items: center; gap: 32px; }
         .ll-nav-links a { font-size: 14px; color: var(--bark-light); text-decoration: none; transition: color .2s; cursor: pointer; }
