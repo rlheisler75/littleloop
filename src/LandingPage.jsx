@@ -68,7 +68,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         .ll-nav-brand { display: flex; flex-direction: column; line-height: 1; padding: 4px 0; }
         .ll-nav-logo { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 500; color: var(--sage); letter-spacing: -.3px; display: flex; align-items: center; gap: 8px; }
         .ll-logomark { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 300; font-style: italic; color: var(--sage); line-height: 1; }
-        .ll-nav-sub { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+        .ll-nav-sub { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 4px; padding-left: 34px; }
         .ll-nav-links { display: flex; align-items: center; gap: 32px; }
         .ll-nav-links a { font-size: 14px; color: var(--bark-light); text-decoration: none; transition: color .2s; cursor: pointer; }
         .ll-nav-links a:hover { color: var(--sage); }
