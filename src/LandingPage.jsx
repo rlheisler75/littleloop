@@ -323,10 +323,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         {/* NAV */}
         <nav className={`ll-nav ${scrolled ? 'scrolled' : ''}`}>
           <div className="ll-nav-brand">
-            <span className="ll-nav-logo"><svg width="28" height="18" viewBox="0 0 28 18" fill="none" xmlns="http://www.w3.org/2000/svg" style={{flexShrink:0}}>
-              <path d="M7 9C7 6.79 8.79 5 11 5C13.21 5 15 6.79 15 9C15 11.21 13.21 13 11 13C8.79 13 7 11.21 7 9Z" stroke="currentColor" strokeWidth="2" fill="none"/>
-              <path d="M13 9C13 6.79 14.79 5 17 5C19.21 5 21 6.79 21 9C21 11.21 19.21 13 17 13C14.79 13 13 11.21 13 9Z" stroke="currentColor" strokeWidth="2" fill="none"/>
-            </svg> littleloop</span>
+            <span className="ll-nav-logo"><span style={{fontFamily:"Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif", fontSize:"inherit", lineHeight:1}}>➿</span> littleloop</span>
             <span className="ll-nav-sub">by Loopware Solutions</span>
           </div>
           <div className="ll-nav-links">
@@ -554,10 +551,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         <footer className="ll-footer">
           <div className="ll-footer-brand">
             <div className="ll-nav-brand">
-              <span className="ll-nav-logo"><svg width="28" height="18" viewBox="0 0 28 18" fill="none" xmlns="http://www.w3.org/2000/svg" style={{flexShrink:0}}>
-              <path d="M7 9C7 6.79 8.79 5 11 5C13.21 5 15 6.79 15 9C15 11.21 13.21 13 11 13C8.79 13 7 11.21 7 9Z" stroke="currentColor" strokeWidth="2" fill="none"/>
-              <path d="M13 9C13 6.79 14.79 5 17 5C19.21 5 21 6.79 21 9C21 11.21 19.21 13 17 13C14.79 13 13 11.21 13 9Z" stroke="currentColor" strokeWidth="2" fill="none"/>
-            </svg> littleloop</span>
+              <span className="ll-nav-logo"><span style={{fontFamily:"Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif", fontSize:"inherit", lineHeight:1}}>➿</span> littleloop</span>
               <span className="ll-nav-sub">by Loopware Solutions</span>
             </div>
           </div>
