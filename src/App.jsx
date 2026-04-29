@@ -12,6 +12,7 @@ import { PublicSitterProfile, BrowseSitters } from './features/profile/index';
 import SitterDashboard from './SitterDashboard';
 import ParentDashboard from './ParentDashboard';
 import AdminApp from './admin/AdminApp';
+import LandingPage from './LandingPage';
 
 export default function App() {
   // Admin console — own auth, own app
@@ -20,6 +21,7 @@ export default function App() {
   const [session,    setSession]    = useState(undefined);
   const [userRole,   setUserRole]   = useState(null);
   const [inviteData, setInviteData] = useState(null);
+  const [authPortal, setAuthPortal] = useState(null); // 'sitter' | 'parent' | null
 
   const portal      = getPortal();
   const inviteToken = getInviteToken();
@@ -61,7 +63,10 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signOut = () => supabase.auth.signOut();
+  const signOut = () => {
+    setAuthPortal(null);
+    supabase.auth.signOut();
+  };
 
   // Loading
   if (session === undefined) return (
@@ -79,7 +84,7 @@ export default function App() {
   // Password reset
   if (userRole === '__reset__') return <><Bg/><ResetPasswordForm/></>;
 
-  // Public routes — show even when logged in, but pass session context
+  // Public routes — show even when logged in
   if (sitterParam) return <><Bg/><PublicSitterProfile username={sitterParam} session={session}/></>;
   if (browseParam) return <><Bg/><BrowseSitters session={session} familyId={null}/></>;
 
@@ -88,8 +93,19 @@ export default function App() {
     <><Bg/><InviteWelcome token={inviteToken} onContinue={inv => setInviteData(inv)}/></>
   );
 
-  // Auth wall
-  if (!session) return <><Bg/><AuthForm portal={inviteData ? 'parent' : portal} inviteData={inviteData}/></>;
+  // Auth wall — show if user clicked a CTA or has an invite
+  if (!session && (authPortal || inviteData)) return (
+    <><Bg/><AuthForm portal={authPortal || (inviteData ? 'parent' : portal)} inviteData={inviteData} onBack={() => setAuthPortal(null)}/></>
+  );
+
+  // Landing page — show to logged-out visitors
+  if (!session) return (
+    <LandingPage
+      onSitterSignup={() => setAuthPortal('sitter')}
+      onFamilySignup={() => setAuthPortal('parent')}
+      onLogin={() => setAuthPortal('sitter')}
+    />
+  );
 
   // Authenticated
   if (userRole === 'parent') return <><Bg/><ParentDashboard session={session} onSignOut={signOut}/></>;
