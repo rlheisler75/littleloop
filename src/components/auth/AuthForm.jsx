@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import Field from '../ui/Field';
 import Spinner from '../ui/Spinner';
 
-export default function AuthForm({ portal, inviteData }) {
+export default function AuthForm({ portal, inviteData, onBack }) {
   const isParent = portal === 'parent';
 
   const [mode,     setMode]     = useState(inviteData ? 'signup' : 'login');
@@ -75,6 +75,18 @@ export default function AuthForm({ portal, inviteData }) {
   return (
     <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 16px' }}>
       <div style={{ width: '100%', maxWidth: 400 }}>
+
+        {/* Back to landing page */}
+        {onBack && (
+          <div className="fade-up" style={{ marginBottom: 20 }}>
+            <button
+              onClick={onBack}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, padding: 0 }}
+            >
+              ← Back to littleloop
+            </button>
+          </div>
+        )}
 
         <div className="fade-up" style={{ textAlign: 'center', marginBottom: 36 }}>
           <div className="leaf" style={{ fontSize: 46, marginBottom: 10, filter: 'drop-shadow(0 0 20px rgba(58,158,122,.45))' }}>➿</div>
@@ -168,8 +180,8 @@ export default function AuthForm({ portal, inviteData }) {
 
         <p className="fade-up d6" style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'var(--text-faint)' }}>
           {isParent
-            ? <> Are you a sitter? <a href="/" style={{ color: 'rgba(111,163,232,.6)', textDecoration: 'none' }}>Sitter sign in →</a></>
-            : <> Are you a family member? <a href="/?portal=parent" style={{ color: 'rgba(111,163,232,.6)', textDecoration: 'none' }}>Family sign in →</a></>
+            ? <> Are you a sitter? <span style={{ color: 'rgba(111,163,232,.6)', cursor: 'pointer' }} onClick={onBack}>← Back to home</span></>
+            : <> Are you a family member? <span style={{ color: 'rgba(111,163,232,.6)', cursor: 'pointer' }} onClick={onBack}>← Back to home</span></>
           }
         </p>
 
