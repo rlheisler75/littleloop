@@ -5,7 +5,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 export default function BillingTab({ session, subscriptionData }) {
   const [loading, setLoading] = useState(false);
 
-  const { subscription_status, subscription_plan, trial_ends_at, current_period_end } = subscriptionData || {};
+  const { subscription_status, subscription_plan, trial_ends_at, current_period_end, stripe_customer_id } = subscriptionData || {};
 
   const openPortal = async () => {
     setLoading(true);
@@ -91,8 +91,8 @@ export default function BillingTab({ session, subscriptionData }) {
         )}
       </div>
 
-      {/* Manage button */}
-      {subscription_status && subscription_status !== 'canceled' && (
+      {/* Manage button - only if has Stripe customer */}
+      {subscription_status && subscription_status !== 'canceled' && stripe_customer_id && (
         <button
           className="btn-primary"
           onClick={openPortal}
@@ -101,6 +101,11 @@ export default function BillingTab({ session, subscriptionData }) {
         >
           {loading ? 'Opening billing portal…' : '💳 Manage Subscription'}
         </button>
+      )}
+      {subscription_status === 'active' && !stripe_customer_id && (
+        <div style={{ textAlign: 'center', padding: '14px', background: 'rgba(58,158,122,.08)', border: '1px solid rgba(58,158,122,.2)', borderRadius: 12, fontSize: 13, color: 'var(--text-muted)' }}>
+          🎁 You're on a complimentary plan — no billing required.
+        </div>
       )}
 
       {subscription_status === 'canceled' && (
