@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useFieldTripSitter } from '../../hooks/useFieldTrip';
 
 /**
- * Props:
+ * Props: 
  *   sitterId        – string  (the sitter's row ID in the sitters table)
  *   checkedInChildren – array of child UUIDs currently checked in
  *   checkedInNames    – array of child name strings (for display)
