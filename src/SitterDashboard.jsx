@@ -13,6 +13,7 @@ import { SitterProfileTab } from './features/profile/index';
 import SitterOnboarding from './features/onboarding/SitterOnboarding';
 import SubscribePage from './SubscribePage';
 import BillingTab from './BillingTab';
+import SitterFieldTripPanel from './components/FieldTrip/SitterFieldTripPanel';
 
 export default function SitterDashboard({ session, onSignOut }) {
   const sitterId = session.user.id;
@@ -172,7 +173,16 @@ export default function SitterDashboard({ session, onSignOut }) {
           <LockedOverlay session={session} status={status} onManageBilling={() => setTab('billing')} />
         ) : (
           <>
-            {tab === 'families' && <FamiliesTab sitterId={sitterId} sitterName={name}/>}
+            {tab === 'families' && (
+  <>
+    <SitterFieldTripPanel
+      sitterId={sitterId}
+      checkedInChildren={[]}
+      checkedInNames={[]}
+    />
+    <FamiliesTab sitterId={sitterId} sitterName={name}/>
+  </>
+)}
             {tab === 'feed'     && <SitterFeedWrapper sitterId={sitterId} sitterName={name}/>}
             {tab === 'invoices' && <SitterInvoicesTab sitterId={sitterId} sitterName={name}/>}
             {tab === 'messages' && <SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
