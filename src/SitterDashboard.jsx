@@ -22,16 +22,15 @@ export default function SitterDashboard({ session, onSignOut }) {
   const [onboarded, setOnboarded] = useState(!!localStorage.getItem(`ll_onboarded_${sitterId}`));
   const [tab,       setTab]       = useState('families');
   const [unread,    setUnread]    = useState({ messages: 0, feed: 0, requests: 0, eta: 0 });
+  const [checkedInKids, setCheckedInKids] = useState([]);
 
   const { status, loading: subLoading, isActive, isTrialing, isPastDue, trialDaysLeft, refresh: refreshSub } = useSubscription(session);
-  const [checkedInKids, setCheckedInKids] = useState([]);
 
   // Handle ?subscribed=true redirect from Stripe
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('subscribed')) {
       window.history.replaceState({}, '', '/');
-      // Poll until webhook updates the subscription status (up to 20 seconds)
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
@@ -103,42 +102,52 @@ export default function SitterDashboard({ session, onSignOut }) {
       setUnread(u => ({ ...u, eta: 0 }));
     }
   }, [tab]);
-// Load Checked In 
-useEffect(() => {
-  async function loadCheckedIn() {
-    // Get families this sitter is connected to
-    const { data: fsRows } = await supabase
-      .from('family_sitters')
-      .select('family_id')
-      .eq('sitter_id', sitterId)
-      .eq('status', 'active');
 
-    const familyIds = (fsRows || []).map(r => r.family_id);
-    if (!familyIds.length) return;
+  // Load checked-in children — uses latest checkin row per child to get accurate status
+  useEffect(() => {
+    async function loadCheckedIn() {
+      // Step 1: get families this sitter is connected to
+      const { data: fsRows } = await supabase
+        .from('family_sitters')
+        .select('family_id')
+        .eq('sitter_id', sitterId)
+        .eq('status', 'active');
 
-    // Get checked-in children from those families
-    const { data } = await supabase
-      .from('checkins')
-      .select('child_id, children(id, name)')
-      .eq('status', 'in')
-      .in('family_id', familyIds);
+      const familyIds = (fsRows || []).map(r => r.family_id);
+      if (!familyIds.length) { setCheckedInKids([]); return; }
 
-    const seen = new Set();
-const unique = (data || []).filter(row => {
-  if (seen.has(row.child_id)) return false;
-  seen.add(row.child_id);
-  return true;
-});
-setCheckedInKids(unique);
-  }
+      // Step 2: get all children in those families
+      const { data: allKids } = await supabase
+        .from('children')
+        .select('id, name')
+        .in('family_id', familyIds);
 
-  loadCheckedIn();
+      if (!allKids?.length) { setCheckedInKids([]); return; }
 
-  const ch = supabase.channel('checkin-updates')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'checkins' }, loadCheckedIn)
-    .subscribe();
-  return () => supabase.removeChannel(ch);
-}, [sitterId]);
+      // Step 3: for each child get their latest checkin and keep only 'in'
+      const checkedIn = [];
+      for (const child of allKids) {
+        const { data: latest } = await supabase
+          .from('checkins')
+          .select('status, child_id')
+          .eq('child_id', child.id)
+          .order('checked_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latest?.status === 'in') {
+          checkedIn.push({ child_id: child.id, children: { id: child.id, name: child.name } });
+        }
+      }
+      setCheckedInKids(checkedIn);
+    }
+
+    loadCheckedIn();
+
+    const ch = supabase.channel('checkin-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'checkins' }, loadCheckedIn)
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [sitterId]);
 
   // Locked tabs — shown but gated when subscription is inactive
   const LOCKED_TABS = ['families', 'feed', 'invoices', 'messages'];
@@ -160,7 +169,6 @@ setCheckedInKids(unique);
     </>
   );
 
-  // Show subscribe page only AFTER onboarding and if no subscription exists
   if (onboarded && !subLoading && !status?.subscription_status) {
     return (
       <>
@@ -204,24 +212,22 @@ setCheckedInKids(unique);
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', maxWidth: 800, width: '100%', margin: '0 auto' }}>
-
-        {/* Locked state — show paywall overlay for gated tabs */}
         {isDashboardLocked && LOCKED_TABS.includes(tab) ? (
           <LockedOverlay session={session} status={status} onManageBilling={() => setTab('billing')} />
         ) : (
           <>
-       {tab === 'families' && (
-  <>
-    <div style={{ marginBottom: 20 }}>
-      <SitterFieldTripPanel
-        sitterId={sitterId}
-        checkedInChildren={checkedInKids.map(c => c.child_id)}
-        checkedInNames={checkedInKids.map(c => c.children?.name).filter(Boolean)}
-      />
-    </div>
-    <FamiliesTab sitterId={sitterId} sitterName={name}/>
-  </>
-)}
+            {tab === 'families' && (
+              <>
+                <div style={{ marginBottom: 20 }}>
+                  <SitterFieldTripPanel
+                    sitterId={sitterId}
+                    checkedInChildren={checkedInKids.map(c => c.child_id)}
+                    checkedInNames={checkedInKids.map(c => c.children?.name).filter(Boolean)}
+                  />
+                </div>
+                <FamiliesTab sitterId={sitterId} sitterName={name}/>
+              </>
+            )}
             {tab === 'feed'     && <SitterFeedWrapper sitterId={sitterId} sitterName={name}/>}
             {tab === 'invoices' && <SitterInvoicesTab sitterId={sitterId} sitterName={name}/>}
             {tab === 'messages' && <SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
@@ -236,7 +242,6 @@ setCheckedInKids(unique);
 
 function LockedOverlay({ session, status, onManageBilling }) {
   const isPastDue = status?.subscription_status === 'past_due';
-  const isCanceled = status?.subscription_status === 'canceled';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400, textAlign: 'center', padding: 24 }}>
