@@ -123,7 +123,13 @@ useEffect(() => {
       .eq('status', 'in')
       .in('family_id', familyIds);
 
-    setCheckedInKids(data || []);
+    const seen = new Set();
+const unique = (data || []).filter(row => {
+  if (seen.has(row.child_id)) return false;
+  seen.add(row.child_id);
+  return true;
+});
+setCheckedInKids(unique);
   }
 
   loadCheckedIn();
