@@ -119,7 +119,7 @@ export default function SitterFieldTripPanel({ sitterId, checkedInChildren = [],
             <div style={styles.noteArea}>
               <input
                 type="text"
-                placeholder='e.g. "We\'re heading to Riverside Park"'
+                placeholder="e.g. We're heading to Riverside Park"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 style={styles.noteInput}
