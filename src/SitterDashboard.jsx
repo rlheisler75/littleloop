@@ -143,8 +143,9 @@ export default function SitterDashboard({ session, onSignOut }) {
 
     loadCheckedIn();
 
-    const ch = supabase.channel('checkin-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'checkins' }, loadCheckedIn)
+    const ch = supabase.channel(`checkin-live-${sitterId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'checkins' }, () => loadCheckedIn())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'checkins' }, () => loadCheckedIn())
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [sitterId]);
