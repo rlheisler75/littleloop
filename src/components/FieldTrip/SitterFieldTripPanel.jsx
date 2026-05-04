@@ -172,7 +172,6 @@ const styles = {
     border: '1px solid var(--color-border, #e5e7eb)',
     borderRadius: 16,
     padding: '20px 24px',
-    maxWidth: 480,
     fontFamily: 'inherit',
   },
   header: {
