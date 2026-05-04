@@ -24,6 +24,7 @@ export default function SitterDashboard({ session, onSignOut }) {
   const [unread,    setUnread]    = useState({ messages: 0, feed: 0, requests: 0, eta: 0 });
 
   const { status, loading: subLoading, isActive, isTrialing, isPastDue, trialDaysLeft, refresh: refreshSub } = useSubscription(session);
+  const [checkedInKids, setCheckedInKids] = useState([]);
 
   // Handle ?subscribed=true redirect from Stripe
   useEffect(() => {
@@ -103,6 +104,23 @@ export default function SitterDashboard({ session, onSignOut }) {
     }
   }, [tab]);
 
+  useEffect(() => {
+  async function loadCheckedIn() {
+    const { data } = await supabase
+      .from('checkins')
+      .select('child_id, children(id, name)')
+      .eq('status', 'in')
+      .eq('checked_in_by', sitterId);
+    setCheckedInKids(data || []);
+  }
+  loadCheckedIn();
+
+  const ch = supabase.channel('checkin-updates')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'checkins' }, loadCheckedIn)
+    .subscribe();
+  return () => supabase.removeChannel(ch);
+}, [sitterId]);
+
   // Locked tabs — shown but gated when subscription is inactive
   const LOCKED_TABS = ['families', 'feed', 'invoices', 'messages'];
   const isDashboardLocked = !subLoading && !isActive;
@@ -173,13 +191,15 @@ export default function SitterDashboard({ session, onSignOut }) {
           <LockedOverlay session={session} status={status} onManageBilling={() => setTab('billing')} />
         ) : (
           <>
-            {tab === 'families' && (
+       {tab === 'families' && (
   <>
-    <SitterFieldTripPanel
-      sitterId={sitterId}
-      checkedInChildren={[]}
-      checkedInNames={[]}
-    />
+    <div style={{ marginBottom: 20 }}>
+      <SitterFieldTripPanel
+        sitterId={sitterId}
+        checkedInChildren={checkedInKids.map(c => c.child_id)}
+        checkedInNames={checkedInKids.map(c => c.children?.name).filter(Boolean)}
+      />
+    </div>
     <FamiliesTab sitterId={sitterId} sitterName={name}/>
   </>
 )}
