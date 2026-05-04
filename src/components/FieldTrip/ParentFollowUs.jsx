@@ -1,15 +1,10 @@
 // src/components/FieldTrip/ParentFollowUs.jsx
-// Parent-facing "Follow Us" live map view
-// Uses Leaflet via CDN — NO npm install needed
-
 import { useEffect, useRef } from 'react';
 import { useFieldTripParent } from '../../hooks/useFieldTrip';
 
-// ─── Load Leaflet CSS + JS from CDN once ───────────────────
 function ensureLeafletLoaded() {
   return new Promise((resolve) => {
     if (window.L) { resolve(window.L); return; }
-
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
       link.id = 'leaflet-css';
@@ -17,7 +12,6 @@ function ensureLeafletLoaded() {
       link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
       document.head.appendChild(link);
     }
-
     if (!document.getElementById('leaflet-js')) {
       const script = document.createElement('script');
       script.id = 'leaflet-js';
@@ -32,7 +26,6 @@ function ensureLeafletLoaded() {
   });
 }
 
-// ─── Map component ─────────────────────────────────────────
 function MapView({ locations, currentLocation }) {
   const mapRef      = useRef(null);
   const mapInstance = useRef(null);
@@ -54,8 +47,9 @@ function MapView({ locations, currentLocation }) {
       });
 
       const map = L.map(mapRef.current, {
-        center: [37.2153, -93.2982], // Springfield MO default
+        center: [37.2153, -93.2982],
         zoom: 15,
+        zoomControl: true,
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -76,7 +70,7 @@ function MapView({ locations, currentLocation }) {
       if (!document.getElementById('ll-anim')) {
         const s = document.createElement('style');
         s.id = 'll-anim';
-        s.textContent = `@keyframes ll-ping{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(2);opacity:0}}.leaflet-container{border-radius:12px;}`;
+        s.textContent = `@keyframes ll-ping{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(2);opacity:0}}.leaflet-container{border-radius:0 0 12px 12px;}`;
         document.head.appendChild(s);
       }
 
@@ -97,96 +91,79 @@ function MapView({ locations, currentLocation }) {
     polylineRef.current?.setLatLngs(path);
   }, [locations, currentLocation]);
 
-  return <div ref={mapRef} style={styles.map} />;
+  return <div ref={mapRef} style={{ width: '100%', height: 280 }} />;
 }
 
-// ─── Main component ────────────────────────────────────────
 export default function ParentFollowUs({ familyId }) {
   const { session, locations, currentLocation, status } = useFieldTripParent(familyId);
 
-  if (status === 'loading') return (
-    <div style={styles.emptyCard}>
-      <div style={styles.emptyIcon}>⏳</div>
-      <div style={styles.emptyTitle}>Checking for active trips…</div>
-    </div>
-  );
-
-  if (status === 'none') return (
-    <div style={styles.emptyCard}>
-      <div style={styles.emptyIcon}>🏡</div>
-      <div style={styles.emptyTitle}>No Field Trip in Progress</div>
-      <div style={styles.emptyText}>When your babysitter starts a field trip, you'll see their live location here.</div>
-    </div>
-  );
+  // No trip — show nothing at all so it doesn't take up space
+  if (status === 'loading' || status === 'none') return null;
 
   const fmt = (ts) => ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
 
   return (
-    <div style={styles.wrapper}>
+    <div style={{
+      background: 'var(--card-bg)',
+      border: '1px solid var(--border)',
+      borderRadius: 14,
+      overflow: 'hidden',
+      marginBottom: 4,
+    }}>
       {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
-          <span style={styles.headerIcon}>📍</span>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '12px 16px',
+        borderBottom: '1px solid var(--border)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 20 }}>📍</span>
           <div>
-            <div style={styles.title}>Follow Us</div>
-            {session?.note && <div style={styles.note}>"{session.note}"</div>}
+            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>Follow Us</div>
+            {session?.note && (
+              <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>"{session.note}"</div>
+            )}
           </div>
         </div>
-        {status === 'active'
-          ? <div style={{ ...styles.badge, ...styles.badgeActive }}><span style={styles.badgeDot} />Live</div>
-          : <div style={{ ...styles.badge, ...styles.badgeEnded }}>Trip Ended</div>
-        }
+        {status === 'active' ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(22,163,74,0.15)', color: '#4ade80', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }}/>
+            Live
+          </div>
+        ) : (
+          <div style={{ background: 'var(--input-bg)', color: 'var(--text-faint)', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
+            Trip Ended
+          </div>
+        )}
       </div>
 
       {/* Map */}
       <MapView locations={locations} currentLocation={currentLocation} />
 
       {/* Footer */}
-      <div style={styles.footer}>
-        <div style={styles.footerRow}>
-          <span style={styles.footerLabel}>{status === 'ended' ? 'Trip ended' : 'Last updated'}</span>
-          <span style={styles.footerValue}>{status === 'ended' ? fmt(session?.ended_at) : fmt(currentLocation?.created_at)}</span>
+      <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+          <span style={{ color: 'var(--text-faint)' }}>{status === 'ended' ? 'Trip ended' : 'Last updated'}</span>
+          <span style={{ color: 'var(--text)', fontWeight: 600 }}>{status === 'ended' ? fmt(session?.ended_at) : fmt(currentLocation?.created_at)}</span>
         </div>
-        <div style={styles.footerRow}>
-          <span style={styles.footerLabel}>Trip started</span>
-          <span style={styles.footerValue}>{fmt(session?.started_at)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+          <span style={{ color: 'var(--text-faint)' }}>Trip started</span>
+          <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(session?.started_at)}</span>
         </div>
         {currentLocation?.accuracy && status === 'active' && (
-          <div style={styles.footerRow}>
-            <span style={styles.footerLabel}>GPS accuracy</span>
-            <span style={styles.footerValue}>±{Math.round(currentLocation.accuracy)}m</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+            <span style={{ color: 'var(--text-faint)' }}>GPS accuracy</span>
+            <span style={{ color: 'var(--text)', fontWeight: 600 }}>±{Math.round(currentLocation.accuracy)}m</span>
           </div>
         )}
         {status === 'ended' && (
-          <div style={styles.endedNotice}>
-            The babysitter has ended the field trip. Your child is back at the usual location.
+          <div style={{ marginTop: 6, padding: '8px 12px', background: 'var(--input-bg)', borderRadius: 8, fontSize: 12, color: 'var(--text-faint)', textAlign: 'center' }}>
+            The babysitter has ended the field trip.
           </div>
         )}
       </div>
     </div>
   );
 }
-
-// ─── Styles ────────────────────────────────────────────────
-const styles = {
-  wrapper:     { background: 'var(--color-surface, #fff)', border: '1px solid var(--color-border, #e5e7eb)', borderRadius: 16, overflow: 'hidden', maxWidth: 520, fontFamily: 'inherit' },
-  header:      { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 20px 12px', borderBottom: '1px solid var(--color-border, #f0f0f0)' },
-  headerLeft:  { display: 'flex', alignItems: 'center', gap: 12 },
-  headerIcon:  { fontSize: 26 },
-  title:       { fontWeight: 700, fontSize: 17, color: 'var(--color-text, #111)' },
-  note:        { fontSize: 13, color: 'var(--color-text-muted, #6b7280)', marginTop: 2, fontStyle: 'italic' },
-  badge:       { display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, fontWeight: 700, fontSize: 12 },
-  badgeActive: { background: '#dcfce7', color: '#16a34a' },
-  badgeEnded:  { background: '#f3f4f6', color: '#6b7280' },
-  badgeDot:    { width: 7, height: 7, borderRadius: '50%', background: '#16a34a', display: 'inline-block', marginRight: 4 },
-  map:         { width: '100%', height: 320 },
-  footer:      { padding: '14px 20px', borderTop: '1px solid var(--color-border, #f0f0f0)', display: 'flex', flexDirection: 'column', gap: 6 },
-  footerRow:   { display: 'flex', justifyContent: 'space-between', fontSize: 13 },
-  footerLabel: { color: 'var(--color-text-muted, #6b7280)' },
-  footerValue: { fontWeight: 600, color: 'var(--color-text, #111)' },
-  endedNotice: { marginTop: 6, padding: '10px 14px', background: '#f9fafb', borderRadius: 10, fontSize: 13, color: '#6b7280', textAlign: 'center' },
-  emptyCard:   { padding: '40px 24px', textAlign: 'center', background: 'var(--color-surface, #fff)', border: '1px solid var(--color-border, #e5e7eb)', borderRadius: 16, maxWidth: 400, margin: '0 auto', fontFamily: 'inherit' },
-  emptyIcon:   { fontSize: 40, marginBottom: 12 },
-  emptyTitle:  { fontWeight: 700, fontSize: 17, color: 'var(--color-text, #111)', marginBottom: 8 },
-  emptyText:   { fontSize: 13, color: 'var(--color-text-muted, #6b7280)', lineHeight: 1.6 },
-};
