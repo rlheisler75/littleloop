@@ -174,9 +174,99 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         @keyframes float1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         @keyframes float2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
 
-        /* SCROLL ANIMATIONS */
-        .hidden { opacity: 0; transform: translateY(32px); transition: opacity .7s ease, transform .7s ease; }
-        .revealed { opacity: 1; transform: translateY(0); }
+        .ll-hero-trust { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 24px; }
+        .ll-trust-item { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+        /* GPS SECTION */
+        .ll-gps {
+          background: linear-gradient(145deg, var(--bark) 0%, #2a1f17 100%);
+          padding: 100px 48px; position: relative; overflow: hidden;
+        }
+        .ll-gps::before {
+          content: ''; position: absolute; top: -200px; right: -200px;
+          width: 600px; height: 600px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(74,124,101,0.15) 0%, transparent 70%);
+          pointer-events: none;
+        }
+        .ll-gps-grid {
+          display: grid; grid-template-columns: 1fr 1fr;
+          gap: 64px; align-items: center; margin-top: 64px;
+        }
+        .ll-gps .ll-section-label { color: var(--sage-light); }
+        .ll-gps .ll-section-title { color: var(--sage-pale); }
+        .ll-gps .ll-section-title em { color: var(--sage-light); font-style: italic; }
+        .ll-gps .ll-section-desc { color: rgba(255,255,255,0.55); }
+        .ll-live-badge {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.25);
+          border-radius: 100px; padding: 6px 14px; margin-bottom: 24px;
+          font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+          color: #4ade80; font-weight: 600;
+        }
+        .ll-live-dot {
+          width: 7px; height: 7px; border-radius: 50%; background: #22c55e;
+          animation: pulse 2s infinite;
+        }
+        .ll-gps-map-mock {
+          background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 20px; padding: 24px; position: relative; overflow: hidden;
+        }
+        .ll-map-header {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 16px;
+        }
+        .ll-map-title { font-family: 'Fraunces', serif; font-size: 16px; color: #fff; font-weight: 500; }
+        .ll-map-live {
+          display: flex; align-items: center; gap: 6px;
+          font-size: 12px; color: #4ade80; font-weight: 600;
+        }
+        .ll-map-area {
+          background: #1a2e28; border-radius: 12px; height: 200px;
+          position: relative; overflow: hidden; margin-bottom: 16px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .ll-map-grid {
+          position: absolute; inset: 0;
+          background-image: linear-gradient(rgba(74,124,101,0.1) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(74,124,101,0.1) 1px, transparent 1px);
+          background-size: 30px 30px;
+        }
+        .ll-map-pin {
+          position: absolute; top: 50%; left: 55%;
+          transform: translate(-50%,-50%);
+          display: flex; flex-direction: column; align-items: center; gap: 0;
+          animation: float1 3s ease-in-out infinite;
+        }
+        .ll-map-pin-dot {
+          width: 16px; height: 16px; border-radius: 50%; background: #22c55e;
+          box-shadow: 0 0 0 6px rgba(34,197,94,0.2), 0 0 0 12px rgba(34,197,94,0.1);
+          z-index: 2;
+        }
+        .ll-map-pin-label {
+          background: #fff; color: var(--bark); font-size: 11px; font-weight: 600;
+          padding: 4px 10px; border-radius: 100px; margin-top: 8px;
+          white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .ll-map-roads {
+          position: absolute; inset: 0; opacity: 0.3;
+        }
+        .ll-map-meta { display: flex; gap: 16px; }
+        .ll-map-stat { flex: 1; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 12px 14px; }
+        .ll-map-stat-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+        .ll-map-stat-val { font-family: 'Fraunces', serif; font-size: 15px; color: #fff; font-weight: 500; }
+        .ll-gps-features { display: flex; flex-direction: column; gap: 28px; margin-top: 40px; }
+        .ll-gps-feature { display: flex; gap: 18px; align-items: flex-start; }
+        .ll-gps-feature-icon {
+          width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+          background: rgba(74,124,101,0.2); display: flex; align-items: center;
+          justify-content: center; font-size: 20px;
+        }
+        .ll-gps-feature-title { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 500; color: var(--sage-pale); margin-bottom: 5px; }
+        .ll-gps-feature-desc { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.5); }
+        @media (max-width: 768px) {
+          .ll-gps { padding: 64px 24px; }
+          .ll-gps-grid { grid-template-columns: 1fr; gap: 40px; }
+        }
 
         /* SECTION SHARED */
         .ll-section { padding: 100px 48px; }
@@ -327,6 +417,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
             <span className="ll-nav-sub">by Loopware Solutions</span>
           </div>
           <div className="ll-nav-links">
+            <a onClick={() => document.getElementById('gps-tracking')?.scrollIntoView({ behavior: 'smooth' })}>GPS Tracking</a>
             <a onClick={() => document.getElementById('for-sitters')?.scrollIntoView({ behavior: 'smooth' })}>For Sitters</a>
             <a onClick={() => document.getElementById('for-families')?.scrollIntoView({ behavior: 'smooth' })}>For Families</a>
             <a onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>How It Works</a>
@@ -339,21 +430,26 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         <section className="ll-hero">
           <div>
             <div className="ll-hero-eyebrow">
-              <span></span> Now accepting sitters in your area
+              <span></span> Live GPS tracking · Verified sitters · Free for families
             </div>
             <h1 className="ll-hero-title">
-              Childcare,<br/><em>simplified</em> for<br/>everyone.
+              Know they're safe.<br/><em>Always.</em>
             </h1>
             <p className="ll-hero-desc">
-              Littleloop connects trusted local sitters with families who need reliable childcare — no awkward cold calls, no endless searching. Just real connections in your neighborhood.
+              littleloop connects you with verified local sitters and lets you <strong>track field trips live on a map</strong> — so you always know where your kids are. Free for families, nationwide.
             </p>
             <div className="ll-hero-actions">
-              <button className="ll-btn-primary" onClick={onSitterSignup}>
-                Start as a Sitter →
+              <button className="ll-btn-primary" onClick={onFamilySignup}>
+                Find a Sitter Free →
               </button>
-              <button className="ll-btn-secondary" onClick={onFamilySignup}>
-                I need a sitter
+              <button className="ll-btn-secondary" onClick={onSitterSignup}>
+                Join as a Sitter
               </button>
+            </div>
+            <div className="ll-hero-trust">
+              <span className="ll-trust-item">🔒 Free for families</span>
+              <span className="ll-trust-item">📍 Live GPS tracking</span>
+              <span className="ll-trust-item">✓ Verified sitters</span>
             </div>
           </div>
 
@@ -398,6 +494,78 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
                   <div className="stat-text">all verified sitters</div>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* GPS FIELD TRIP SECTION */}
+        <section className="ll-gps" id="gps-tracking">
+          <div data-id="gps-label" className={reveal('gps-label')}>
+            <div className="ll-live-badge"><div className="ll-live-dot"></div> Live Feature</div>
+            <div className="ll-section-label">Field Trip Tracker</div>
+            <h2 className="ll-section-title">Track field trips<br/><em>live on a map.</em></h2>
+            <p className="ll-section-desc">When your sitter takes the kids out, you see exactly where they are in real time. No other childcare platform does this. Peace of mind, built right in.</p>
+          </div>
+
+          <div className="ll-gps-grid">
+            <div data-id="gps-map" className={reveal('gps-map')}>
+              <div className="ll-gps-map-mock">
+                <div className="ll-map-header">
+                  <div className="ll-map-title">📍 Follow Us</div>
+                  <div className="ll-map-live"><div className="ll-live-dot"></div> Live</div>
+                </div>
+                <div className="ll-map-area">
+                  <div className="ll-map-grid"></div>
+                  <svg className="ll-map-roads" viewBox="0 0 400 200" preserveAspectRatio="none">
+                    <line x1="0" y1="100" x2="400" y2="100" stroke="rgba(74,124,101,0.4)" strokeWidth="8"/>
+                    <line x1="200" y1="0" x2="200" y2="200" stroke="rgba(74,124,101,0.4)" strokeWidth="8"/>
+                    <line x1="0" y1="60" x2="400" y2="60" stroke="rgba(74,124,101,0.2)" strokeWidth="4"/>
+                    <line x1="0" y1="140" x2="400" y2="140" stroke="rgba(74,124,101,0.2)" strokeWidth="4"/>
+                    <line x1="120" y1="0" x2="120" y2="200" stroke="rgba(74,124,101,0.2)" strokeWidth="4"/>
+                    <line x1="300" y1="0" x2="300" y2="200" stroke="rgba(74,124,101,0.2)" strokeWidth="4"/>
+                  </svg>
+                  <div className="ll-map-pin">
+                    <div className="ll-map-pin-dot"></div>
+                    <div className="ll-map-pin-label">Sitter · 3 kids</div>
+                  </div>
+                </div>
+                <div className="ll-map-meta">
+                  <div className="ll-map-stat">
+                    <div className="ll-map-stat-label">Last updated</div>
+                    <div className="ll-map-stat-val">Just now</div>
+                  </div>
+                  <div className="ll-map-stat">
+                    <div className="ll-map-stat-label">Trip started</div>
+                    <div className="ll-map-stat-val">2:05 PM</div>
+                  </div>
+                  <div className="ll-map-stat">
+                    <div className="ll-map-stat-label">Sharing with</div>
+                    <div className="ll-map-stat-val">2 families</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div data-id="gps-features" style={{transitionDelay:'.15s'}} className={reveal('gps-features')}>
+              <div className="ll-gps-features">
+                {[
+                  { icon: '📍', title: 'Real-time map view', desc: 'Parents see a live map updated continuously while the sitter is out with the kids. No refreshing, no guessing.' },
+                  { icon: '👨‍👩‍👧', title: 'Multi-family sharing', desc: 'If the sitter is watching kids from multiple families, all parents see the same live location simultaneously.' },
+                  { icon: '✅', title: 'Child check-ins', desc: 'Sitters check kids in at the start of each session. Parents see exactly who is checked in and when.' },
+                  { icon: '🔔', title: 'Trip started & ended alerts', desc: 'Get notified the moment a field trip begins and when everyone is safely back home.' },
+                ].map(f => (
+                  <div key={f.title} className="ll-gps-feature">
+                    <div className="ll-gps-feature-icon">{f.icon}</div>
+                    <div>
+                      <div className="ll-gps-feature-title">{f.title}</div>
+                      <div className="ll-gps-feature-desc">{f.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className="ll-btn-primary" style={{marginTop:40}} onClick={onFamilySignup}>
+                Sign up free to see it live →
+              </button>
             </div>
           </div>
         </section>
@@ -463,15 +631,15 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
           <div data-id="family-label" className={reveal('family-label')}>
             <div className="ll-section-label">For Families</div>
             <h2 className="ll-section-title">Find childcare you<br/>can <em>actually trust.</em></h2>
-            <p className="ll-section-desc">Browse verified local sitters, read real profiles, and connect directly — no agency fees, no middlemen. Families always use Littleloop free.</p>
+            <p className="ll-section-desc">Browse verified local sitters, track field trips live on a map, and connect directly — no agency fees, no middlemen. Families always use littleloop free.</p>
           </div>
 
           <div className="ll-family-grid">
             <div className="ll-family-cards" data-id="family-cards" className={`ll-family-cards ${reveal('family-cards')}`}>
               <div className="ll-family-card">
-                <div className="ll-family-card-icon">🆓</div>
-                <div className="ll-family-card-title">Always free for families</div>
-                <div className="ll-family-card-desc">Browse profiles, message sitters, and manage everything at no cost — ever.</div>
+                <div className="ll-family-card-icon">📍</div>
+                <div className="ll-family-card-title">Live GPS field trip tracking</div>
+                <div className="ll-family-card-desc">See exactly where your kids are on a live map whenever the sitter takes them out. No other platform has this.</div>
               </div>
               <div className="ll-family-card">
                 <div className="ll-family-card-icon">🔍</div>
@@ -538,8 +706,8 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         {/* CTA BAND */}
         <section className="ll-cta-band">
           <div data-id="cta" className={reveal('cta')}>
-            <h2 className="ll-cta-band-title">Ready to join the loop?</h2>
-            <p className="ll-cta-band-desc">Sitters start with a 14-day free trial. Families are always free.</p>
+            <h2 className="ll-cta-band-title">Know they're safe. Always.</h2>
+            <p className="ll-cta-band-desc">Sitters get 3 months free with a promo code. Families are always free.</p>
             <div className="ll-cta-band-actions">
               <button className="ll-btn-white" onClick={onSitterSignup}>Join as a Sitter</button>
               <button className="ll-btn-outline-white" onClick={onFamilySignup}>Find a Sitter</button>
