@@ -110,7 +110,7 @@ export default function SitterDashboard({ session, onSignOut }) {
       .from('checkins')
       .select('child_id, children(id, name)')
       .eq('status', 'in')
-      .eq('checked_in_by', sitterId);
+     .eq('sitter_id', sitterId);
     setCheckedInKids(data || []);
   }
   loadCheckedIn();
