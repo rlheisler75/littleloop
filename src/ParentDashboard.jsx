@@ -22,6 +22,7 @@ import { ChildProfileModal, ChildModal } from './components/modals/ChildModal';
 import MemberModal from './components/modals/MemberModal';
 import { BrowseSitters } from './features/profile/index';
 import SitterAvatar from './components/ui/SitterAvatar';
+import ParentFollowUs from './components/FieldTrip/ParentFollowUs';
 
 export default function ParentDashboard({ session, onSignOut }) {
   const [member,   setMember]   = useState(null);
@@ -64,7 +65,6 @@ export default function ParentDashboard({ session, onSignOut }) {
     setChildren(kids || []);
     setMembers(mems || []);
 
-    // Show onboarding for new empty families
     if (famWithSitters && !(kids || []).length && !sittersList.length) {
       const seen = localStorage.getItem(`ll_onboarded_family_${famWithSitters.id}`);
       if (!seen) setShowOnboarding(true);
@@ -81,9 +81,9 @@ export default function ParentDashboard({ session, onSignOut }) {
     const userId = session.user.id;
 
     async function checkUnread() {
-      const lastSeenMsg = localStorage.getItem(`ll_seen_msg_${userId}`)                   || '1970-01-01';
-      const lastSeenInv = localStorage.getItem(`ll_seen_inv_${family.id}_${userId}`)      || '1970-01-01';
-      const lastSeenFeed= localStorage.getItem(`ll_seen_feed_${family.id}_${userId}`)     || '1970-01-01';
+      const lastSeenMsg  = localStorage.getItem(`ll_seen_msg_${userId}`)              || '1970-01-01';
+      const lastSeenInv  = localStorage.getItem(`ll_seen_inv_${family.id}_${userId}`) || '1970-01-01';
+      const lastSeenFeed = localStorage.getItem(`ll_seen_feed_${family.id}_${userId}`)|| '1970-01-01';
       const [{ count: msgCount }, { count: invCount }, { count: feedCount }] = await Promise.all([
         supabase.from('messages').select('id', { count: 'exact', head: true }).neq('sender_id', userId).gt('created_at', lastSeenMsg),
         supabase.from('invoices').select('id', { count: 'exact', head: true }).eq('family_id', family.id).in('status', ['sent']).gt('created_at', lastSeenInv),
@@ -124,40 +124,34 @@ export default function ParentDashboard({ session, onSignOut }) {
     }
   }, [tab, family]);
 
-  const isAdmin  = member?.role === 'admin';
-  const canView  = ['admin', 'member'].includes(member?.role);
-  const feedOnly = member?.role === 'feed_only';
-  const pickup   = member?.role === 'pickup';
-
-  // Default tab based on role
-  useEffect(() => {
-    if (pickup)   setTab('messages');
-    else if (feedOnly) setTab('feed');
-  }, [pickup, feedOnly]);
-
-  const NAV = [
-    ...(!feedOnly && !pickup ? [{ id: 'home',     icon: '🏠', label: 'Home',     badge: 0 }] : []),
-    { id: 'feed',     icon: '🌸', label: 'Feed',     badge: unread.feed },
-    ...(canView || isAdmin ? [{ id: 'invoices', icon: '💰', label: 'Invoices', badge: unread.invoices }] : []),
-    { id: 'messages', icon: '💬', label: 'Messages', badge: unread.messages },
-    { id: 'browse',   icon: '🔍', label: 'Browse',   badge: 0 },
-    { id: 'profile',  icon: '⚙️', label: 'Profile',  badge: 0 },
-  ];
+  const dismissOnboarding = useCallback(() => {
+    if (family?.id) localStorage.setItem(`ll_onboarded_family_${family.id}`, '1');
+    setShowOnboarding(false);
+  }, [family?.id]);
 
   if (loading) return (
-    <>
-      <Bg/>
-      <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Spinner size={24}/>
-      </div>
-    </>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <Spinner size={32}/>
+    </div>
   );
 
-  function dismissOnboarding() {
-    localStorage.setItem(`ll_onboarded_family_${family.id}`, '1');
-    setShowOnboarding(false);
-    load();
-  }
+  if (!member) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 32 }}>👤</div>
+      <div>No family account found.</div>
+      <button className="bg" onClick={onSignOut}>Sign out</button>
+    </div>
+  );
+
+  const isAdmin = member?.role === 'admin';
+
+  const NAV = [
+    { id: 'home',     icon: '🏠', label: 'Home',     badge: 0 },
+    { id: 'feed',     icon: '🌸', label: 'Feed',     badge: unread.feed },
+    { id: 'invoices', icon: '💰', label: 'Invoices', badge: unread.invoices },
+    { id: 'messages', icon: '💬', label: 'Messages', badge: unread.messages },
+    { id: 'browse',   icon: '🔍', label: 'Browse',   badge: 0 },
+  ];
 
   return (
     <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -174,7 +168,7 @@ export default function ParentDashboard({ session, onSignOut }) {
       </div>
 
       {/* Nav tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,.06)', background: 'var(--nav-bg,rgba(0,0,0,.15))' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,.06)', background: 'var(--nav-bg,rgba(0,0,0,.15))', overflowX: 'auto' }}>
         {NAV.map(n => (
           <div key={n.id} className={`nav-tab ${tab === n.id ? 'active' : ''}`} onClick={() => setTab(n.id)}>
             <span style={{ position: 'relative', display: 'inline-block' }}>
@@ -189,134 +183,134 @@ export default function ParentDashboard({ session, onSignOut }) {
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', maxWidth: 800, width: '100%', margin: '0 auto' }}>
 
-        {/* ── Home Tab ── */}
         {tab === 'home' && (
           <div>
-            {!family
-              ? <div className="es"><div className="ic">👨‍👩‍👧</div><h3>Not connected yet</h3><p>Your account isn't linked to a family yet.<br/>Make sure you signed up with the email your sitter invited.</p></div>
-              : (
-                <>
-                  <WeeklyScheduleCard familyId={family.id} sitters={family.sitters_list || []}/>
-                  <HoursSummaryCard familyId={family.id} children={children}/>
+            {family ? (
+              <>
+                {/* ── Follow Us (field trip live map) ── */}
+                {family.id && (
+                  <div style={{ marginBottom: 20 }}>
+                    <ParentFollowUs familyId={family.id} />
+                  </div>
+                )}
 
-                  <div className="card fade-up" style={{ padding: 24, marginBottom: 16 }}>
-                    {/* Family header */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-                      {isAdmin
-                        ? <button onClick={() => setShowIconPicker(true)} style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#3A9E7A,#2A7A5A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, border: 'none', cursor: 'pointer', position: 'relative' }}>
-                            {family.icon || '👨‍👩‍👧'}
-                            <span style={{ position: 'absolute', bottom: -2, right: -2, fontSize: 10, background: 'var(--card-bg)', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)' }}>✏️</span>
-                          </button>
-                        : <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#3A9E7A,#2A7A5A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>{family.icon || '👨‍👩‍👧'}</div>
-                      }
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {isAdmin
-                          ? <FamilyNameEditor familyId={family.id} name={family.name} onSaved={n => setFamily(f => ({ ...f, name: n }))}/>
-                          : <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600 }}>{family.name}</div>
-                        }
-                        <span className={`sb sb-${family.status === 'active' ? 'a' : 'p'}`} style={{ marginTop: 4 }}>{family.status}</span>
-                      </div>
-                    </div>
+                {/* Weekly schedule */}
+                <WeeklyScheduleCard familyId={family.id} sitterName={family.sitter_name || 'Sitter'}/>
 
-                    {/* Children */}
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <SectionLabel>Children</SectionLabel>
-                        {isAdmin && <button className="bp" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setShowAddChild(true)}>+ Add Child</button>}
-                      </div>
-                      {children.length === 0
-                        ? <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No children added yet.</div>
-                        : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {children.map(c => (
-                              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: `${c.color || '#8B78D4'}12`, borderRadius: 14, border: `1px solid ${c.color || '#8B78D4'}33` }}>
-                                <button onClick={() => setSelectedChild(c)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', flex: 1, minWidth: 0, padding: 0 }}>
-                                  <span style={{ fontSize: 22 }}>{c.avatar || '🌟'}</span>
-                                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{c.name}</span>
-                                  {isAdmin && <span style={{ fontSize: 11, opacity: .4, marginLeft: 4 }} onClick={e => { e.stopPropagation(); setEditChild(c); }}>✏️</span>}
-                                </button>
-                                {(isAdmin || member?.role === 'member' || member?.role === 'pickup') && (
-                                  <CheckInButton child={c} familyId={family.id} currentUserId={session.user.id} checkerName={name} isSitter={false}/>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )
-                      }
-                    </div>
+                {/* Hours summary */}
+                <HoursSummaryCard familyId={family.id} children={children} onViewHistory={() => setShowCheckinHist(true)}/>
 
-                    {/* On My Way */}
-                    {(isAdmin || member?.role === 'member') && (
-                      <OnMyWayButton familyId={family.id} memberId={member?.id} memberName={name}/>
-                    )}
+                {/* Family header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                  <button onClick={() => setShowIconPicker(true)} style={{ fontSize: 36, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{family.icon || '👨‍👩‍👧'}</button>
+                  <div style={{ flex: 1 }}>
+                    <FamilyNameEditor familyId={family.id} name={family.name} onSaved={n => setFamily(f => ({ ...f, name: n }))}/>
+                  </div>
+                </div>
 
-                    {/* Sitters */}
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <SectionLabel>Sitters</SectionLabel>
-                        {isAdmin && <button className="bp" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setShowFindSitter(true)}>+ Find Sitter</button>}
-                      </div>
-                      {(family.sitters_list || []).length === 0
-                        ? <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No sitters connected yet.</div>
-                        : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {family.sitters_list.map(s => (
-                              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--input-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
-                                <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--border)', flexShrink: 0 }}>
-                                  <SitterAvatar url={s.avatar_url} name={s.name} size={40} radius="0"/>
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontSize: 13, fontWeight: 500 }}>{s.name}</div>
-                                </div>
-                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                  {s.connection_status === 'active'
-                                    ? <button className="bg" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => setReviewTarget({ sitterId: s.id, sitterName: s.name })}>⭐ Review</button>
-                                    : <span className="sb sb-p" style={{ fontSize: 9 }}>Pending</span>
-                                  }
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )
-                      }
-                    </div>
-
-                    {/* Family members */}
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <SectionLabel>Family Members</SectionLabel>
-                        {isAdmin && <button className="bp" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setShowAddMember(true)}>+ Add Member</button>}
-                      </div>
+                {/* Children */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <SectionLabel>Children</SectionLabel>
+                    {isAdmin && <button className="bp" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setShowAddChild(true)}>+ Add Child</button>}
+                  </div>
+                  {children.length === 0
+                    ? <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No children added yet.</div>
+                    : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {members.map(m => (
-                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--card-bg)', borderRadius: 12, border: '1px solid rgba(255,255,255,.06)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              {m.photo_url
-                                ? <img src={m.photo_url} style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover' }} alt={m.name}/>
-                                : <span style={{ fontSize: 22 }}>{m.avatar || '👤'}</span>
-                              }
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 500 }}>
-                                  {m.name}
-                                  {m.user_id === session.user.id && <span style={{ fontSize: 10, color: 'var(--text-faint)', marginLeft: 6 }}>(you)</span>}
-                                </div>
-                                <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{m.email}</div>
-                              </div>
+                        {children.map(c => (
+                          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: `${c.color || '#8B78D4'}12`, borderRadius: 14, border: `1px solid ${c.color || '#8B78D4'}33` }}>
+                            <button onClick={() => setSelectedChild(c)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', flex: 1, minWidth: 0, padding: 0 }}>
+                              <span style={{ fontSize: 22 }}>{c.avatar || '🌟'}</span>
+                              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{c.name}</span>
+                              {isAdmin && <span style={{ fontSize: 11, opacity: .4, marginLeft: 4 }} onClick={e => { e.stopPropagation(); setEditChild(c); }}>✏️</span>}
+                            </button>
+                            {(isAdmin || member?.role === 'member' || member?.role === 'pickup') && (
+                              <CheckInButton child={c} familyId={family.id} currentUserId={session.user.id} checkerName={name} isSitter={false}/>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  }
+                </div>
+
+                {/* On My Way */}
+                {(isAdmin || member?.role === 'member') && (
+                  <OnMyWayButton familyId={family.id} memberId={member?.id} memberName={name}/>
+                )}
+
+                {/* Sitters */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <SectionLabel>Sitters</SectionLabel>
+                    {isAdmin && <button className="bp" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setShowFindSitter(true)}>+ Find Sitter</button>}
+                  </div>
+                  {(family.sitters_list || []).length === 0
+                    ? <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No sitters connected yet.</div>
+                    : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {family.sitters_list.map(s => (
+                          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--input-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
+                            <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--border)', flexShrink: 0 }}>
+                              <SitterAvatar url={s.avatar_url} name={s.name} size={40} radius="0"/>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                              <span className={`sb sb-${m.status === 'active' ? 'a' : 'p'}`} style={{ fontSize: 9 }}>{ROLE_LABELS[m.role] || m.role}</span>
-                              {(isAdmin || m.user_id === session.user.id) && (
-                                <button className="bg" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => setEditMember(m)}>✏️</button>
-                              )}
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 500 }}>{s.name}</div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              {s.connection_status === 'active'
+                                ? <button className="bg" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => setReviewTarget({ sitterId: s.id, sitterName: s.name })}>⭐ Review</button>
+                                : <span className="sb sb-p" style={{ fontSize: 9 }}>Pending</span>
+                              }
                             </div>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    )
+                  }
+                </div>
+
+                {/* Family members */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <SectionLabel>Family Members</SectionLabel>
+                    {isAdmin && <button className="bp" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setShowAddMember(true)}>+ Add Member</button>}
                   </div>
-                </>
-              )
-            }
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {members.map(m => (
+                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--card-bg)', borderRadius: 12, border: '1px solid rgba(255,255,255,.06)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {m.photo_url
+                            ? <img src={m.photo_url} style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover' }} alt={m.name}/>
+                            : <span style={{ fontSize: 22 }}>{m.avatar || '👤'}</span>
+                          }
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 500 }}>
+                              {m.name}
+                              {m.user_id === session.user.id && <span style={{ fontSize: 10, color: 'var(--text-faint)', marginLeft: 6 }}>(you)</span>}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{m.email}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          <span className={`sb sb-${m.status === 'active' ? 'a' : 'p'}`} style={{ fontSize: 9 }}>{ROLE_LABELS[m.role] || m.role}</span>
+                          {(isAdmin || m.user_id === session.user.id) && (
+                            <button className="bg" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => setEditMember(m)}>✏️</button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="es">
+                <div className="ic">🏠</div>
+                <h3>No family found</h3>
+                <p>Your account isn't linked to a family yet.</p>
+              </div>
+            )}
           </div>
         )}
 
