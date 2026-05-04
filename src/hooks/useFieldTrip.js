@@ -28,7 +28,7 @@ export function useFieldTripSitter(sitterId, checkedInChildren = []) {
       const { data } = await supabase
         .from('field_trip_sessions')
         .select('*')
-        .eq('sitter_id', sitterId)
+       .eq('created_by', sitterId)
         .eq('is_active', true)
         .maybeSingle();
       if (data) {
