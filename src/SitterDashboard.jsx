@@ -18,10 +18,10 @@ import SitterFieldTripPanel from './components/FieldTrip/SitterFieldTripPanel';
 export default function SitterDashboard({ session, onSignOut }) {
   const sitterId = session.user.id;
 
-  const [name,      setName]      = useState(session.user.user_metadata?.name || session.user.email.split('@')[0]);
-  const [onboarded, setOnboarded] = useState(!!localStorage.getItem(`ll_onboarded_${sitterId}`));
-  const [tab,       setTab]       = useState('families');
-  const [unread,    setUnread]    = useState({ messages: 0, feed: 0, requests: 0, eta: 0 });
+  const [name,          setName]          = useState(session.user.user_metadata?.name || session.user.email.split('@')[0]);
+  const [onboarded,     setOnboarded]     = useState(!!localStorage.getItem(`ll_onboarded_${sitterId}`));
+  const [tab,           setTab]           = useState('families');
+  const [unread,        setUnread]        = useState({ messages: 0, feed: 0, requests: 0, eta: 0 });
   const [checkedInKids, setCheckedInKids] = useState([]);
 
   const { status, loading: subLoading, isActive, isTrialing, isPastDue, trialDaysLeft, refresh: refreshSub } = useSubscription(session);
@@ -103,7 +103,7 @@ export default function SitterDashboard({ session, onSignOut }) {
     }
   }, [tab]);
 
-  // Load checked-in children — uses latest checkin row per child to get accurate status
+  // Load checked-in children — checks latest checkin row per child
   useEffect(() => {
     async function loadCheckedIn() {
       // Step 1: get families this sitter is connected to
@@ -143,9 +143,10 @@ export default function SitterDashboard({ session, onSignOut }) {
 
     loadCheckedIn();
 
+    // 300ms delay lets the DB finish writing before we re-query
     const ch = supabase.channel(`checkin-live-${sitterId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'checkins' }, () => loadCheckedIn())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'checkins' }, () => loadCheckedIn())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'checkins' }, () => setTimeout(loadCheckedIn, 300))
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'checkins' }, () => setTimeout(loadCheckedIn, 300))
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [sitterId]);
