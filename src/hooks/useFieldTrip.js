@@ -89,7 +89,7 @@ export function useFieldTripSitter(sitterId, checkedInChildren = []) {
       // 2. Create session
       const { data: sess, error: sessErr } = await supabase
         .from('field_trip_sessions')
-        .insert({ sitter_id: sitterId, created_by: (await supabase.auth.getUser()).data.user.id, note })
+        .insert({ sitter_id: sitterId, created_by: sitterId, note })
         .select()
         .single();
 
