@@ -103,16 +103,29 @@ export default function SitterDashboard({ session, onSignOut }) {
       setUnread(u => ({ ...u, eta: 0 }));
     }
   }, [tab]);
-
-  useEffect(() => {
+// Load Checked In 
+useEffect(() => {
   async function loadCheckedIn() {
+    // Get families this sitter is connected to
+    const { data: fsRows } = await supabase
+      .from('family_sitters')
+      .select('family_id')
+      .eq('sitter_id', sitterId)
+      .eq('status', 'active');
+
+    const familyIds = (fsRows || []).map(r => r.family_id);
+    if (!familyIds.length) return;
+
+    // Get checked-in children from those families
     const { data } = await supabase
       .from('checkins')
       .select('child_id, children(id, name)')
       .eq('status', 'in')
-     .eq('sitter_id', sitterId);
+      .in('family_id', familyIds);
+
     setCheckedInKids(data || []);
   }
+
   loadCheckedIn();
 
   const ch = supabase.channel('checkin-updates')
