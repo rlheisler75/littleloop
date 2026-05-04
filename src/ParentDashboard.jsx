@@ -151,6 +151,7 @@ export default function ParentDashboard({ session, onSignOut }) {
     { id: 'invoices', icon: '💰', label: 'Invoices', badge: unread.invoices },
     { id: 'messages', icon: '💬', label: 'Messages', badge: unread.messages },
     { id: 'browse',   icon: '🔍', label: 'Browse',   badge: 0 },
+     { id: 'profile',  icon: '⚙️', label: 'Profile',  badge: 0 },
   ];
 
   return (

@@ -28,7 +28,7 @@ export function useFieldTripSitter(sitterId, checkedInChildren = []) {
       const { data } = await supabase
         .from('field_trip_sessions')
         .select('*')
-       .eq('created_by', sitterId)
+        .eq('created_by', sitterId)
         .eq('is_active', true)
         .maybeSingle();
       if (data) {
@@ -89,7 +89,7 @@ export function useFieldTripSitter(sitterId, checkedInChildren = []) {
       // 2. Create session
       const { data: sess, error: sessErr } = await supabase
         .from('field_trip_sessions')
-        .insert({ sitter_id: sitterId, created_by: sitterId, note })
+        .insert({ sitter_id: sitterId, created_by: (await supabase.auth.getUser()).data.user.id, note })
         .select()
         .single();
 
