@@ -51,7 +51,6 @@ export default function AdminConnections({ adminRole }) {
     if (!manualSitter || !manualFamily) return;
     setSaving(true);
     setAlert(null);
-    // Check if already exists
     const { data: existing } = await supabase.from('family_sitters')
       .select('id,status')
       .eq('sitter_id', manualSitter)
@@ -64,7 +63,6 @@ export default function AdminConnections({ adminRole }) {
         setSaving(false);
         return;
       }
-      // Reactivate
       await supabase.from('family_sitters').update({ status: 'active' }).eq('id', existing.id);
     } else {
       await supabase.from('family_sitters').insert({
@@ -92,15 +90,21 @@ export default function AdminConnections({ adminRole }) {
     <div>
       <AdminHeader title="Connections" subtitle={`${connections.length} family↔sitter links`}
         action={
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {['all', ...STATUS_OPTIONS].map(s => (
-              <button key={s} onClick={() => setFilter(s)}
-                style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: `1px solid ${filter === s ? '#7BAAEE' : 'rgba(255,255,255,.12)'}`, background: filter === s ? 'rgba(58,111,212,.2)' : 'transparent', color: filter === s ? '#7BAAEE' : 'rgba(255,255,255,.4)', textTransform: 'capitalize' }}>
-                {s}
-              </button>
-            ))}
-            <AdminSearch value={search} onChange={setSearch} placeholder="Search…"/>
-            <Btn size="md" onClick={() => { setShowManual(true); setAlert(null); }}>+ Connect</Btn>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            {/* Filter pills */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {['all', ...STATUS_OPTIONS].map(s => (
+                <button key={s} onClick={() => setFilter(s)}
+                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: `1px solid ${filter === s ? '#7BAAEE' : 'rgba(255,255,255,.12)'}`, background: filter === s ? 'rgba(58,111,212,.2)' : 'transparent', color: filter === s ? '#7BAAEE' : 'rgba(255,255,255,.4)', textTransform: 'capitalize' }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            {/* Search + button row */}
+            <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+              <AdminSearch value={search} onChange={setSearch} placeholder="Search…"/>
+              <Btn size="md" onClick={() => { setShowManual(true); setAlert(null); }}>+ Connect</Btn>
+            </div>
           </div>
         }
       />
@@ -114,7 +118,7 @@ export default function AdminConnections({ adminRole }) {
           { key: 'actions',   label: '', render: (_, row) => (
             <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
               {STATUS_OPTIONS.filter(s => s !== row.status).map(s => (
-                <Btn key={s} variant={s === 'active' ? 'success' : s === 'inactive' ? 'ghost' : 'ghost'}
+                <Btn key={s} variant={s === 'active' ? 'success' : 'ghost'}
                   onClick={() => changeStatus(row.id, s)}>
                   → {s.charAt(0).toUpperCase() + s.slice(1)}
                 </Btn>
@@ -128,7 +132,6 @@ export default function AdminConnections({ adminRole }) {
         rows={filtered}
       />
 
-      {/* Manual connect modal */}
       <AdminModal open={showManual} onClose={() => setShowManual(false)} title="Manually connect sitter to family" width={420}>
         {alert && (
           <div style={{ padding: '8px 12px', borderRadius: 7, marginBottom: 14, fontSize: 12, background: 'rgba(200,120,74,.12)', color: '#F5C098', border: '1px solid rgba(200,120,74,.25)' }}>

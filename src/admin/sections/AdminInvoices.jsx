@@ -6,7 +6,7 @@ const STATUS_OPTIONS = ['draft', 'sent', 'paid'];
 
 export default function AdminInvoices({ adminRole }) {
   const [invoices, setInvoices] = useState([]);
-  const [items,    setItems]    = useState({});  // invoice_id → items[]
+  const [items,    setItems]    = useState({});
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState('');
   const [filter,   setFilter]   = useState('all');
@@ -89,13 +89,15 @@ export default function AdminInvoices({ adminRole }) {
     <div>
       <AdminHeader title="Invoices" subtitle={`${invoices.length} total`}
         action={
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {['all', ...STATUS_OPTIONS].map(s => (
-              <button key={s} onClick={() => setFilter(s)}
-                style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: `1px solid ${filter === s ? '#7BAAEE' : 'rgba(255,255,255,.12)'}`, background: filter === s ? 'rgba(58,111,212,.2)' : 'transparent', color: filter === s ? '#7BAAEE' : 'rgba(255,255,255,.4)', textTransform: 'capitalize' }}>
-                {s}
-              </button>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {['all', ...STATUS_OPTIONS].map(s => (
+                <button key={s} onClick={() => setFilter(s)}
+                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: `1px solid ${filter === s ? '#7BAAEE' : 'rgba(255,255,255,.12)'}`, background: filter === s ? 'rgba(58,111,212,.2)' : 'transparent', color: filter === s ? '#7BAAEE' : 'rgba(255,255,255,.4)', textTransform: 'capitalize' }}>
+                  {s}
+                </button>
+              ))}
+            </div>
             <AdminSearch value={search} onChange={setSearch} placeholder="Search invoices…"/>
           </div>
         }
@@ -130,8 +132,8 @@ export default function AdminInvoices({ adminRole }) {
           </div>
         )}
 
-        {/* Header info */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+        {/* Header info — 2 col on mobile, 3 on desktop */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 20 }}>
           {[
             ['Sitter',   selected?.sitters?.name],
             ['Family',   selected?.families?.name],
@@ -153,7 +155,7 @@ export default function AdminInvoices({ adminRole }) {
         {/* Status change */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.35)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Change status</div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {STATUS_OPTIONS.map(s => (
               <Btn key={s} variant={selected?.status === s ? 'primary' : 'ghost'} disabled={saving || selected?.status === s}
                 onClick={() => changeStatus(selected.id, s)}>
@@ -169,7 +171,7 @@ export default function AdminInvoices({ adminRole }) {
           {(selected && items[selected.id] || []).length === 0
             ? <div style={{ fontSize: 13, color: 'rgba(255,255,255,.25)', padding: '12px 0' }}>No line items</div>
             : (selected && items[selected.id] || []).map(it => (
-              <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: 'rgba(255,255,255,.04)', borderRadius: 8, marginBottom: 6 }}>
+              <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(255,255,255,.04)', borderRadius: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13 }}>{it.child_name} · {it.rate_type}</div>
                   {it.description && <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>{it.description}</div>}

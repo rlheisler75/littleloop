@@ -1,14 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isMobile;
+}
 
 // ─── Page header ──────────────────────────────────────────────────────────────
 export function AdminHeader({ title, subtitle, action }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-      <div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: '#E4EAF4', marginBottom: 2 }}>{title}</h1>
-        {subtitle && <p style={{ fontSize: 13, color: 'rgba(255,255,255,.35)' }}>{subtitle}</p>}
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#E4EAF4', marginBottom: 2 }}>{title}</h1>
+          {subtitle && <p style={{ fontSize: 13, color: 'rgba(255,255,255,.35)' }}>{subtitle}</p>}
+        </div>
+        {action && <div style={{ flexShrink: 0 }}>{action}</div>}
       </div>
-      {action}
     </div>
   );
 }
@@ -24,44 +36,46 @@ export function StatCard({ label, value, sub, color = '#7BAAEE' }) {
   );
 }
 
-// ─── Table ────────────────────────────────────────────────────────────────────
+// ─── Table — horizontally scrollable on mobile ─────────────────────────────────
 export function AdminTable({ columns, rows, onRowClick }) {
   return (
     <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, overflow: 'hidden' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ borderBottom: '1px solid rgba(255,255,255,.07)' }}>
-            {columns.map(c => (
-              <th key={c.key} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
-                {c.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={columns.length} style={{ padding: '32px 14px', textAlign: 'center', color: 'rgba(255,255,255,.25)', fontSize: 13 }}>
-                No records found
-              </td>
-            </tr>
-          )}
-          {rows.map((row, i) => (
-            <tr key={i}
-              onClick={() => onRowClick?.(row)}
-              style={{ borderBottom: '1px solid rgba(255,255,255,.05)', cursor: onRowClick ? 'pointer' : 'default', transition: 'background .1s' }}
-              onMouseEnter={e => { if (onRowClick) e.currentTarget.style.background = 'rgba(255,255,255,.04)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-            >
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,.07)' }}>
               {columns.map(c => (
-                <td key={c.key} style={{ padding: '11px 14px', fontSize: 13, color: 'rgba(255,255,255,.75)', whiteSpace: c.wrap ? 'normal' : 'nowrap' }}>
-                  {c.render ? c.render(row[c.key], row) : row[c.key] ?? '—'}
-                </td>
+                <th key={c.key} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
+                  {c.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={columns.length} style={{ padding: '32px 14px', textAlign: 'center', color: 'rgba(255,255,255,.25)', fontSize: 13 }}>
+                  No records found
+                </td>
+              </tr>
+            )}
+            {rows.map((row, i) => (
+              <tr key={i}
+                onClick={() => onRowClick?.(row)}
+                style={{ borderBottom: '1px solid rgba(255,255,255,.05)', cursor: onRowClick ? 'pointer' : 'default', transition: 'background .1s' }}
+                onMouseEnter={e => { if (onRowClick) e.currentTarget.style.background = 'rgba(255,255,255,.04)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                {columns.map(c => (
+                  <td key={c.key} style={{ padding: '11px 14px', fontSize: 13, color: 'rgba(255,255,255,.75)', whiteSpace: c.wrap ? 'normal' : 'nowrap' }}>
+                    {c.render ? c.render(row[c.key], row) : row[c.key] ?? '—'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -86,15 +100,29 @@ export function Badge({ status }) {
   );
 }
 
-// ─── Admin modal ──────────────────────────────────────────────────────────────
+// ─── Admin modal — full-screen on mobile ──────────────────────────────────────
 export function AdminModal({ open, onClose, title, children, width = 480 }) {
+  const isMobile = useIsMobile();
   if (!open) return null;
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#161F2E', border: '1px solid rgba(255,255,255,.1)', borderRadius: 16, padding: 28, width: '100%', maxWidth: width, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 40px 80px rgba(0,0,0,.5)' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 100, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: '#161F2E',
+        border: '1px solid rgba(255,255,255,.1)',
+        borderRadius: isMobile ? '16px 16px 0 0' : 16,
+        padding: isMobile ? '20px 16px 32px' : 28,
+        width: '100%',
+        maxWidth: isMobile ? '100%' : width,
+        maxHeight: isMobile ? '92vh' : '90vh',
+        overflowY: 'auto',
+        boxShadow: '0 40px 80px rgba(0,0,0,.5)',
+      }}>
+        {isMobile && (
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.15)', margin: '0 auto 16px' }}/>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, color: '#E4EAF4' }}>{title}</div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.35)', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 4px' }}>✕</button>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#E4EAF4', paddingRight: 12 }}>{title}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.35)', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>✕</button>
         </div>
         {children}
       </div>
@@ -131,11 +159,11 @@ export function AdminField({ label, type = 'text', value, onChange, placeholder,
   );
 }
 
-// ─── Search bar ───────────────────────────────────────────────────────────────
+// ─── Search bar — full width on mobile ────────────────────────────────────────
 export function AdminSearch({ value, onChange, placeholder = 'Search…' }) {
   return (
     <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      style={{ padding: '8px 12px', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, color: '#E4EAF4', fontSize: 13, outline: 'none', width: 260 }}/>
+      style={{ padding: '8px 12px', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, color: '#E4EAF4', fontSize: 13, outline: 'none', width: '100%', minWidth: 0, boxSizing: 'border-box' }}/>
   );
 }
 
@@ -161,6 +189,15 @@ export function AdminSpinner() {
   return (
     <div style={{ textAlign: 'center', padding: '48px 0' }}>
       <div style={{ width: 24, height: 24, border: '2px solid rgba(255,255,255,.15)', borderTopColor: '#7BAAEE', borderRadius: '50%', animation: 'spin .65s linear infinite', margin: '0 auto' }}/>
+    </div>
+  );
+}
+
+// ─── Responsive action bar (wraps on mobile) ──────────────────────────────────
+export function AdminActionBar({ children }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      {children}
     </div>
   );
 }

@@ -1,9 +1,16 @@
-// src/admin/sections/AdminOverview.jsx
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { AdminHeader, AdminSpinner } from '../AdminUI';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isMobile;
+}
 
 function fmt$(n) {
   return '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -17,17 +24,15 @@ function timeAgo(ts) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
-
 function Stat({ label, value, sub, color = '#7BAAEE', icon }) {
   return (
     <div style={{
       background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)',
-      borderRadius: 14, padding: '18px 20px', position: 'relative', overflow: 'hidden',
+      borderRadius: 14, padding: '16px 18px', position: 'relative', overflow: 'hidden',
     }}>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: color }}/>
-      <div style={{ fontSize: 22, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "'Cormorant Garamond',serif", color, marginBottom: 2 }}>
+      <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Cormorant Garamond',serif", color, marginBottom: 2 }}>
         {value}
       </div>
       <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginBottom: sub ? 3 : 0 }}>{label}</div>
@@ -35,8 +40,6 @@ function Stat({ label, value, sub, color = '#7BAAEE', icon }) {
     </div>
   );
 }
-
-// ── Health bar ────────────────────────────────────────────────────────────────
 
 function Health({ label, value, total, color, isAlert }) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
@@ -46,7 +49,7 @@ function Health({ label, value, total, color, isAlert }) {
       display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
       background: 'rgba(255,255,255,.04)', borderRadius: 10, border: '1px solid rgba(255,255,255,.07)',
     }}>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 5 }}>{label}</div>
         <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,.08)', overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${pct}%`, background: c, borderRadius: 2, transition: 'width .4s' }}/>
@@ -58,8 +61,6 @@ function Health({ label, value, total, color, isAlert }) {
     </div>
   );
 }
-
-// ── Activity item ─────────────────────────────────────────────────────────────
 
 function Activity({ icon, text, time }) {
   return (
@@ -81,11 +82,10 @@ function Activity({ icon, text, time }) {
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
-
 export default function AdminOverview() {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => { load(); }, []);
 
@@ -133,14 +133,12 @@ export default function AdminOverview() {
     const paidRevenue = (paidItems || []).reduce((s, r) => s + Number(r.amount || 0), 0);
     const outstanding = (sentItems  || []).reduce((s, r) => s + Number(r.amount || 0), 0);
 
-    // Build unified activity feed
     const activity = [
       ...(recentSitters  || []).map(s => ({ ts: s.created_at, icon: '👤', text: `${s.name} joined as a sitter` })),
       ...(recentFamilies || []).map(f => ({ ts: f.created_at, icon: '👨‍👩‍👧', text: `${f.name} family signed up` })),
       ...(recentReviews  || []).map(r => ({ ts: r.created_at, icon: '⭐', text: `New ${r.rating}★ review for ${r.sitters?.name || 'a sitter'}` })),
     ].sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 12);
 
-    // Families with no active sitter
     const { count: familiesNoSitter } = await supabase
       .from('families').select('id', { count: 'exact', head: true })
       .not('id', 'in', `(SELECT DISTINCT family_id FROM family_sitters WHERE status = 'active')`);
@@ -167,27 +165,28 @@ export default function AdminOverview() {
         subtitle={new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
       />
 
-      {/* ── Revenue + key stats ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-        <Stat icon="💰" label="Total revenue" value={fmt$(d.paidRevenue)}  color="#88D8B8" sub={`${d.invoiceCount} invoices total`}/>
+      {/* Stats grid — 2 cols on mobile, 4 on desktop */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+        <Stat icon="💰" label="Total revenue" value={fmt$(d.paidRevenue)}  color="#88D8B8" sub={`${d.invoiceCount} invoices`}/>
         <Stat icon="⏳" label="Outstanding"   value={fmt$(d.outstanding)}  color="#F5924A" sub={`${d.unpaidInvoices.length} unpaid`}/>
-        <Stat icon="👤" label="Sitters"       value={d.sitterCount}        color="#7BAAEE" sub={`${d.publicSitters} with public profile`}/>
-        <Stat icon="👨‍👩‍👧" label="Families"     value={d.familyCount}        color="#CFA8FF" sub={`${d.memberCount} members total`}/>
+        <Stat icon="👤" label="Sitters"       value={d.sitterCount}        color="#7BAAEE" sub={`${d.publicSitters} public`}/>
+        <Stat icon="👨‍👩‍👧" label="Families"     value={d.familyCount}        color="#CFA8FF" sub={`${d.memberCount} members`}/>
       </div>
 
-      {/* ── Platform health ── */}
+      {/* Platform health */}
       <div style={{
         background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.07)',
-        borderRadius: 14, padding: '18px 20px', marginBottom: 24,
+        borderRadius: 14, padding: '16px', marginBottom: 20,
       }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', marginBottom: 12 }}>
           Platform health
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <Health label="Active connections"       value={d.activeConns}      total={d.familyCount}  color="#88D8B8"/>
-          <Health label="Public sitter profiles"   value={d.publicSitters}    total={d.sitterCount}  color="#7BAAEE"/>
+        {/* 1 col on mobile, 2 on desktop */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
+          <Health label="Active connections"        value={d.activeConns}      total={d.familyCount}  color="#88D8B8"/>
+          <Health label="Public sitter profiles"    value={d.publicSitters}    total={d.sitterCount}  color="#7BAAEE"/>
           <Health label="Families without a sitter" value={d.familiesNoSitter} total={d.familyCount}  color="#F5924A" isAlert/>
-          <Health label="BG checks pending review" value={d.pendingBg}        total={d.sitterCount}  color="#F5924A" isAlert/>
+          <Health label="BG checks pending"         value={d.pendingBg}        total={d.sitterCount}  color="#F5924A" isAlert/>
         </div>
         {(d.pendingConns > 0 || d.pendingBg > 0) && (
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -205,8 +204,8 @@ export default function AdminOverview() {
         )}
       </div>
 
-      {/* ── Two-column bottom ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      {/* Bottom — stacks on mobile, 2-col on desktop */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
 
         {/* Activity feed */}
         <div>
@@ -233,14 +232,14 @@ export default function AdminOverview() {
               {d.unpaidInvoices.length === 0
                 ? <div style={{ fontSize: 13, color: 'rgba(255,255,255,.25)', padding: '20px', textAlign: 'center' }}>🎉 All invoices paid</div>
                 : d.unpaidInvoices.map(inv => (
-                  <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-                    <div>
+                  <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,.05)', gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 600 }}>#{inv.invoice_number}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {inv.families?.name || '—'} · {inv.sitters?.name || '—'}
                       </div>
                     </div>
-                    <div style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(245,146,74,.15)', color: '#F5924A', fontWeight: 700 }}>
+                    <div style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(245,146,74,.15)', color: '#F5924A', fontWeight: 700, flexShrink: 0 }}>
                       UNPAID
                     </div>
                   </div>
