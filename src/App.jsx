@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { supabase } from './lib/supabase';
 import { applyTheme } from './lib/theme';
 import { CSS } from './styles/global';
@@ -16,7 +17,7 @@ import LandingPage from './LandingPage';
 
 export default function App() {
   // Admin console — own auth, own app
-  if (new URLSearchParams(window.location.search).has('admin')) return <AdminApp/>;
+  if (new URLSearchParams(window.location.search).has('admin')) return <><AdminApp/><Analytics /></>;
 
   const [session,    setSession]    = useState(undefined);
   const [userRole,   setUserRole]   = useState(null);
@@ -78,36 +79,40 @@ export default function App() {
           <Spinner size={20}/>
         </div>
       </div>
+      <Analytics />
     </>
   );
 
   // Password reset
-  if (userRole === '__reset__') return <><Bg/><ResetPasswordForm/></>;
+  if (userRole === '__reset__') return <><Bg/><ResetPasswordForm/><Analytics /></>;
 
   // Public routes — show even when logged in
-  if (sitterParam) return <><Bg/><PublicSitterProfile username={sitterParam} session={session}/></>;
-  if (browseParam) return <><Bg/><BrowseSitters session={session} familyId={null}/></>;
+  if (sitterParam) return <><Bg/><PublicSitterProfile username={sitterParam} session={session}/><Analytics /></>;
+  if (browseParam) return <><Bg/><BrowseSitters session={session} familyId={null}/><Analytics /></>;
 
   // Invite welcome page
   if (inviteToken && !inviteData && !session) return (
-    <><Bg/><InviteWelcome token={inviteToken} onContinue={inv => setInviteData(inv)}/></>
+    <><Bg/><InviteWelcome token={inviteToken} onContinue={inv => setInviteData(inv)}/><Analytics /></>
   );
 
   // Auth wall — show if user clicked a CTA or has an invite
   if (!session && (authPortal || inviteData)) return (
-    <><Bg/><AuthForm portal={authPortal || (inviteData ? 'parent' : portal)} inviteData={inviteData} onBack={() => setAuthPortal(null)}/></>
+    <><Bg/><AuthForm portal={authPortal || (inviteData ? 'parent' : portal)} inviteData={inviteData} onBack={() => setAuthPortal(null)}/><Analytics /></>
   );
 
   // Landing page — show to logged-out visitors
   if (!session) return (
-    <LandingPage
-      onSitterSignup={() => setAuthPortal('sitter')}
-      onFamilySignup={() => setAuthPortal('parent')}
-      onLogin={() => setAuthPortal('sitter')}
-    />
+    <>
+      <LandingPage
+        onSitterSignup={() => setAuthPortal('sitter')}
+        onFamilySignup={() => setAuthPortal('parent')}
+        onLogin={() => setAuthPortal('sitter')}
+      />
+      <Analytics />
+    </>
   );
 
   // Authenticated
-  if (userRole === 'parent') return <><Bg/><ParentDashboard session={session} onSignOut={signOut}/></>;
-  return <><Bg/><SitterDashboard session={session} onSignOut={signOut}/></>;
+  if (userRole === 'parent') return <><Bg/><ParentDashboard session={session} onSignOut={signOut}/><Analytics /></>;
+  return <><Bg/><SitterDashboard session={session} onSignOut={signOut}/><Analytics /></>;
 }
