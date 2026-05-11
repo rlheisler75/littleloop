@@ -247,8 +247,8 @@ export function useFieldTripParent(familyId) {
 // ─────────────────────────────────────────────
 const GPS_OPTIONS = {
   enableHighAccuracy: true,
-  timeout: 10_000,
-  maximumAge: 5_000,
+  timeout: 15_000,
+  maximumAge: 0,
 };
 
 function getGpsErrorMessage(err) {
