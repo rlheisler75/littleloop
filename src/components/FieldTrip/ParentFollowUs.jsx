@@ -46,10 +46,10 @@ function MapView({ locations, currentLocation }) {
         shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
-      const map = L.map(mapRef.current, {
-        center: [37.2153, -93.2982],
-        zoom: 15,
-        zoomControl: true,
+  const map = L.map(mapRef.current, {
+    center: [36.5, -93.5], // neutral center, will move on first ping
+    zoom: 10,
+    zoomControl: true,
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
