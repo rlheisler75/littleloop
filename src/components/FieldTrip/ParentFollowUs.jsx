@@ -74,7 +74,7 @@ function MapView({ locations, currentLocation }) {
         document.head.appendChild(s);
       }
 
-      markerRef.current   = L.marker([37.2153, -93.2982], { icon: pulsingIcon }).addTo(map);
+      markerRef.current = L.marker([36.5, -93.5], { icon: pulsingIcon, opacity: 0 }).addTo(map);
       polylineRef.current = L.polyline([], { color: '#6366f1', weight: 4, opacity: 0.7, dashArray: '8 4' }).addTo(map);
       mapInstance.current = map;
     });
@@ -83,13 +83,14 @@ function MapView({ locations, currentLocation }) {
   }, []);
 
   useEffect(() => {
-    if (!mapInstance.current || !currentLocation) return;
-    const latlng = [currentLocation.latitude, currentLocation.longitude];
-    markerRef.current?.setLatLng(latlng);
-    mapInstance.current.panTo(latlng, { animate: true, duration: 1 });
-    const path = locations.map(l => [l.latitude, l.longitude]);
-    polylineRef.current?.setLatLngs(path);
-  }, [locations, currentLocation]);
+  if (!mapInstance.current || !currentLocation) return;
+  const latlng = [currentLocation.latitude, currentLocation.longitude];
+  markerRef.current?.setLatLng(latlng);
+  markerRef.current?.setOpacity(1); // show marker once we have real coords
+  mapInstance.current.setView(latlng, 15, { animate: true });
+  const path = locations.map(l => [l.latitude, l.longitude]);
+  polylineRef.current?.setLatLngs(path);
+}, [locations, currentLocation]);
 
   return <div ref={mapRef} style={{ width: '100%', height: 280 }} />;
 }
