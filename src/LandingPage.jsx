@@ -533,8 +533,8 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
 
             <div data-id="family-desc" style={{transitionDelay:'.15s'}} className={reveal('family-desc')}>
               <img
-                src="/screenshots/family-gps-desktop.png"
-                alt="Family dashboard showing live GPS tracking and kids checked in"
+                src="/screenshots/sitter-profile.png"
+                alt="Sarah Mitchell verified sitter profile with CPR and background check badges"
                 style={{width:'100%', borderRadius:20, boxShadow:'0 20px 50px rgba(61,46,34,.12)', border:'1px solid rgba(74,124,101,.1)', marginBottom:28}}
               />
               <h3 style={{fontFamily:"'Fraunces',serif", fontSize:28, fontWeight:500, color:'var(--bark)', marginBottom:20, lineHeight:1.2}}>From browsing to booked in minutes</h3>
