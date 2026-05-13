@@ -56,11 +56,7 @@ function MessageModal({ sitter, adminUser, onClose, onSent }) {
       subject: 'Your background check is expiring soon',
       body: `Hi ${firstName},\n\nYour background check is expiring soon. To maintain your verified status, please obtain a new background check and upload the updated document in your Profile settings → Qualifications tab.\n\nBackground checks are valid for 2 years on littleloop.\n\nThanks,\nThe littleloop team`,
     },
-    {
-      label: '✏️ Custom',
-      subject: '',
-      body: '',
-    },
+    { label: '✏️ Custom', subject: '', body: '' },
   ];
 
   async function send() {
@@ -68,7 +64,7 @@ function MessageModal({ sitter, adminUser, onClose, onSent }) {
     setSending(true); setAlert(null);
     try {
       const { error } = await supabase.from('admin_messages').insert({
-        to_user_id:   sitter.id,   // sitters.id = auth.users.id
+        to_user_id:   sitter.id,
         to_name:      sitter.name,
         subject:      subject.trim(),
         body:         body.trim(),
@@ -83,7 +79,6 @@ function MessageModal({ sitter, adminUser, onClose, onSent }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ background: '#111D2E', border: '1px solid rgba(255,255,255,.1)', borderRadius: 16, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
-
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>✉️ Message {sitter.name}</div>
@@ -101,7 +96,6 @@ function MessageModal({ sitter, adminUser, onClose, onSent }) {
           </div>
         )}
 
-        {/* Templates */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.8px', color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', marginBottom: 8 }}>Quick templates</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -114,14 +108,12 @@ function MessageModal({ sitter, adminUser, onClose, onSent }) {
           </div>
         </div>
 
-        {/* Subject */}
         <div style={{ marginBottom: 12 }}>
           <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '.8px', color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', marginBottom: 6 }}>Subject</label>
           <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Subject"
             style={{ width: '100%', padding: '10px 12px', borderRadius: 9, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', color: '#E4EAF4', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}/>
         </div>
 
-        {/* Body */}
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '.8px', color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', marginBottom: 6 }}>Message</label>
           <textarea value={body} onChange={e => setBody(e.target.value)} rows={8} placeholder="Write your message…"
@@ -142,9 +134,146 @@ function MessageModal({ sitter, adminUser, onClose, onSent }) {
   );
 }
 
+// ── Reject modal — sends message + clears docs ────────────────────────────────
+
+function RejectModal({ sitter, adminUser, onClose, onRejected }) {
+  const firstName = sitter.name.split(' ')[0];
+  const [reason,   setReason]   = useState('unclear');
+  const [custom,   setCustom]   = useState('');
+  const [sending,  setSending]  = useState(false);
+  const [alert,    setAlert]    = useState(null);
+
+  const reasons = [
+    {
+      id: 'unclear',
+      label: '🔍 Document unclear or unreadable',
+      subject: 'Issue with your submitted documents',
+      body: `Hi ${firstName},\n\nThank you for submitting your documents for review. Unfortunately we were unable to verify them because one or more documents were unclear or unreadable.\n\nPlease re-upload clear, legible copies in your Profile settings → Qualifications tab.\n\nIf you have any questions, please reach out.\n\nThanks,\nThe littleloop team`,
+    },
+    {
+      id: 'incomplete',
+      label: '📋 Incomplete submission',
+      subject: 'Incomplete documents — action required',
+      body: `Hi ${firstName},\n\nWe reviewed your submission but some required documents are missing or incomplete. Please ensure you upload all required documents in your Profile settings → Qualifications tab.\n\nIf you have any questions, please reach out.\n\nThanks,\nThe littleloop team`,
+    },
+    {
+      id: 'expired',
+      label: '⏰ Documents are expired',
+      subject: 'Your submitted documents have expired',
+      body: `Hi ${firstName},\n\nThe documents you submitted appear to be expired. Please obtain current documentation and re-upload in your Profile settings → Qualifications tab.\n\nBackground checks must be dated within the last 2 years.\n\nThanks,\nThe littleloop team`,
+    },
+    {
+      id: 'wrong',
+      label: '❌ Wrong document type',
+      subject: 'Incorrect documents submitted',
+      body: `Hi ${firstName},\n\nThe documents you submitted don't match the required type. Please review the requirements and upload the correct documents in your Profile settings → Qualifications tab.\n\nIf you need help, please reach out.\n\nThanks,\nThe littleloop team`,
+    },
+    { id: 'custom', label: '✏️ Custom reason', subject: '', body: '' },
+  ];
+
+  const selected = reasons.find(r => r.id === reason);
+
+  async function reject() {
+    const subject = selected.id === 'custom' ? 'Your document submission was not approved' : selected.subject;
+    const body    = selected.id === 'custom' ? custom : selected.body;
+    if (selected.id === 'custom' && !custom.trim()) {
+      setAlert({ t: 'e', m: 'Please enter a reason.' });
+      return;
+    }
+    setSending(true);
+    try {
+      // 1. Send in-app message to sitter
+      await supabase.from('admin_messages').insert({
+        to_user_id:   sitter.id,
+        to_name:      sitter.name,
+        subject,
+        body,
+        sent_by_name: adminUser.name,
+      });
+
+      // 2. Mark all pending documents as rejected
+      await supabase.from('sitter_documents')
+        .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+        .eq('sitter_id', sitter.id)
+        .eq('status', 'pending');
+
+      // 3. Clear background check fields so sitter can resubmit
+      await supabase.from('sitters').update({
+        background_check_verified:    false,
+        background_check_doc_url:     null,
+        background_check_verified_at: null,
+        background_check_verified_by: null,
+      }).eq('id', sitter.id);
+
+      onRejected?.();
+      onClose();
+    } catch (err) {
+      setAlert({ t: 'e', m: err.message });
+      setSending(false);
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: '#111D2E', border: '1px solid rgba(192,80,80,.3)', borderRadius: 16, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#F5AAAA' }}>❌ Reject Documents — {sitter.name}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)', marginTop: 2 }}>
+              This will reject all pending docs and notify the sitter
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,.08)', border: 'none', borderRadius: 8, width: 30, height: 30, color: '#fff', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>✕</button>
+        </div>
+
+        {alert && (
+          <div style={{ padding: '8px 12px', borderRadius: 8, marginBottom: 14, fontSize: 12,
+            background: 'rgba(192,80,80,.1)', border: '1px solid rgba(192,80,80,.25)', color: '#F5AAAA' }}>
+            {alert.m}
+          </div>
+        )}
+
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.8px', color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', marginBottom: 10 }}>Reason</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {reasons.map(r => (
+            <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
+              background: reason === r.id ? 'rgba(192,80,80,.1)' : 'rgba(255,255,255,.03)',
+              border: `1px solid ${reason === r.id ? 'rgba(192,80,80,.3)' : 'rgba(255,255,255,.08)'}` }}>
+              <input type="radio" name="reason" value={r.id} checked={reason === r.id} onChange={() => setReason(r.id)} style={{ accentColor: '#F5AAAA' }}/>
+              <span style={{ fontSize: 13, color: reason === r.id ? '#F5AAAA' : 'rgba(255,255,255,.7)' }}>{r.label}</span>
+            </label>
+          ))}
+        </div>
+
+        {reason === 'custom' && (
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '.8px', color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', marginBottom: 6 }}>Custom message to sitter</label>
+            <textarea value={custom} onChange={e => setCustom(e.target.value)} rows={6} placeholder="Explain why the documents were rejected…"
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 9, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', color: '#E4EAF4', fontSize: 13, outline: 'none', resize: 'vertical', fontFamily: "'DM Sans',sans-serif", lineHeight: 1.6, boxSizing: 'border-box' }}/>
+          </div>
+        )}
+
+        <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(192,80,80,.06)', border: '1px solid rgba(192,80,80,.15)', fontSize: 12, color: '#F5AAAA', marginBottom: 20, lineHeight: 1.6 }}>
+          ⚠️ This will reject all pending documents and send the sitter a notification explaining why. They can resubmit after making corrections.
+        </div>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={reject} disabled={sending}
+            style={{ padding: '9px 20px', borderRadius: 9, background: 'rgba(192,80,80,.8)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? .6 : 1, display: 'flex', alignItems: 'center', gap: 7 }}>
+            {sending ? <><Spinner size={12}/> Rejecting…</> : '❌ Reject & Notify'}
+          </button>
+          <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 9, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', color: 'rgba(255,255,255,.6)', fontSize: 13, cursor: 'pointer' }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Sitter row ────────────────────────────────────────────────────────────────
 
-function SitterRow({ sitter, isVerified, working, onVerify, onUnverify, onMessage, onRefresh }) {
+function SitterRow({ sitter, isVerified, working, onVerify, onUnverify, onMessage, onReject, onRefresh }) {
   const [lightbox, setLightbox] = useState(null);
   const isPdf    = sitter.background_check_doc_url?.toLowerCase().includes('.pdf');
   const bgStatus = sitter.bg_status || (isVerified ? 'valid' : 'unverified');
@@ -210,10 +339,17 @@ function SitterRow({ sitter, isVerified, working, onVerify, onUnverify, onMessag
               {working ? <Spinner size={11}/> : 'Revoke'}
             </button>
           ) : (
-            <button onClick={() => onVerify(sitter)} disabled={working}
-              style={{ padding: '6px 14px', borderRadius: 8, background: 'linear-gradient(135deg,#0BA5AD,#13584E)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              {working ? <Spinner size={11}/> : '🛡️ Verify'}
-            </button>
+            <>
+              {/* Reject button — only on pending */}
+              <button onClick={() => onReject(sitter)} disabled={working}
+                style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(192,80,80,.12)', border: '1px solid rgba(192,80,80,.25)', color: '#F5AAAA', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                ❌ Reject
+              </button>
+              <button onClick={() => onVerify(sitter)} disabled={working}
+                style={{ padding: '6px 14px', borderRadius: 8, background: 'linear-gradient(135deg,#0BA5AD,#13584E)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {working ? <Spinner size={11}/> : '🛡️ Verify'}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -264,22 +400,15 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
   const [alert,     setAlert]     = useState(null);
   const [tab,       setTab]       = useState('pending');
   const [messaging, setMessaging] = useState(null);
+  const [rejecting, setRejecting] = useState(null);
   const [sentCount, setSentCount] = useState(0);
 
   useEffect(() => { load(); }, []);
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from('sitter_bg_check_status')
-      .select('*')
-      .order('name');
-
-    // Also fetch all documents from the new multi-doc table
-    const { data: allDocs } = await supabase
-      .from('sitter_documents')
-      .select('*')
-      .order('uploaded_at', { ascending: false });
+    const { data } = await supabase.from('sitter_bg_check_status').select('*').order('name');
+    const { data: allDocs } = await supabase.from('sitter_documents').select('*').order('uploaded_at', { ascending: false });
 
     const docsMap = {};
     (allDocs || []).forEach(d => {
@@ -288,8 +417,6 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
     });
 
     const all = (data || []).map(s => ({ ...s, documents: docsMap[s.id] || [] }));
-
-    // Show sitters in pending if they have any docs (old or new)
     setPending(all.filter(s => !s.background_check_verified && (s.background_check_doc_url || s.documents.length > 0)));
     setVerified(all.filter(s => s.background_check_verified && s.bg_status !== 'expired'));
     setExpired(all.filter(s => s.bg_status === 'expired'));
@@ -332,18 +459,16 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
     { id: 'expired',  label: 'Expired / Due',   count: expired.length,  warn: expired.length > 0 },
   ];
 
-  const currentList = { pending, verified, expired }[tab];
+  const currentList  = { pending, verified, expired }[tab];
   const isVerifiedTab = tab === 'verified';
 
   return (
     <div>
       {messaging && (
-        <MessageModal
-          sitter={messaging}
-          adminUser={adminUser}
-          onClose={() => setMessaging(null)}
-          onSent={() => setSentCount(c => c + 1)}
-        />
+        <MessageModal sitter={messaging} adminUser={adminUser} onClose={() => setMessaging(null)} onSent={() => setSentCount(c => c + 1)}/>
+      )}
+      {rejecting && (
+        <RejectModal sitter={rejecting} adminUser={adminUser} onClose={() => setRejecting(null)} onRejected={() => { setSentCount(c => c + 1); load(); setAlert({ t: 's', m: `❌ ${rejecting.name}'s documents rejected and sitter notified.` }); }}/>
       )}
 
       <div style={{ marginBottom: 24 }}>
@@ -365,7 +490,6 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
         </div>
       )}
 
-      {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(255,255,255,.08)', marginBottom: 20 }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -409,7 +533,8 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
           {currentList.map(s => (
             <SitterRow key={s.id} sitter={s} isVerified={isVerifiedTab}
               working={working[s.id] || false}
-              onVerify={verify} onUnverify={unverify} onMessage={setMessaging}
+              onVerify={verify} onUnverify={unverify}
+              onMessage={setMessaging} onReject={setRejecting}
               onRefresh={load}/>
           ))}
         </div>
