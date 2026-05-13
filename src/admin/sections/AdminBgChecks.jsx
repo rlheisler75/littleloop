@@ -273,7 +273,7 @@ function RejectModal({ sitter, adminUser, onClose, onRejected }) {
 
 // ── Sitter row ────────────────────────────────────────────────────────────────
 
-function SitterRow({ sitter, isVerified, working, onVerify, onUnverify, onMessage, onReject, onRefresh }) {
+function SitterRow({ sitter, isVerified, isRejected, working, onVerify, onUnverify, onMessage, onReject, onRefresh }) {
   const [lightbox, setLightbox] = useState(null);
   const isPdf    = sitter.background_check_doc_url?.toLowerCase().includes('.pdf');
   const bgStatus = sitter.bg_status || (isVerified ? 'valid' : 'unverified');
@@ -338,9 +338,13 @@ function SitterRow({ sitter, isVerified, working, onVerify, onUnverify, onMessag
               style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(192,80,80,.12)', border: '1px solid rgba(192,80,80,.25)', color: '#F5AAAA', fontSize: 12, cursor: 'pointer' }}>
               {working ? <Spinner size={11}/> : 'Revoke'}
             </button>
+          ) : isRejected ? (
+            /* Rejected tab — just message button, no re-reject option */
+            <span style={{ fontSize: 11, color: '#F5AAAA', padding: '4px 10px', borderRadius: 8, background: 'rgba(192,80,80,.1)', border: '1px solid rgba(192,80,80,.2)' }}>
+              ❌ Rejected
+            </span>
           ) : (
             <>
-              {/* Reject button — only on pending */}
               <button onClick={() => onReject(sitter)} disabled={working}
                 style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(192,80,80,.12)', border: '1px solid rgba(192,80,80,.25)', color: '#F5AAAA', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
                 ❌ Reject
@@ -395,6 +399,7 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
   const [pending,   setPending]   = useState([]);
   const [verified,  setVerified]  = useState([]);
   const [expired,   setExpired]   = useState([]);
+  const [rejected,  setRejected]  = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [working,   setWorking]   = useState({});
   const [alert,     setAlert]     = useState(null);
@@ -417,7 +422,12 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
     });
 
     const all = (data || []).map(s => ({ ...s, documents: docsMap[s.id] || [] }));
-    setPending(all.filter(s => !s.background_check_verified && (s.background_check_doc_url || s.documents.length > 0)));
+
+    const hasPendingDoc   = s => s.documents.some(d => d.status === 'pending');
+    const isFullyRejected = s => s.documents.length > 0 && s.documents.every(d => d.status === 'rejected') && !hasPendingDoc(s);
+
+    setPending(all.filter(s => !s.background_check_verified && (hasPendingDoc(s) || (s.background_check_doc_url && !isFullyRejected(s)))));
+    setRejected(all.filter(s => !s.background_check_verified && isFullyRejected(s)));
     setVerified(all.filter(s => s.background_check_verified && s.bg_status !== 'expired'));
     setExpired(all.filter(s => s.bg_status === 'expired'));
     setLoading(false);
@@ -455,12 +465,14 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
 
   const tabs = [
     { id: 'pending',  label: 'Pending Review', count: pending.length,  warn: true },
+    { id: 'rejected', label: 'Rejected',        count: rejected.length, warn: rejected.length > 0 },
     { id: 'verified', label: 'Verified',        count: verified.length, warn: false },
     { id: 'expired',  label: 'Expired / Due',   count: expired.length,  warn: expired.length > 0 },
   ];
 
-  const currentList  = { pending, verified, expired }[tab];
+  const currentList  = { pending, rejected, verified, expired }[tab];
   const isVerifiedTab = tab === 'verified';
+  const isRejectedTab = tab === 'rejected';
 
   return (
     <div>
@@ -515,12 +527,12 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
         <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner size={24}/></div>
       ) : currentList.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>{tab === 'pending' ? '🎉' : tab === 'verified' ? '🛡️' : '✅'}</div>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>{tab === 'pending' ? '🎉' : tab === 'rejected' ? '✅' : tab === 'verified' ? '🛡️' : '✅'}</div>
           <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
-            {tab === 'pending' ? 'All caught up!' : tab === 'verified' ? 'No verified sitters yet' : 'No expired checks'}
+            {tab === 'pending' ? 'All caught up!' : tab === 'rejected' ? 'No rejections' : tab === 'verified' ? 'No verified sitters yet' : 'No expired checks'}
           </div>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,.4)' }}>
-            {tab === 'pending' ? 'No documents waiting.' : tab === 'verified' ? 'Verified sitters appear here.' : 'All checks are current.'}
+            {tab === 'pending' ? 'No documents waiting.' : tab === 'rejected' ? 'No rejected submissions.' : tab === 'verified' ? 'Verified sitters appear here.' : 'All checks are current.'}
           </div>
         </div>
       ) : (
@@ -528,10 +540,11 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,.35)', marginBottom: 12 }}>
             {currentList.length} sitter{currentList.length !== 1 ? 's' : ''}
             {tab === 'pending' && ' · open the doc before verifying · click ✉️ to message'}
+            {tab === 'rejected' && ' · sitter will move to pending when they resubmit'}
             {tab === 'expired' && ' · click ✉️ to request renewal'}
           </div>
           {currentList.map(s => (
-            <SitterRow key={s.id} sitter={s} isVerified={isVerifiedTab}
+            <SitterRow key={s.id} sitter={s} isVerified={isVerifiedTab} isRejected={isRejectedTab}
               working={working[s.id] || false}
               onVerify={verify} onUnverify={unverify}
               onMessage={setMessaging} onReject={setRejecting}
