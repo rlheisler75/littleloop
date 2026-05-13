@@ -14,6 +14,7 @@ import SitterOnboarding from './features/onboarding/SitterOnboarding';
 import SubscribePage from './SubscribePage';
 import BillingTab from './BillingTab';
 import SitterFieldTripPanel from './components/FieldTrip/SitterFieldTripPanel';
+import SitterParentMap from './components/FieldTrip/SitterParentMap';
 
 export default function SitterDashboard({ session, onSignOut }) {
   const sitterId = session.user.id;
@@ -23,6 +24,7 @@ export default function SitterDashboard({ session, onSignOut }) {
   const [tab,           setTab]           = useState('families');
   const [unread,        setUnread]        = useState({ messages: 0, feed: 0, requests: 0, eta: 0 });
   const [checkedInKids, setCheckedInKids] = useState([]);
+  const [familyIds,     setFamilyIds]     = useState([]);
 
   const { status, loading: subLoading, isActive, isTrialing, isPastDue, trialDaysLeft, refresh: refreshSub } = useSubscription(session);
 
@@ -103,28 +105,29 @@ export default function SitterDashboard({ session, onSignOut }) {
     }
   }, [tab]);
 
-  // Load checked-in children — checks latest checkin row per child
+  // Load all connected family IDs + checked-in children
   useEffect(() => {
-    async function loadCheckedIn() {
-      // Step 1: get families this sitter is connected to
+    async function loadFamilyData() {
+      // Get all active families for this sitter
       const { data: fsRows } = await supabase
         .from('family_sitters')
         .select('family_id')
         .eq('sitter_id', sitterId)
         .eq('status', 'active');
 
-      const familyIds = (fsRows || []).map(r => r.family_id);
-      if (!familyIds.length) { setCheckedInKids([]); return; }
+      const ids = (fsRows || []).map(r => r.family_id);
+      setFamilyIds(ids);
+      if (!ids.length) { setCheckedInKids([]); return; }
 
-      // Step 2: get all children in those families
+      // Get all children in those families
       const { data: allKids } = await supabase
         .from('children')
         .select('id, name')
-        .in('family_id', familyIds);
+        .in('family_id', ids);
 
       if (!allKids?.length) { setCheckedInKids([]); return; }
 
-      // Step 3: for each child get their latest checkin and keep only 'in'
+      // For each child get their latest checkin status
       const checkedIn = [];
       for (const child of allKids) {
         const { data: latest } = await supabase
@@ -141,17 +144,15 @@ export default function SitterDashboard({ session, onSignOut }) {
       setCheckedInKids(checkedIn);
     }
 
-    loadCheckedIn();
+    loadFamilyData();
 
-    // 300ms delay lets the DB finish writing before we re-query
     const ch = supabase.channel(`checkin-live-${sitterId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'checkins' }, () => setTimeout(loadCheckedIn, 300))
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'checkins' }, () => setTimeout(loadCheckedIn, 300))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'checkins' }, () => setTimeout(loadFamilyData, 300))
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'checkins' }, () => setTimeout(loadFamilyData, 300))
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [sitterId]);
 
-  // Locked tabs — shown but gated when subscription is inactive
   const LOCKED_TABS = ['families', 'feed', 'invoices', 'messages'];
   const isDashboardLocked = !subLoading && !isActive;
 
@@ -227,6 +228,7 @@ export default function SitterDashboard({ session, onSignOut }) {
                     checkedInNames={checkedInKids.map(c => c.children?.name).filter(Boolean)}
                   />
                 </div>
+                <SitterParentMap familyIds={familyIds} />
                 <FamiliesTab sitterId={sitterId} sitterName={name}/>
               </>
             )}

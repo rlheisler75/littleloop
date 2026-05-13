@@ -7,6 +7,7 @@ import { ScheduleSlotModal } from '../../components/modals/LeaveReviewModal';
 import SectionLabel from '../../components/ui/SectionLabel';
 import Spinner from '../../components/ui/Spinner';
 import SitterAvatar from '../../components/ui/SitterAvatar';
+import { useMemberLocationShare } from '../../hooks/useMemberLocation';
 
 // ─── Schedule manager (sitter side) ──────────────────────────────────────────
 
@@ -101,12 +102,10 @@ export function WeeklyScheduleCard({ familyId, sitters }) {
   const upcoming = week.filter(d => byDow[d.dow]);
   if (!upcoming.length) return null;
 
-  // Count today's slots for the collapsed summary
   const todayCount = (byDow[today.getDay()] || []).length;
 
   return (
     <div className="card fade-up" style={{ padding: '16px 18px', marginBottom: 16 }}>
-      {/* Clickable header — collapses/expands the slot list */}
       <div
         onClick={() => setCollapsed(v => !v)}
         style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: collapsed ? 0 : 14, cursor: 'pointer', userSelect: 'none' }}
@@ -154,10 +153,19 @@ export function WeeklyScheduleCard({ familyId, sitters }) {
 // ─── On My Way button (family side) ──────────────────────────────────────────
 
 export function OnMyWayButton({ familyId, memberId, memberName }) {
-  const [expanded, setExpanded] = useState(false);
-  const [sent,     setSent]     = useState(false);
-  const [current,  setCurrent]  = useState(null);
-  const [loading,  setLoading]  = useState(false);
+  const [expanded,     setExpanded]     = useState(false);
+  const [sent,         setSent]         = useState(false);
+  const [current,      setCurrent]      = useState(null);
+  const [loading,      setLoading]      = useState(false);
+  const [shareLocation, setShareLocation] = useState(true); // default ON
+
+  const { isSharing, locationError, lastPing, startSharing, stopSharing } = useMemberLocationShare({
+    etaId:      current?.id,
+    familyId,
+    memberId,
+    memberName,
+    active:     !!current,
+  });
 
   useEffect(() => {
     async function loadETA() {
@@ -169,6 +177,13 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
     }
     if (familyId && memberId) loadETA();
   }, [familyId, memberId]);
+
+  // Start sharing as soon as we have an ETA and user opted in
+  useEffect(() => {
+    if (current && shareLocation && !isSharing) {
+      startSharing();
+    }
+  }, [current?.id]);
 
   async function send(minutes) {
     setLoading(true);
@@ -184,6 +199,10 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
       setSent(true);
       setExpanded(false);
       setTimeout(() => setSent(false), 3000);
+
+      // Start GPS sharing if opted in
+      if (shareLocation) startSharing();
+
       const { data: fsRows } = await supabase.from('family_sitters').select('sitter_id').eq('family_id', familyId).eq('status', 'active');
       if (fsRows?.length) {
         const sitterIds = fsRows.map(r => r.sitter_id);
@@ -195,27 +214,57 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
 
   async function cancel() {
     if (!current) return;
+    if (isSharing) await stopSharing();
     await supabase.from('eta_notifications').delete().eq('id', current.id);
     setCurrent(null);
   }
 
+  // ── Active ETA state ──
   if (current) {
     const etaTime  = new Date(current.eta_time);
     const minsLeft = Math.max(0, Math.round((etaTime - Date.now()) / 60000));
     return (
-      <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 12, background: 'rgba(58,158,122,.1)', border: '1px solid rgba(94,207,170,.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 18 }}>🚗</span>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#5ECFAA' }}>On the way!</div>
-            <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{minsLeft > 0 ? `~${minsLeft} min away` : 'Arriving soon'}</div>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(58,158,122,.1)', border: '1px solid rgba(94,207,170,.3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isSharing ? 8 : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>🚗</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#5ECFAA' }}>On the way!</div>
+                <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{minsLeft > 0 ? `~${minsLeft} min away` : 'Arriving soon'}</div>
+              </div>
+            </div>
+            <button onClick={cancel} style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--text-faint)', cursor: 'pointer', textDecoration: 'underline' }}>Cancel</button>
           </div>
+
+          {/* Location sharing status */}
+          {isSharing && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid rgba(94,207,170,.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#5ECFAA', fontWeight: 600 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5ECFAA', display: 'inline-block' }}/>
+                Sharing live location with sitter
+              </div>
+              <button onClick={stopSharing} style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--text-faint)', cursor: 'pointer', textDecoration: 'underline' }}>Stop</button>
+            </div>
+          )}
+
+          {!isSharing && (
+            <div style={{ paddingTop: 8, borderTop: '1px solid rgba(94,207,170,.2)' }}>
+              <button onClick={startSharing} style={{ background: 'none', border: 'none', fontSize: 12, color: '#5ECFAA', cursor: 'pointer', fontWeight: 600 }}>
+                📍 Share my location with sitter
+              </button>
+            </div>
+          )}
+
+          {locationError && (
+            <div style={{ marginTop: 6, fontSize: 11, color: '#F5A623' }}>⚠️ {locationError}</div>
+          )}
         </div>
-        <button onClick={cancel} style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--text-faint)', cursor: 'pointer', textDecoration: 'underline' }}>Cancel</button>
       </div>
     );
   }
 
+  // ── Idle state ──
   return (
     <div style={{ marginTop: 12 }}>
       {!expanded
@@ -232,6 +281,28 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
                 </button>
               ))}
             </div>
+
+            {/* Location sharing toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: '1px solid rgba(94,207,170,.15)', marginBottom: 8 }}>
+              <button
+                onClick={() => setShareLocation(v => !v)}
+                style={{
+                  width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: shareLocation ? '#5ECFAA' : 'var(--input-bg)',
+                  position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 2, left: shareLocation ? 18 : 2,
+                  width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s', display: 'block',
+                }}/>
+              </button>
+              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+                📍 Share my live location with sitter
+              </span>
+            </div>
+
             <button onClick={() => setExpanded(false)} style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--text-faint)', cursor: 'pointer' }}>Cancel</button>
           </div>
       }
