@@ -153,11 +153,11 @@ export function WeeklyScheduleCard({ familyId, sitters }) {
 // ─── On My Way button (family side) ──────────────────────────────────────────
 
 export function OnMyWayButton({ familyId, memberId, memberName }) {
-  const [expanded,     setExpanded]     = useState(false);
-  const [sent,         setSent]         = useState(false);
-  const [current,      setCurrent]      = useState(null);
-  const [loading,      setLoading]      = useState(false);
-  const [shareLocation, setShareLocation] = useState(true); // default ON
+  const [expanded,      setExpanded]      = useState(false);
+  const [sent,          setSent]          = useState(false);
+  const [current,       setCurrent]       = useState(null);
+  const [loading,       setLoading]       = useState(false);
+  const [shareLocation, setShareLocation] = useState(true);
 
   const { isSharing, locationError, lastPing, startSharing, stopSharing } = useMemberLocationShare({
     etaId:      current?.id,
@@ -200,7 +200,6 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
       setExpanded(false);
       setTimeout(() => setSent(false), 3000);
 
-      // Start GPS sharing if opted in
       if (shareLocation) startSharing();
 
       const { data: fsRows } = await supabase.from('family_sitters').select('sitter_id').eq('family_id', familyId).eq('status', 'active');
@@ -214,6 +213,7 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
 
   async function cancel() {
     if (!current) return;
+    // Stop sharing first — this deletes member_locations rows so sitter map clears
     if (isSharing) await stopSharing();
     await supabase.from('eta_notifications').delete().eq('id', current.id);
     setCurrent(null);
@@ -237,7 +237,6 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
             <button onClick={cancel} style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--text-faint)', cursor: 'pointer', textDecoration: 'underline' }}>Cancel</button>
           </div>
 
-          {/* Location sharing status */}
           {isSharing && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid rgba(94,207,170,.2)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#5ECFAA', fontWeight: 600 }}>

@@ -60,9 +60,10 @@ export function useMemberLocationShare({ etaId, familyId, memberId, memberName, 
     intervalRef.current = null;
     setIsSharing(false);
     if (etaId && memberId) {
+      // Delete all location rows for this ETA so sitter map clears immediately
       await supabase
         .from('member_locations')
-        .update({ is_sharing: false })
+        .delete()
         .eq('eta_id', etaId)
         .eq('member_id', memberId);
     }
@@ -81,7 +82,6 @@ export function useMemberLocationShare({ etaId, familyId, memberId, memberName, 
 
 // ─────────────────────────────────────────────
 // SITTER HOOK — watch ALL families for incoming parent locations
-// accepts array of familyIds
 // ─────────────────────────────────────────────
 export function useMemberLocationWatch(familyIds = []) {
   const [sharingMembers, setSharingMembers] = useState([]);
@@ -92,7 +92,6 @@ export function useMemberLocationWatch(familyIds = []) {
     let cancelled = false;
 
     (async () => {
-      // Load current active sharing locations across all families
       const { data } = await supabase
         .from('member_locations')
         .select('*')
@@ -111,7 +110,6 @@ export function useMemberLocationWatch(familyIds = []) {
       });
       setSharingMembers(latest);
 
-      // Subscribe to realtime for each family
       const channel = supabase.channel(`member-loc-sitter-${familyIds.join('-')}`);
 
       familyIds.forEach(fid => {
@@ -122,9 +120,9 @@ export function useMemberLocationWatch(familyIds = []) {
             table: 'member_locations',
             filter: `family_id=eq.${fid}`,
           }, (payload) => {
+            if (!payload.new.is_sharing) return;
             setSharingMembers(prev => {
               const filtered = prev.filter(m => m.member_id !== payload.new.member_id);
-              if (!payload.new.is_sharing) return filtered;
               return [...filtered, payload.new];
             });
           })
@@ -139,6 +137,17 @@ export function useMemberLocationWatch(familyIds = []) {
               if (!payload.new.is_sharing) return filtered;
               return [...filtered, payload.new];
             });
+          })
+          .on('postgres_changes', {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'member_locations',
+            filter: `family_id=eq.${fid}`,
+          }, (payload) => {
+            // Remove from map when location row is deleted
+            setSharingMembers(prev =>
+              prev.filter(m => m.member_id !== payload.old.member_id)
+            );
           });
       });
 
