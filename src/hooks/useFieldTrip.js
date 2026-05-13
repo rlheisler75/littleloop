@@ -2,26 +2,25 @@
 // Core hook for Field Trip GPS tracking feature
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '../lib/supabase'; // adjust path as needed
+import { supabase } from '../lib/supabase';
 
 // ─────────────────────────────────────────────
 // BABYSITTER HOOK – start/stop trips, send GPS
 // ─────────────────────────────────────────────
 export function useFieldTripSitter(sitterId, checkedInChildren = []) {
-  const [session, setSession] = useState(null);
-  const [isTracking, setIsTracking] = useState(false);
+  const [session,       setSession]       = useState(null);
+  const [isTracking,    setIsTracking]    = useState(false);
   const [locationError, setLocationError] = useState(null);
-  const [lastPing, setLastPing] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [lastPing,      setLastPing]      = useState(null);
+  const [loading,       setLoading]       = useState(false);
 
-  const watchIdRef = useRef(null);
+  const watchIdRef  = useRef(null);
   const intervalRef = useRef(null);
-  const sessionRef = useRef(null);
+  const sessionRef  = useRef(null);
 
-  // Keep sessionRef in sync for use inside closures
   useEffect(() => { sessionRef.current = session; }, [session]);
 
-  // ── Load any existing active session on mount ──
+  // Load any existing active session on mount
   useEffect(() => {
     if (!sitterId) return;
     (async () => {
@@ -64,7 +63,7 @@ export function useFieldTripSitter(sitterId, checkedInChildren = []) {
       GPS_OPTIONS
     );
 
-    // Interval pings every 15 seconds
+    // Ping every 15 seconds
     intervalRef.current = setInterval(() => {
       navigator.geolocation.getCurrentPosition(
         (pos) => sendLocation(sessionId, pos),
@@ -78,7 +77,6 @@ export function useFieldTripSitter(sitterId, checkedInChildren = []) {
     setLocationError(null);
     setLoading(true);
 
-    // 1. Request GPS permission first
     if (!navigator.geolocation) {
       setLocationError('Geolocation is not supported by your browser.');
       setLoading(false);
@@ -86,7 +84,6 @@ export function useFieldTripSitter(sitterId, checkedInChildren = []) {
     }
 
     try {
-      // 2. Create session
       const { data: sess, error: sessErr } = await supabase
         .from('field_trip_sessions')
         .insert({ sitter_id: sitterId, created_by: (await supabase.auth.getUser()).data.user.id, note })
@@ -95,7 +92,6 @@ export function useFieldTripSitter(sitterId, checkedInChildren = []) {
 
       if (sessErr) throw sessErr;
 
-      // 3. Link checked-in children
       if (checkedInChildren.length > 0) {
         await supabase.from('field_trip_children').insert(
           checkedInChildren.map((childId) => ({ session_id: sess.id, child_id: childId }))
@@ -143,46 +139,33 @@ export function useFieldTripSitter(sitterId, checkedInChildren = []) {
     }
   }, []);
 
-  // Stop tracking if tab/window closes
   useEffect(() => {
     const handleUnload = () => {
       if (sessionRef.current) {
-        // Synchronous beacon so it fires even on close
-        navigator.sendBeacon?.(
-          `/api/field-trip-stop?id=${sessionRef.current.id}`
-        );
+        navigator.sendBeacon?.(`/api/field-trip-stop?id=${sessionRef.current.id}`);
       }
     };
     window.addEventListener('beforeunload', handleUnload);
     return () => window.removeEventListener('beforeunload', handleUnload);
   }, []);
 
-  return {
-    session,
-    isTracking,
-    locationError,
-    lastPing,
-    loading,
-    startTrip,
-    stopTrip,
-  };
+  return { session, isTracking, locationError, lastPing, loading, startTrip, stopTrip };
 }
 
 // ─────────────────────────────────────────────
 // PARENT HOOK – subscribe to live location
 // ─────────────────────────────────────────────
 export function useFieldTripParent(familyId) {
-  const [session, setSession] = useState(null);
+  const [session,   setSession]   = useState(null);
   const [locations, setLocations] = useState([]);
-  const [status, setStatus] = useState('loading'); // loading | active | ended | none
-  const channelRef = useRef(null);
+  const [status,    setStatus]    = useState('loading');
+  const channelRef  = useRef(null);
 
   useEffect(() => {
     if (!familyId) return;
     let cancelled = false;
 
     (async () => {
-      // Find active session visible to this parent
       const { data: sess } = await supabase
         .from('field_trip_sessions')
         .select('*')
@@ -191,32 +174,28 @@ export function useFieldTripParent(familyId) {
 
       if (cancelled) return;
 
-      if (!sess) {
-        setStatus('none');
-        return;
-      }
+      if (!sess) { setStatus('none'); return; }
 
       setSession(sess);
       setStatus('active');
 
-      // Load existing location trail
+      // Only load locations from the current session started time
+      // This prevents old test pings from drawing phantom trail lines
       const { data: locs } = await supabase
         .from('field_trip_locations')
         .select('*')
         .eq('session_id', sess.id)
+        .gte('created_at', sess.started_at)
         .order('created_at', { ascending: true });
 
       if (!cancelled) setLocations(locs || []);
 
-      // Subscribe to realtime new pings
       channelRef.current = supabase
         .channel(`field-trip-${sess.id}`)
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'field_trip_locations', filter: `session_id=eq.${sess.id}` },
-          (payload) => {
-            setLocations((prev) => [...prev, payload.new]);
-          }
+          (payload) => { setLocations((prev) => [...prev, payload.new]); }
         )
         .on(
           'postgres_changes',
