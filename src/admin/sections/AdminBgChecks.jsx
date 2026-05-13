@@ -423,11 +423,13 @@ export default function AdminBgChecks({ adminUser, onVerified }) {
 
     const all = (data || []).map(s => ({ ...s, documents: docsMap[s.id] || [] }));
 
-    const hasPendingDoc   = s => s.documents.some(d => d.status === 'pending');
-    const isFullyRejected = s => s.documents.length > 0 && s.documents.every(d => d.status === 'rejected') && !hasPendingDoc(s);
+    const hasPendingDoc  = s => s.documents.some(d => d.status === 'pending');
+    const hasRejectedDoc = s => s.documents.some(d => d.status === 'rejected');
+    // Rejected: has at least one rejected doc, no pending docs, and not verified
+    const isRejected     = s => !s.background_check_verified && hasRejectedDoc(s) && !hasPendingDoc(s);
 
-    setPending(all.filter(s => !s.background_check_verified && (hasPendingDoc(s) || (s.background_check_doc_url && !isFullyRejected(s)))));
-    setRejected(all.filter(s => !s.background_check_verified && isFullyRejected(s)));
+    setPending(all.filter(s => !s.background_check_verified && hasPendingDoc(s)));
+    setRejected(all.filter(s => isRejected(s)));
     setVerified(all.filter(s => s.background_check_verified && s.bg_status !== 'expired'));
     setExpired(all.filter(s => s.bg_status === 'expired'));
     setLoading(false);
