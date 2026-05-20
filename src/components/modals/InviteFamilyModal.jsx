@@ -45,31 +45,25 @@ export default function InviteFamilyModal({ open, onClose, sitterId, sitterName,
         return;
       }
 
-      // Create new family
-      const { data: family, error: famErr } = await supabase.from('families')
-        .insert({ name: familyName, admin_email: adminEmail, status: 'pending' })
-        .select().single();
-      if (famErr) throw famErr;
+      // Create new family via edge function (bypasses RLS)
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const childNames = childrenStr.split(',').map(str => str.trim()).filter(Boolean);
 
-      await supabase.from('family_sitters').insert({ family_id: family.id, sitter_id: sitterId, status: 'pending' });
+      const res = await fetch(
+        'https://ukcxammnzhirxjdlqelr.supabase.co/functions/v1/create-family',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${s.access_token}`,
+          },
+          body: JSON.stringify({ mode: 'sitter-invite', familyName, adminEmail, sitterId, childNames }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create family');
 
-      const { error: memErr } = await supabase.from('members').insert({
-        family_id: family.id,
-        name:      adminEmail.split('@')[0],
-        email:     adminEmail,
-        role:      'admin',
-        status:    'pending',
-      });
-      if (memErr) throw memErr;
-
-      const childNames = childrenStr.split(',').map(s => s.trim()).filter(Boolean);
-      if (childNames.length > 0) {
-        const { error: kidErr } = await supabase.from('children').insert(
-          childNames.map(n => ({ family_id: family.id, name: n, avatar: '🌟', color: '#8B78D4' }))
-        );
-        if (kidErr) throw kidErr;
-      }
-
+      // Send the invite email
       await supabase.functions.invoke('send-invite', {
         body: { familyName, parentEmail: adminEmail, sitterName, sitterId },
       });
