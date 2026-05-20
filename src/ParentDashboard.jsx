@@ -26,47 +26,34 @@ import ParentFollowUs from './components/FieldTrip/ParentFollowUs';
 
 // ─── New Family Setup (shown when parent has no member/family row yet) ─────────
 
-function NewFamilySetup({ session, onComplete, onSignOut }) {
-  const [step,       setStep]       = useState(0);
-  const [familyName, setFamilyName] = useState('');
-  const [saving,     setSaving]     = useState(false);
-  const [alert,      setAlert]      = useState(null);
-
-  const userName = session.user.user_metadata?.name || session.user.email.split('@')[0];
-
-  async function createFamily() {
-    if (!familyName.trim()) { setAlert('Please enter a family name.'); return; }
-    setSaving(true);
-    setAlert(null);
-    try {
-      // 1. Create the family row
-      const { data: fam, error: famErr } = await supabase
-        .from('families')
-        .insert({ name: familyName.trim(), admin_email: session.user.email, icon: '👨‍👩‍👧' })
-        .select()
-        .single();
-      if (famErr) throw famErr;
-
-      // 2. Create the member row linking this user to the family as admin
-      const { error: memErr } = await supabase
-        .from('members')
-        .insert({
-          family_id: fam.id,
-          user_id:   session.user.id,
-          name:      userName,
-          email:     session.user.email,
-          role:      'admin',
-          status:    'active',
-          avatar:    '👤',
-        });
-      if (memErr) throw memErr;
-
-      onComplete();
-    } catch (err) {
-      setAlert(err.message || 'Something went wrong. Please try again.');
-      setSaving(false);
-    }
+async function createFamily() {
+  if (!familyName.trim()) { setAlert('Please enter a family name.'); return; }
+  setSaving(true);
+  setAlert(null);
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-family`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          familyName: familyName.trim(),
+          userName,
+        }),
+      }
+    );
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to create family');
+    onComplete();
+  } catch (err) {
+    setAlert(err.message || 'Something went wrong. Please try again.');
+    setSaving(false);
   }
+}
 
   const progress = (step / 1) * 100;
 
