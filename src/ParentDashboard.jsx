@@ -24,6 +24,140 @@ import { BrowseSitters } from './features/profile/index';
 import SitterAvatar from './components/ui/SitterAvatar';
 import ParentFollowUs from './components/FieldTrip/ParentFollowUs';
 
+// ─── New Family Setup (shown when parent has no member/family row yet) ─────────
+
+function NewFamilySetup({ session, onComplete, onSignOut }) {
+  const [step,       setStep]       = useState(0);
+  const [familyName, setFamilyName] = useState('');
+  const [saving,     setSaving]     = useState(false);
+  const [alert,      setAlert]      = useState(null);
+
+  const userName = session.user.user_metadata?.name || session.user.email.split('@')[0];
+
+  async function createFamily() {
+    if (!familyName.trim()) { setAlert('Please enter a family name.'); return; }
+    setSaving(true);
+    setAlert(null);
+    try {
+      // 1. Create the family row
+      const { data: fam, error: famErr } = await supabase
+        .from('families')
+        .insert({ name: familyName.trim(), admin_email: session.user.email, icon: '👨‍👩‍👧' })
+        .select()
+        .single();
+      if (famErr) throw famErr;
+
+      // 2. Create the member row linking this user to the family as admin
+      const { error: memErr } = await supabase
+        .from('members')
+        .insert({
+          family_id: fam.id,
+          user_id:   session.user.id,
+          name:      userName,
+          email:     session.user.email,
+          role:      'admin',
+          status:    'active',
+          avatar:    '👤',
+        });
+      if (memErr) throw memErr;
+
+      onComplete();
+    } catch (err) {
+      setAlert(err.message || 'Something went wrong. Please try again.');
+      setSaving(false);
+    }
+  }
+
+  const progress = (step / 1) * 100;
+
+  return (
+    <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ width: '100%', maxWidth: 480 }}>
+
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div className="leaf" style={{ fontSize: 36, marginBottom: 8 }}>➿</div>
+          <div className="logo-text" style={{ fontSize: 28, marginBottom: 4 }}>littleloop</div>
+          <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>Family Setup</div>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ height: 3, background: 'var(--border)', borderRadius: 3, marginBottom: 28, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${progress}%`, background: 'var(--accent-grad,linear-gradient(90deg,#3A9E7A,#3A6FD4))', borderRadius: 3, transition: 'width .4s ease' }}/>
+        </div>
+
+        {alert && <div className="al al-e" style={{ marginBottom: 16 }}>{alert}</div>}
+
+        {/* Step 0 — Welcome */}
+        {step === 0 && (
+          <div className="card" style={{ padding: '32px 28px', textAlign: 'center' }}>
+            <div style={{ fontSize: 52, marginBottom: 16 }}>👨‍👩‍👧</div>
+            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, marginBottom: 10 }}>
+              Welcome, {userName}!
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.7, marginBottom: 28 }}>
+              littleloop connects your family with your childcare provider — posts, messages, invoices, check-ins, and more. Let's get your family set up.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28, textAlign: 'left' }}>
+              {[
+                { icon: '🌸', label: 'Feed — see what your kids are up to' },
+                { icon: '💰', label: 'Invoices — pay your sitter directly' },
+                { icon: '🟢', label: 'Check-ins — know when kids arrive & leave' },
+                { icon: '💬', label: 'Messages — chat with your sitter' },
+              ].map(f => (
+                <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: 'var(--input-bg)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 18 }}>{f.icon}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{f.label}</span>
+                </div>
+              ))}
+            </div>
+            <button className="bp full" onClick={() => setStep(1)}>Get started →</button>
+          </div>
+        )}
+
+        {/* Step 1 — Name your family */}
+        {step === 1 && (
+          <div className="card" style={{ padding: '32px 28px' }}>
+            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>
+              Name your family
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 24, lineHeight: 1.6 }}>
+              This is how your sitter will see you — usually your last name works great.
+            </p>
+            <div style={{ marginBottom: 24 }}>
+              <label className="fl">Family name</label>
+              <input
+                className="fi"
+                value={familyName}
+                onChange={e => setFamilyName(e.target.value)}
+                placeholder="e.g. The Heisler Family"
+                autoFocus
+                onKeyDown={e => e.key === 'Enter' && createFamily()}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <button className="bg" onClick={() => setStep(0)}>← Back</button>
+              <button className="bp" onClick={createFamily} disabled={saving || !familyName.trim()}>
+                {saving ? <><Spinner/> Creating…</> : 'Create My Family →'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Sign out link */}
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <button onClick={onSignOut} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
+            Sign out
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Parent Dashboard ────────────────────────────────────────────────────
+
 export default function ParentDashboard({ session, onSignOut }) {
   const [member,   setMember]   = useState(null);
   const [family,   setFamily]   = useState(null);
@@ -135,12 +269,16 @@ export default function ParentDashboard({ session, onSignOut }) {
     </div>
   );
 
+  // ── New family signup — no member row yet ──────────────────────────────────
   if (!member) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: 12 }}>
-      <div style={{ fontSize: 32 }}>👤</div>
-      <div>No family account found.</div>
-      <button className="bg" onClick={onSignOut}>Sign out</button>
-    </div>
+    <>
+      <Bg/>
+      <NewFamilySetup
+        session={session}
+        onComplete={load}
+        onSignOut={onSignOut}
+      />
+    </>
   );
 
   const isAdmin = member?.role === 'admin';
@@ -151,7 +289,7 @@ export default function ParentDashboard({ session, onSignOut }) {
     { id: 'invoices', icon: '💰', label: 'Invoices', badge: unread.invoices },
     { id: 'messages', icon: '💬', label: 'Messages', badge: unread.messages },
     { id: 'browse',   icon: '🔍', label: 'Browse',   badge: 0 },
-     { id: 'profile',  icon: '⚙️', label: 'Profile',  badge: 0 },
+    { id: 'profile',  icon: '⚙️', label: 'Profile',  badge: 0 },
   ];
 
   return (
