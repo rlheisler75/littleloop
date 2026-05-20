@@ -207,7 +207,11 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
         if (invErr) throw invErr;
         invId = inv.id;
 
-        const total        = items.reduce((s, it) => s + (it.amount || 0), 0);
+        const total        = items.reduce((s, it) => {
+          const hours = parseFloat(it.hours) || 0;
+          const rate  = parseFloat(it.rate)  || 0;
+          return s + (it.rate_type === 'hourly' ? hours * rate : rate);
+        }, 0);
         const fmtTotal     = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(total);
         const selectedFam  = families.find(f => f.id === familyId);
         invokeNotification({ body: { type: 'new_invoice', payload: { familyId, sitterName, invoiceNumber: numData, amount: fmtTotal, familyName: selectedFam?.name || '' } } });
@@ -223,19 +227,24 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
       }
 
       const { error: itemErr } = await supabase.from('invoice_items').insert(
-        items.map((it, i) => ({
-          invoice_id:   invId,
-          service_date: it.service_date,
-          end_date:     it.end_date || null,
-          child_id:     it.child_id || null,
-          child_name:   it.child_name,
-          rate_type:    it.rate_type,
-          hours:        it.hours || null,
-          rate:         it.rate,
-          amount:       it.amount,
-          description:  it.description || null,
-          sort_order:   i,
-        }))
+        items.map((it, i) => {
+          const hours  = parseFloat(it.hours) || 0;
+          const rate   = parseFloat(it.rate)  || 0;
+          const amount = it.rate_type === 'hourly' ? hours * rate : rate;
+          return {
+            invoice_id:   invId,
+            service_date: it.service_date,
+            end_date:     it.end_date || null,
+            child_id:     it.child_id || null,
+            child_name:   it.child_name,
+            rate_type:    it.rate_type,
+            hours:        it.hours || null,
+            rate,
+            amount,
+            description:  it.description || null,
+            sort_order:   i,
+          };
+        })
       );
       if (itemErr) throw itemErr;
       onSaved();
