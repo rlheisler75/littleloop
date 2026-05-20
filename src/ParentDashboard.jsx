@@ -39,7 +39,7 @@ function NewFamilySetup({ session, onComplete, onSignOut }) {
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-family`,
+        `https://ukcxammnzhirxjdlqelr.supabase.co/functions/v1/create-family`,
         {
           method: 'POST',
           headers: {
