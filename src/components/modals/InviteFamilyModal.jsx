@@ -22,54 +22,65 @@ export default function InviteFamilyModal({ open, onClose, sitterId, sitterName,
     setAlert(null);
     setLoading(true);
     try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+
       // Check if family already exists by admin email
-      const { data: existing } = await supabase.from('families')
-        .select('id,name,status').eq('admin_email', adminEmail).maybeSingle();
+      const { data: existing } = await supabase
+        .from('families')
+        .select('id,name,status')
+        .eq('admin_email', adminEmail)
+        .maybeSingle();
 
       if (existing) {
-        const { data: existingConn } = await supabase.from('family_sitters')
-          .select('id,status').eq('family_id', existing.id).eq('sitter_id', sitterId).maybeSingle();
+        // Family exists — check if this sitter is already connected
+        const { data: existingConn } = await supabase
+          .from('family_sitters')
+          .select('id,status')
+          .eq('family_id', existing.id)
+          .eq('sitter_id', sitterId)
+          .maybeSingle();
 
         if (existingConn && existingConn.status !== 'inactive') {
           setAlert({ t: 'i', m: "You're already connected to this family." });
           setLoading(false);
           return;
         }
+
+        // Reconnect or create the family_sitters link
         if (existingConn) {
-          await supabase.from('family_sitters').update({ status: 'active' }).eq('id', existingConn.id);
+          await supabase.from('family_sitters').update({ status: 'pending' }).eq('id', existingConn.id);
         } else {
           await supabase.from('family_sitters').insert({ family_id: existing.id, sitter_id: sitterId, status: 'pending' });
         }
-        setAlert({ t: 's', m: `You've been connected to the ${existing.name} family!` });
+
+        // Send invite email so family knows this sitter wants to connect
+        await supabase.functions.invoke('send-invite', {
+          body: { familyName: existing.name, parentEmail: adminEmail, sitterName, sitterId },
+        });
+
+        setAlert({ t: 's', m: `Invite sent to ${existing.name}!` });
         setTimeout(() => { onInvited(); close(); }, 1800);
         return;
       }
 
-      // Create new family
-      const { data: family, error: famErr } = await supabase.from('families')
-        .insert({ name: familyName, admin_email: adminEmail, status: 'pending' })
-        .select().single();
-      if (famErr) throw famErr;
+      // New family — create via edge function (bypasses RLS)
+      const childNames = childrenStr.split(',').map(str => str.trim()).filter(Boolean);
 
-      await supabase.from('family_sitters').insert({ family_id: family.id, sitter_id: sitterId, status: 'pending' });
+      const res = await fetch(
+        'https://ukcxammnzhirxjdlqelr.supabase.co/functions/v1/create-family',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${s.access_token}`,
+          },
+          body: JSON.stringify({ mode: 'sitter-invite', familyName, adminEmail, sitterId, childNames }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create family');
 
-      const { error: memErr } = await supabase.from('members').insert({
-        family_id: family.id,
-        name:      adminEmail.split('@')[0],
-        email:     adminEmail,
-        role:      'admin',
-        status:    'pending',
-      });
-      if (memErr) throw memErr;
-
-      const childNames = childrenStr.split(',').map(s => s.trim()).filter(Boolean);
-      if (childNames.length > 0) {
-        const { error: kidErr } = await supabase.from('children').insert(
-          childNames.map(n => ({ family_id: family.id, name: n, avatar: '🌟', color: '#8B78D4' }))
-        );
-        if (kidErr) throw kidErr;
-      }
-
+      // Send invite email
       await supabase.functions.invoke('send-invite', {
         body: { familyName, parentEmail: adminEmail, sitterName, sitterId },
       });
@@ -98,7 +109,7 @@ export default function InviteFamilyModal({ open, onClose, sitterId, sitterName,
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
           <button type="submit" className="bp full" disabled={loading}>
-            {loading ? <><Spinner/> Please wait…</> : '📧 Send Invite'}
+            {loading ? <><Spinner/> Please wait...</> : 'Send Invite'}
           </button>
           <button type="button" className="bg" onClick={close}>Cancel</button>
         </div>
