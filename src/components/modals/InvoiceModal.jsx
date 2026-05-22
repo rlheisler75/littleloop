@@ -211,11 +211,6 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
         const fmtTotal     = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(total);
         const selectedFam  = families.find(f => f.id === familyId);
         invokeNotification({ body: { type: 'new_invoice', payload: { familyId, sitterName, invoiceNumber: numData, amount: fmtTotal, familyName: selectedFam?.name || '' } } });
-        supabase.from('members').select('user_id').eq('family_id', familyId).in('role', ['admin', 'member']).eq('status', 'active')
-          .then(({ data: mems }) => {
-            const ids = (mems || []).map(m => m.user_id).filter(Boolean);
-            sendPushNotification(ids, `New invoice from ${sitterName}`, `${fmtTotal} — tap to view`, '/?portal=parent', 'new_invoice');
-          });
       } else {
         const { error } = await supabase.from('invoices').update({ status, notes: notes || null, due_date: dueDate || null }).eq('id', invId);
         if (error) throw error;
