@@ -14,7 +14,7 @@ import SitterAvatar from '../../components/ui/SitterAvatar';
 // Check browser DevTools → Console for the teal line to confirm the right
 // version is live. If the console still shows an old version after deploying,
 // the service worker cache needs clearing.
-const FILE_VERSION = 'profile/index.jsx @ 2026-04-08-v3';
+const FILE_VERSION = 'profile/index.jsx @ 2026-06-17-promo-flyer';
 if (typeof window !== 'undefined') {
   console.log(
     '%c✅ ' + FILE_VERSION,
@@ -615,6 +615,10 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
   const [headlineUrl,     setHeadlineUrl]     = useState('');
   const [gallery,         setGallery]         = useState([]);
   const [uploading,       setUploading]       = useState(null);
+  const [promoFlyerUrl,   setPromoFlyerUrl]   = useState('');
+  const [flyerUploading,  setFlyerUploading]  = useState(false);
+  const [flyerLightbox,   setFlyerLightbox]   = useState(false);
+  const flyerInputRef = useRef(null);
 
   // Qualifications
   const [ageRanges,       setAgeRanges]       = useState([]);
@@ -650,6 +654,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
         setAvatarUrl(d.avatar_url || '');
         setHeadlineUrl(d.headline_photo_url || '');
         setGallery(d.photo_gallery || []);
+        setPromoFlyerUrl(d.promo_flyer_url || '');
         setAgeRanges(d.age_ranges || []);
         setCerts(d.certifications || []);
         setVerifiedCerts(d.verified_certifications || []);
@@ -694,6 +699,37 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
 
   async function removeGalleryPhoto(url) {
     setGallery(prev => prev.filter(u => u !== url));
+  }
+
+  async function uploadFlyer(file) {
+    if (!file?.type.startsWith('image/')) return;
+    if (file.size > 5 * 1024 * 1024) { setAlert({ t: 'e', m: 'Flyer image must be under 5MB.' }); return; }
+    setFlyerUploading(true);
+    // Remove old flyer from storage first
+    if (promoFlyerUrl) {
+      const oldPath = promoFlyerUrl.split('/sitter-flyers/')[1]?.split('?')[0];
+      if (oldPath) await supabase.storage.from('sitter-flyers').remove([oldPath]);
+    }
+    const ext  = file.name.split('.').pop();
+    const path = `${sitterId}/flyer.${ext}`;
+    const { error } = await supabase.storage.from('sitter-flyers').upload(path, file, { contentType: file.type, upsert: true });
+    if (error) { setAlert({ t: 'e', m: error.message }); setFlyerUploading(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from('sitter-flyers').getPublicUrl(path);
+    const url = publicUrl + '?t=' + Date.now();
+    await supabase.from('sitters').update({ promo_flyer_url: url }).eq('id', sitterId);
+    setPromoFlyerUrl(url);
+    setFlyerUploading(false);
+    setAlert({ t: 's', m: 'Promo flyer uploaded!' });
+  }
+
+  async function removeFlyer() {
+    if (!promoFlyerUrl) return;
+    if (!window.confirm('Remove your promo flyer?')) return;
+    const path = promoFlyerUrl.split('/sitter-flyers/')[1]?.split('?')[0];
+    if (path) await supabase.storage.from('sitter-flyers').remove([path]);
+    await supabase.from('sitters').update({ promo_flyer_url: null }).eq('id', sitterId);
+    setPromoFlyerUrl('');
+    setAlert({ t: 's', m: 'Promo flyer removed.' });
   }
 
   async function save(e) {
@@ -897,6 +933,53 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
               )}
             </div>
           </div>
+
+          {/* Promo flyer */}
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+            <label className="fl">Promo flyer</label>
+            <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 10 }}>
+              Upload the flyer you share on Facebook or Instagram — it'll appear on your public profile so families can see it.
+            </div>
+            {promoFlyerUrl ? (
+              <div>
+                <img
+                  src={promoFlyerUrl}
+                  alt="Promo flyer preview"
+                  onClick={() => setFlyerLightbox(true)}
+                  style={{ display: 'block', width: '100%', maxWidth: 280, borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', marginBottom: 10, objectFit: 'contain' }}
+                  title="Click to view full size"
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <label style={{ cursor: 'pointer' }}>
+                    <span className="bg" style={{ display: 'inline-block', padding: '7px 14px', borderRadius: 8, fontSize: 12, opacity: flyerUploading ? .6 : 1 }}>
+                      {flyerUploading ? <><Spinner size={11}/> Uploading…</> : '🔄 Replace flyer'}
+                    </span>
+                    <input ref={flyerInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => uploadFlyer(e.target.files[0])}/>
+                  </label>
+                  <button onClick={removeFlyer} className="bg" style={{ fontSize: 12, padding: '7px 14px', color: '#F5AAAA' }}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label style={{ cursor: flyerUploading ? 'not-allowed' : 'pointer' }}>
+                <span className="bg" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, fontSize: 12, opacity: flyerUploading ? .6 : 1 }}>
+                  {flyerUploading ? <><Spinner size={11}/> Uploading…</> : '📤 Upload promo flyer'}
+                </span>
+                <input type="file" accept="image/*" style={{ display: 'none' }} disabled={flyerUploading} onChange={e => uploadFlyer(e.target.files[0])}/>
+              </label>
+            )}
+          </div>
+
+          {/* Flyer lightbox */}
+          {flyerLightbox && (
+            <div onClick={() => setFlyerLightbox(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+              <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+                <button onClick={() => setFlyerLightbox(false)} style={{ position: 'absolute', top: -10, right: -10, width: 30, height: 30, borderRadius: '50%', background: 'rgba(0,0,0,.7)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>✕</button>
+                <img src={promoFlyerUrl} alt="Promo flyer" style={{ maxWidth: '100%', maxHeight: '88vh', borderRadius: 10, display: 'block', objectFit: 'contain' }}/>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1057,7 +1140,7 @@ export function PublicSitterProfile({ username, session = null }) {
   useEffect(() => {
     async function load() {
       const { data: s, error } = await supabase.from('sitters')
-        .select('id,name,tagline,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,verified_certifications,services,comfortable_with,languages,has_car,can_drive_kids,background_check,background_check_date,background_check_verified,background_check_verified_at,response_time,education,avatar_url,headline_photo_url,photo_gallery,public_profile')
+        .select('id,name,tagline,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,verified_certifications,services,comfortable_with,languages,has_car,can_drive_kids,background_check,background_check_date,background_check_verified,background_check_verified_at,response_time,education,avatar_url,headline_photo_url,photo_gallery,public_profile,promo_flyer_url')
         .eq('username', username).eq('public_profile', true).maybeSingle();
       if (!s || error) { setNotFound(true); setLoading(false); return; }
       setSitter(s);
@@ -1269,6 +1352,17 @@ export function PublicSitterProfile({ username, session = null }) {
                 </div>
               ))}
             </div>
+          </ProfileSection>
+        )}
+        {sitter.promo_flyer_url && (
+          <ProfileSection title="📋 Promo Flyer">
+            <img
+              src={sitter.promo_flyer_url}
+              alt={`${sitter.name}'s promo flyer`}
+              onClick={() => setLightbox(sitter.promo_flyer_url)}
+              style={{ display: 'block', width: '100%', maxWidth: 360, borderRadius: 12, border: '1px solid var(--border)', cursor: 'zoom-in', objectFit: 'contain' }}
+            />
+            <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6 }}>Tap to view full size</div>
           </ProfileSection>
         )}
         <ProfileSection title={`Reviews${reviews.length ? ` (${reviews.length})` : ''}`}>
