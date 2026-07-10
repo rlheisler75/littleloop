@@ -75,7 +75,7 @@ export function NotificationCenter({ userId }) {
       </button>
 
       {open && (
-        <div style={{ position: 'fixed', top: 60, right: 12, width: Math.min(360, window.innerWidth - 24), maxHeight: '80vh', overflowY: 'auto', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,.5)', zIndex: 200, padding: '16px 14px' }}>
+        <div style={{ position: 'fixed', top: 60, right: 12, width: Math.min(360, window.innerWidth - 24), maxHeight: '80vh', overflowY: 'auto', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'inset 0 0 0 1000px var(--body-bg, #0C1420), 0 20px 60px rgba(0,0,0,.5)', zIndex: 200, padding: '16px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 600 }}>Notifications</div>
             <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-faint)', lineHeight: 1, padding: '0 4px' }}>✕</button>
