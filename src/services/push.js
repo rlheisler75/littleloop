@@ -72,7 +72,7 @@ export function sendPushNotification(userIds, title, body, url, tag) {
 
 export function invokeNotification(data) {
   const body = data?.body ?? data;
-  supabase.functions.invoke('send-notification', { body }).catch(console.error);
+  return supabase.functions.invoke('send-notification', { body }).catch(console.error);
 }
 
 // ─── Register service worker immediately on page load ─────────────────────────
