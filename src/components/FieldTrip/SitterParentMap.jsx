@@ -2,7 +2,7 @@
 // Shows sitter a live map when any parent shares location via "On My Way"
 // Props: familyIds — array of all family UUIDs the sitter is connected to
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMemberLocationWatch } from '../../hooks/useMemberLocation';
 
 function ensureLeafletLoaded() {
@@ -33,6 +33,7 @@ function MemberMap({ sharingMembers }) {
   const mapRef      = useRef(null);
   const mapInstance = useRef(null);
   const markersRef  = useRef({});
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     if (mapInstance.current || !mapRef.current) return;
@@ -67,6 +68,7 @@ function MemberMap({ sharingMembers }) {
       }
 
       mapInstance.current = map;
+      setMapReady(true);
     });
 
     return () => { cancelled = true; };
@@ -116,7 +118,7 @@ function MemberMap({ sharingMembers }) {
         mapInstance.current.fitBounds(bounds, { padding: [40, 40], animate: true });
       }
     });
-  }, [sharingMembers]);
+  }, [sharingMembers, mapReady]);
 
   return <div ref={mapRef} style={{ width: '100%', height: 240 }} />;
 }
