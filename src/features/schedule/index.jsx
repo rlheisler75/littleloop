@@ -200,7 +200,9 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
       setExpanded(false);
       setTimeout(() => setSent(false), 3000);
 
-      if (shareLocation) startSharing();
+      // Sharing is started by the useEffect below, which reacts to current?.id
+      // changing — calling startSharing() here too would race ahead of that
+      // state update and capture a stale/null etaId in its ping loop forever.
 
       const { data: fsRows } = await supabase.from('family_sitters').select('sitter_id').eq('family_id', familyId).eq('status', 'active');
       if (fsRows?.length) {
