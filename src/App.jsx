@@ -28,7 +28,6 @@ export default function App() {
   const [authPortal,   setAuthPortal]   = useState(null); // 'sitter' | 'parent' | null
   const [subStatus,    setSubStatus]    = useState(null); // null = loading, string = loaded
   const [subChecked,   setSubChecked]   = useState(false);
-  const [isAdmin,      setIsAdmin]      = useState(null); // null = not checked yet
 
   const portal      = getPortal();
   const inviteToken = getInviteToken();
@@ -71,18 +70,6 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
-
-  // Admins signing in from the main login go straight to the admin console
-  const sessionUserId = session?.user?.id;
-  useEffect(() => {
-    if (!sessionUserId) { setIsAdmin(null); return; }
-    supabase
-      .from('admin_users')
-      .select('user_id')
-      .eq('user_id', sessionUserId)
-      .maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data));
-  }, [sessionUserId]);
 
   // Check subscription status for sitters once we have a session
   useEffect(() => {
@@ -187,21 +174,6 @@ export default function App() {
       <Analytics />
     </>
   );
-
-  // ── Authenticated admin: admin console ───────────────────────────────────────
-  if (isAdmin === null) return (
-    <>
-      <Bg/>
-      <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div className="leaf" style={{ fontSize: 40, marginBottom: 12 }}>➿</div>
-          <Spinner size={20}/>
-        </div>
-      </div>
-      <Analytics />
-    </>
-  );
-  if (isAdmin) return <><AdminApp/><Analytics /></>;
 
   // ── Authenticated: families always pass through ──────────────────────────────
   if (userRole === 'parent') return <><Bg/><ParentDashboard session={session} onSignOut={signOut}/><Analytics /></>;
