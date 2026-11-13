@@ -71,7 +71,7 @@ export default function BillingTab({ session, subscriptionData, isPro }) {
             </div>
           </div>
         )}
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 14 }}>Unlimited families, plus every littleloop feature.</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 14 }}>Unlimited families and automatic recurring invoices.</div>
       </div>
 
       {!comp && stripe_customer_id && (
@@ -101,14 +101,14 @@ export default function BillingTab({ session, subscriptionData, isPro }) {
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', background: 'rgba(255,255,255,.06)', padding: '3px 10px', borderRadius: 20 }}>Current plan</div>
         </div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-          Every feature (check-ins, feed, GPS field trips, invoices, messaging) for up to {FREE_FAMILY_LIMIT} families. No card needed.
+          Check-ins, daily updates, GPS field trips, invoices and messaging for up to {FREE_FAMILY_LIMIT} families. No card needed.
         </div>
       </div>
 
       <div className="card" style={{ padding: 20, border: '1.5px solid var(--accent,#7BAAEE)' }}>
         <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Pro</div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 16 }}>
-          Unlimited families, for sitters who are growing their business.
+          Unlimited families, plus recurring invoices that send themselves every week or month.
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>

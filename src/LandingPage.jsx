@@ -77,6 +77,8 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         .ll-nav-links a { font-size: 15px; font-weight: 700; color: var(--bark-light); text-decoration: none; transition: color .2s; cursor: pointer; }
         .ll-nav-links a:hover { color: var(--sage); }
         .ll-nav-cta { font-family: 'Fredoka', sans-serif; background: var(--sage); color: #fff; padding: 10px 24px; border-radius: 100px; font-size: 16px; font-weight: 500; border: none; cursor: pointer; transition: all .2s; box-shadow: 0 4px 0 #E04E3A; }
+        .ll-nav-right { display: flex; align-items: center; gap: 14px; }
+        .ll-nav-signin { display: none; font-size: 15px; font-weight: 700; color: var(--bark-light); cursor: pointer; text-decoration: none; padding: 8px 4px; }
         .ll-nav-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #E04E3A; }
 
         /* HERO */
@@ -323,6 +325,10 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
           .ll-section { padding: 64px 20px; }
           .ll-nav, .ll-nav.scrolled { padding: 14px 20px; }
           .ll-nav-links { display: none; }
+          .ll-nav-signin { display: inline-block; white-space: nowrap; font-size: 14px; }
+          .ll-nav-right { gap: 10px; }
+          .ll-nav-cta { white-space: nowrap; padding: 9px 16px; font-size: 15px; }
+          .ll-nav-sub { display: none; }
           .ll-sitter-grid, .ll-family-grid, .ll-how-grid, .ll-gps-grid { grid-template-columns: 1fr; gap: 36px; }
           .ll-family-cards { grid-template-columns: 1fr; }
           .ll-footer { flex-direction: column; padding: 32px 20px; text-align: center; }
@@ -347,7 +353,10 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
             <a onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>How It Works</a>
             <a onClick={onLogin}>Sign in</a>
           </div>
-          <button className="ll-nav-cta" onClick={onSitterSignup}>Start Free</button>
+          <div className="ll-nav-right">
+            <a className="ll-nav-signin" onClick={onLogin}>Sign in</a>
+            <button className="ll-nav-cta" onClick={onSitterSignup}>Start Free</button>
+          </div>
         </nav>
 
         {/* HERO */}
@@ -480,12 +489,12 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
                     <div className="ll-plan-tag">Start here</div>
                     <div className="ll-plan-name">Free</div>
                     <div className="ll-plan-price">$0</div>
-                    <div className="ll-plan-note">Up to 2 families<br/>Every feature</div>
+                    <div className="ll-plan-note">Up to 2 families<br/>Core features</div>
                   </div>
                   <div className="ll-plan">
                     <div className="ll-plan-name">Pro</div>
                     <div className="ll-plan-price">$5<span>/mo</span></div>
-                    <div className="ll-plan-note">Unlimited families<br/>or $50/yr</div>
+                    <div className="ll-plan-note">Unlimited families<br/>+ auto-invoicing</div>
                   </div>
                 </div>
                 <button className="ll-btn-primary" style={{width:'100%', justifyContent:'center'}} onClick={onSitterSignup}>

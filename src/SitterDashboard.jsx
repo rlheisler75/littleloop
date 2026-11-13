@@ -229,7 +229,7 @@ export default function SitterDashboard({ session, onSignOut }) {
           </>
         )}
         {tab === 'feed'     && <SitterFeedWrapper sitterId={sitterId} sitterName={name}/>}
-        {tab === 'invoices' && <SitterInvoicesTab sitterId={sitterId} sitterName={name}/>}
+        {tab === 'invoices' && <SitterInvoicesTab sitterId={sitterId} sitterName={name} isPro={isPro} onUpgrade={() => setTab('billing')}/>}
         {tab === 'messages' && <SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
         {tab === 'profile'  && <SitterProfileTab sitterId={sitterId} sitterName={name} onNameChange={setName}/>}
         {tab === 'billing'  && <BillingTab session={session} subscriptionData={status} isPro={isPro}/>}

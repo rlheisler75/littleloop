@@ -7,6 +7,7 @@ import { InvoiceModal } from '../../components/modals/InvoiceModal';
 import PaymentSettingsModal from '../../components/modals/PaymentSettingsModal';
 import { Confirm } from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
+import RecurringInvoices from './RecurringInvoices';
 
 // ─── Pay Buttons (family side) ────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ export function PayButtons({ sitter, invoice }) {
 
 // ─── Sitter Invoices Tab ──────────────────────────────────────────────────────
 
-export function SitterInvoicesTab({ sitterId, sitterName }) {
+export function SitterInvoicesTab({ sitterId, sitterName, isPro = false, onUpgrade }) {
   const [invoices,       setInvoices]       = useState([]);
   const [families,       setFamilies]       = useState([]);
   const [familyChildren, setFamilyChildren] = useState({});
@@ -157,6 +158,8 @@ export function SitterInvoicesTab({ sitterId, sitterName }) {
           <button className="bp" onClick={() => setShowNew(true)}>+ New Invoice</button>
         </div>
       </div>
+
+      <RecurringInvoices sitterId={sitterId} families={families} familyChildren={familyChildren} isPro={isPro} onUpgrade={onUpgrade}/>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
         {['all', 'draft', 'sent', 'paid'].map(s => (
