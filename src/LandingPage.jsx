@@ -27,30 +27,35 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,500&family=DM+Sans:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap');
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --sage: #4A7C65;
-          --sage-light: #6BA589;
-          --sage-pale: #C8DDD5;
-          --cream: #F7F3EE;
-          --cream-dark: #EDE7DC;
-          --bark: #3D2E22;
-          --bark-light: #6B5344;
-          --sky: #A8C5D8;
-          --gold: #C4963A;
-          --text: #2A1F17;
-          --muted: #8A7668;
+          /* Names kept from the old palette so inline styles pick up the new colors. */
+          --sage: #FF6B57;        /* coral, primary */
+          --sage-light: #FF8E7D;
+          --sage-pale: #FFE4DE;
+          --cream: #FFFBF3;       /* warm white */
+          --cream-dark: #FFF1DC;  /* soft peach */
+          --bark: #2B2D6B;        /* deep indigo */
+          --bark-light: #4A4E8F;
+          --sky: #4CB5F5;
+          --gold: #FFC23C;        /* sunshine */
+          --mint: #2FC79B;
+          --grape: #8B6CF6;
+          --lilac: #F1ECFF;
+          --text: #22244D;
+          --muted: #686B90;
         }
 
         .ll-landing {
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Nunito', sans-serif;
           background: var(--cream);
           color: var(--text);
           overflow-x: hidden;
         }
+        .ll-landing h1, .ll-landing h2, .ll-landing h3 { font-family: 'Fredoka', sans-serif; }
 
         /* NAV */
         .ll-nav {
@@ -60,262 +65,271 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
           transition: all .3s ease;
         }
         .ll-nav.scrolled {
-          background: rgba(247,243,238,.92);
+          background: rgba(255,251,243,.92);
           backdrop-filter: blur(16px);
-          border-bottom: 1px solid rgba(74,124,101,.12);
-          padding: 16px 48px;
+          box-shadow: 0 4px 24px rgba(43,45,107,.06);
+          padding: 14px 48px;
         }
         .ll-nav-brand { display: flex; flex-direction: column; line-height: 1; padding: 4px 0; }
-        .ll-nav-logo { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 500; color: var(--sage); letter-spacing: -.3px; display: flex; align-items: center; gap: 8px; }
-        .ll-logomark { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 300; font-style: italic; color: var(--sage); line-height: 1; }
-        .ll-nav-sub { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 4px; padding-left: 34px; }
-        .ll-nav-links { display: flex; align-items: center; gap: 32px; }
-        .ll-nav-links a { font-size: 14px; color: var(--bark-light); text-decoration: none; transition: color .2s; cursor: pointer; }
+        .ll-nav-logo { font-family: 'Fredoka', sans-serif; font-size: 26px; font-weight: 600; color: var(--bark); letter-spacing: -.3px; display: flex; align-items: center; gap: 8px; }
+        .ll-nav-sub { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 4px; padding-left: 38px; }
+        .ll-nav-links { display: flex; align-items: center; gap: 30px; }
+        .ll-nav-links a { font-size: 15px; font-weight: 700; color: var(--bark-light); text-decoration: none; transition: color .2s; cursor: pointer; }
         .ll-nav-links a:hover { color: var(--sage); }
-        .ll-nav-cta { background: var(--sage); color: #fff; padding: 10px 22px; border-radius: 100px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: all .2s; }
-        .ll-nav-cta:hover { background: var(--sage-light); transform: translateY(-1px); }
+        .ll-nav-cta { font-family: 'Fredoka', sans-serif; background: var(--sage); color: #fff; padding: 10px 24px; border-radius: 100px; font-size: 16px; font-weight: 500; border: none; cursor: pointer; transition: all .2s; box-shadow: 0 4px 0 #E04E3A; }
+        .ll-nav-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #E04E3A; }
 
         /* HERO */
         .ll-hero {
           min-height: 100vh;
-          display: grid; grid-template-columns: 1fr 1fr;
-          padding: 0 48px; padding-top: 100px;
-          gap: 48px; align-items: center;
+          display: grid; grid-template-columns: 1.05fr 1fr;
+          padding: 110px 48px 60px;
+          gap: 56px; align-items: center;
           position: relative; overflow: hidden;
+          background:
+            radial-gradient(circle at 88% 18%, rgba(255,194,60,.28) 0, transparent 32%),
+            radial-gradient(circle at 8% 92%, rgba(76,181,245,.20) 0, transparent 30%),
+            radial-gradient(circle at 60% 100%, rgba(47,199,155,.14) 0, transparent 28%),
+            var(--cream);
         }
-        .ll-hero::before {
-          content: '';
-          position: absolute; top: -200px; right: -200px;
-          width: 700px; height: 700px;
-          background: radial-gradient(circle, rgba(74,124,101,.12) 0%, transparent 70%);
-          border-radius: 50%; pointer-events: none;
-        }
-        .ll-hero::after {
-          content: '';
-          position: absolute; bottom: -100px; left: -100px;
-          width: 500px; height: 500px;
-          background: radial-gradient(circle, rgba(168,197,216,.18) 0%, transparent 70%);
-          border-radius: 50%; pointer-events: none;
-        }
+        .ll-shape { position: absolute; pointer-events: none; z-index: 0; }
+        .ll-shape.s1 { top: 120px; left: 46%; width: 22px; height: 22px; border-radius: 50%; background: var(--gold); animation: bob 6s ease-in-out infinite; }
+        .ll-shape.s2 { top: 70%; left: 3%; width: 16px; height: 16px; border-radius: 4px; background: var(--grape); animation: bob 7s ease-in-out infinite reverse; }
+        .ll-shape.s3 { bottom: 12%; left: 44%; width: 28px; height: 28px; border-radius: 50%; border: 5px solid var(--mint); animation: bob 5s ease-in-out infinite; }
+        .ll-shape.s4 { top: 22%; right: 4%; font-size: 30px; color: var(--sky); animation: spin 14s linear infinite; }
+        .ll-shape.s5 { top: 16%; left: 2%; font-size: 26px; color: var(--sage); animation: bob 8s ease-in-out infinite; }
+        @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .ll-hero > div:not(.ll-shape) { position: relative; z-index: 1; }
+
         .ll-hero-eyebrow {
           display: inline-flex; align-items: center; gap: 8px;
-          background: rgba(74,124,101,.1); border: 1px solid rgba(74,124,101,.2);
-          padding: 6px 14px; border-radius: 100px; margin-bottom: 24px;
-          font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--sage);
+          background: #fff; border: 2px solid var(--sage-pale);
+          padding: 7px 16px; border-radius: 100px; margin-bottom: 26px;
+          font-size: 13px; font-weight: 800; color: var(--sage);
+          box-shadow: 0 4px 14px rgba(255,107,87,.12);
         }
-        .ll-hero-eyebrow span { width: 6px; height: 6px; background: var(--sage); border-radius: 50%; animation: pulse 2s infinite; }
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+        .ll-hero-eyebrow span { width: 8px; height: 8px; background: var(--mint); border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.35)} }
         .ll-hero-title {
-          font-family: 'Fraunces', serif;
-          font-size: clamp(42px, 5vw, 68px);
-          font-weight: 500; line-height: 1.08;
-          letter-spacing: -.02em; color: var(--bark);
+          font-family: 'Fredoka', sans-serif;
+          font-size: clamp(42px, 5.2vw, 70px);
+          font-weight: 600; line-height: 1.06;
+          color: var(--bark);
           margin-bottom: 24px;
         }
-        .ll-hero-title em { font-style: italic; color: var(--sage); }
-        .ll-hero-desc {
-          font-size: 17px; line-height: 1.7; color: var(--muted);
-          max-width: 480px; margin-bottom: 40px;
+        .ll-hero-title em {
+          font-style: normal; color: var(--sage); white-space: nowrap;
+          background: linear-gradient(transparent 68%, rgba(255,194,60,.55) 68%, rgba(255,194,60,.55) 90%, transparent 90%);
         }
+        .ll-hero-desc {
+          font-size: 18px; line-height: 1.7; color: var(--muted);
+          max-width: 500px; margin-bottom: 36px;
+        }
+        .ll-hero-desc strong { color: var(--bark); }
         .ll-hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
         .ll-btn-primary {
+          font-family: 'Fredoka', sans-serif;
           background: var(--sage); color: #fff;
           padding: 15px 30px; border-radius: 100px;
-          font-size: 15px; font-weight: 500; border: none; cursor: pointer;
-          transition: all .25s; display: inline-flex; align-items: center; gap: 8px;
+          font-size: 17px; font-weight: 500; border: none; cursor: pointer;
+          transition: all .2s; display: inline-flex; align-items: center; gap: 8px;
+          box-shadow: 0 5px 0 #E04E3A;
         }
-        .ll-btn-primary:hover { background: var(--bark); transform: translateY(-2px); box-shadow: 0 12px 32px rgba(74,124,101,.3); }
+        .ll-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 7px 0 #E04E3A, 0 14px 28px rgba(255,107,87,.25); }
+        .ll-btn-primary:active { transform: translateY(3px); box-shadow: 0 2px 0 #E04E3A; }
         .ll-btn-secondary {
-          background: transparent; color: var(--bark);
+          font-family: 'Fredoka', sans-serif;
+          background: #fff; color: var(--bark);
           padding: 15px 30px; border-radius: 100px;
-          font-size: 15px; font-weight: 500;
-          border: 1.5px solid rgba(61,46,34,.2); cursor: pointer;
-          transition: all .25s;
+          font-size: 17px; font-weight: 500;
+          border: 2px solid #E4E1F5; cursor: pointer;
+          transition: all .2s; box-shadow: 0 5px 0 #E4E1F5;
         }
-        .ll-btn-secondary:hover { border-color: var(--sage); color: var(--sage); }
+        .ll-btn-secondary:hover { transform: translateY(-2px); border-color: var(--sky); box-shadow: 0 7px 0 #CDE9FB; }
+        .ll-hero-chips { display: flex; gap: 10px; margin-top: 30px; flex-wrap: wrap; }
+        .ll-hero-chips span { font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 100px; }
+        .ll-hero-chips span:nth-child(1) { background: #DDF7EE; color: #138A68; }
+        .ll-hero-chips span:nth-child(2) { background: #DDF0FD; color: #1C7DBF; }
+        .ll-hero-chips span:nth-child(3) { background: #FFF1CC; color: #A9740A; }
 
         /* Hero visual */
-        .ll-hero-visual {
-          position: relative; display: flex; justify-content: center; align-items: center;
+        .ll-hero-visual { position: relative; display: flex; justify-content: center; align-items: center; }
+        .ll-hero-frame {
+          position: relative; width: 100%; max-width: 500px; padding: 14px;
+          background: #fff; border-radius: 32px; transform: rotate(1.5deg);
+          box-shadow: 0 30px 70px rgba(43,45,107,.16);
         }
-        .ll-hero-card-stack { position: relative; width: 340px; height: 420px; }
-        .ll-profile-card {
-          position: absolute; background: #fff;
-          border-radius: 20px; padding: 24px;
-          box-shadow: 0 20px 60px rgba(61,46,34,.1);
-          transition: transform .3s;
+        .ll-hero-frame::before {
+          content: ''; position: absolute; top: -18px; right: -18px; width: 120px; height: 120px;
+          background: var(--gold); border-radius: 40% 60% 55% 45%; z-index: -1;
         }
-        .ll-profile-card:nth-child(1) { width: 300px; top: 0; left: 20px; z-index: 3; }
-        .ll-profile-card:nth-child(2) { width: 280px; top: 30px; left: 0; z-index: 2; transform: rotate(-3deg); opacity: .7; }
-        .ll-profile-card:nth-child(3) { width: 280px; top: 20px; left: 40px; z-index: 1; transform: rotate(4deg); opacity: .4; }
-        .ll-profile-avatar {
-          width: 56px; height: 56px; border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 22px; margin-bottom: 14px;
-          font-family: 'Fraunces', serif; font-weight: 500; color: #fff;
+        .ll-hero-frame::after {
+          content: ''; position: absolute; bottom: -22px; left: -22px; width: 150px; height: 150px;
+          background: var(--sky); opacity: .85; border-radius: 55% 45% 40% 60%; z-index: -1;
         }
-        .ll-profile-name { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 500; color: var(--bark); margin-bottom: 4px; }
-        .ll-profile-detail { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
-        .ll-profile-badges { display: flex; gap: 6px; flex-wrap: wrap; }
-        .ll-badge { font-size: 11px; padding: 4px 10px; border-radius: 100px; font-weight: 500; }
-        .ll-badge-green { background: rgba(74,124,101,.1); color: var(--sage); }
-        .ll-badge-sky { background: rgba(168,197,216,.3); color: #4A7A9B; }
-        .ll-badge-gold { background: rgba(196,150,58,.12); color: var(--gold); }
+        .ll-hero-frame img { display: block; width: 100%; border-radius: 22px; }
         .ll-floating-stat {
-          position: absolute; background: #fff; border-radius: 14px;
-          padding: 12px 16px; box-shadow: 0 8px 24px rgba(61,46,34,.1);
+          position: absolute; background: #fff; border-radius: 18px;
+          padding: 12px 16px; box-shadow: 0 12px 30px rgba(43,45,107,.14);
           display: flex; align-items: center; gap: 10px; white-space: nowrap;
         }
-        .ll-floating-stat .stat-icon { font-size: 20px; }
+        .ll-floating-stat .stat-icon { font-size: 18px; width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
         .ll-floating-stat .stat-text { font-size: 12px; color: var(--muted); }
-        .ll-floating-stat .stat-val { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 500; color: var(--bark); }
-        .ll-stat-1 { bottom: 30px; left: -20px; z-index: 10; animation: float1 4s ease-in-out infinite; }
-        .ll-stat-2 { top: 10px; right: -30px; z-index: 10; animation: float2 5s ease-in-out infinite; }
-        @keyframes float1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-        @keyframes float2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
+        .ll-floating-stat .stat-val { font-family: 'Fredoka', sans-serif; font-size: 15px; font-weight: 600; color: var(--bark); }
+        @keyframes float1 { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-8px) rotate(-2deg)} }
+        @keyframes float2 { 0%,100%{transform:translateY(0) rotate(-3.5deg)} 50%{transform:translateY(6px) rotate(-3.5deg)} }
+
+        /* WAVES between sections */
+        .ll-wave { display: block; width: 100%; height: 60px; margin-bottom: -1px; }
 
         /* SCROLL ANIMATIONS */
         .hidden { opacity: 0; transform: translateY(32px); transition: opacity .7s ease, transform .7s ease; }
         .revealed { opacity: 1; transform: translateY(0); }
 
         /* SECTION SHARED */
-        .ll-section { padding: 100px 48px; }
+        .ll-section { padding: 90px 48px; }
         .ll-section-label {
-          font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
-          color: var(--sage); font-weight: 500; margin-bottom: 16px;
+          display: inline-block; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+          color: var(--sage); background: var(--sage-pale); padding: 5px 14px; border-radius: 100px; margin-bottom: 18px;
         }
         .ll-section-title {
-          font-family: 'Fraunces', serif; font-size: clamp(32px, 4vw, 50px);
-          font-weight: 500; line-height: 1.1; letter-spacing: -.02em;
-          color: var(--bark); margin-bottom: 20px;
+          font-family: 'Fredoka', sans-serif; font-size: clamp(32px, 4vw, 50px);
+          font-weight: 600; line-height: 1.1;
+          color: var(--bark); margin-bottom: 18px;
         }
-        .ll-section-title em { font-style: italic; color: var(--sage); }
-        .ll-section-desc { font-size: 16px; line-height: 1.7; color: var(--muted); max-width: 520px; }
+        .ll-section-title em { font-style: normal; color: var(--sage); }
+        .ll-section-desc { font-size: 17px; line-height: 1.7; color: var(--muted); max-width: 540px; }
 
-        /* SITTER SECTION */
-        .ll-sitter { background: var(--bark); color: #fff; }
-        .ll-sitter .ll-section-title { color: var(--sage-pale); }
-        .ll-sitter .ll-section-title em { color: var(--sage-light); }
-        .ll-sitter .ll-section-desc { color: rgba(255,255,255,.6); }
-        .ll-sitter .ll-section-label { color: var(--sage-light); }
+        /* Colorful icon tiles (shared) */
+        .ll-tile { width: 48px; height: 48px; border-radius: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        .ll-c0 { background: #FFE4DE; } .ll-c1 { background: #DDF0FD; } .ll-c2 { background: #DDF7EE; } .ll-c3 { background: #FFF1CC; } .ll-c4 { background: #ECE6FF; }
+
+        /* GPS SECTION: night sky */
+        .ll-gps { background: var(--bark); position: relative; overflow: hidden; }
+        .ll-gps::before {
+          content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+          background-image: radial-gradient(rgba(255,255,255,.18) 1.2px, transparent 1.2px);
+          background-size: 28px 28px;
+        }
+        .ll-gps > * { position: relative; }
+        .ll-gps .ll-section-label { background: rgba(255,194,60,.18); color: var(--gold); }
+        .ll-gps .ll-section-title { color: #fff; }
+        .ll-gps .ll-section-title em { color: var(--gold); }
+        .ll-gps .ll-section-desc { color: rgba(255,255,255,.72); }
+        .ll-gps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+        .ll-gps-feature-title { font-family: 'Fredoka', sans-serif; font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+        .ll-gps-feature-desc { font-size: 15px; line-height: 1.6; color: rgba(255,255,255,.68); }
+
+        /* SITTER SECTION: lilac */
+        .ll-sitter { background: var(--lilac); }
+        .ll-sitter .ll-section-label { background: #E2D9FF; color: var(--grape); }
+        .ll-sitter .ll-section-title em { color: var(--grape); }
         .ll-sitter-grid {
           display: grid; grid-template-columns: 1fr 1fr;
-          gap: 48px; align-items: center; margin-top: 64px;
+          gap: 56px; align-items: center; margin-top: 56px;
         }
-        .ll-features { display: flex; flex-direction: column; gap: 28px; }
-        .ll-feature { display: flex; gap: 18px; align-items: flex-start; }
-        .ll-feature-icon {
-          width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-          background: rgba(74,124,101,.2); display: flex; align-items: center; justify-content: center; font-size: 20px;
-        }
-        .ll-feature-title { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 500; color: var(--sage-pale); margin-bottom: 6px; }
-        .ll-feature-desc { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,.5); }
+        .ll-features { display: flex; flex-direction: column; gap: 16px; }
+        .ll-feature { display: flex; gap: 16px; align-items: flex-start; background: #fff; padding: 18px; border-radius: 22px; box-shadow: 0 6px 20px rgba(139,108,246,.08); }
+        .ll-feature-title { font-family: 'Fredoka', sans-serif; font-size: 18px; font-weight: 600; color: var(--bark); margin-bottom: 4px; }
+        .ll-feature-desc { font-size: 14.5px; line-height: 1.6; color: var(--muted); }
+        .ll-shot { width: 100%; border-radius: 24px; border: 8px solid #fff; box-shadow: 0 24px 60px rgba(43,45,107,.16); display: block; }
 
-        /* Pricing card */
-        .ll-pricing-card {
-          background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
-          border-radius: 24px; padding: 36px; position: relative; overflow: hidden;
-        }
-        .ll-pricing-card::before {
-          content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-          background: linear-gradient(90deg, var(--sage), var(--sky));
-        }
-        .ll-price-label { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--sage-light); margin-bottom: 20px; }
-        .ll-price-options { display: flex; gap: 12px; margin-bottom: 28px; }
-        .ll-price-option {
-          flex: 1; padding: 16px 14px; border-radius: 14px; text-align: center; cursor: pointer;
-          border: 1.5px solid rgba(255,255,255,.1); transition: all .2s; position: relative;
-        }
-        .ll-price-option.active { border-color: var(--sage-light); background: rgba(74,124,101,.15); }
-        .ll-price-option-save {
-          position: absolute; top: -10px; right: 8px;
-          background: var(--gold); color: #fff; font-size: 9px; font-weight: 700;
-          padding: 2px 8px; border-radius: 100px; letter-spacing: .05em;
-        }
-        .ll-price-per { font-size: 11px; color: rgba(255,255,255,.4); margin-bottom: 4px; }
-        .ll-price-amount { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 500; color: #fff; }
-        .ll-price-amount span { font-size: 14px; font-weight: 300; color: rgba(255,255,255,.5); }
-        .ll-price-features { margin-bottom: 28px; }
-        .ll-price-feature { display: flex; gap: 10px; align-items: center; padding: 8px 0; font-size: 14px; color: rgba(255,255,255,.7); border-bottom: 1px solid rgba(255,255,255,.05); }
-        .ll-price-feature:last-child { border-bottom: none; }
-        .ll-price-check { color: var(--sage-light); font-size: 16px; }
-        .ll-trial-note { font-size: 12px; color: rgba(255,255,255,.4); text-align: center; margin-top: 14px; }
+        /* Pricing */
+        .ll-pricing { margin-top: 26px; background: #fff; border-radius: 26px; padding: 24px; box-shadow: 0 10px 30px rgba(139,108,246,.12); }
+        .ll-pricing-label { font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--grape); margin-bottom: 18px; }
+        .ll-plans { display: flex; gap: 12px; margin-bottom: 18px; }
+        .ll-plan { flex: 1; padding: 18px 12px 14px; border-radius: 18px; text-align: center; border: 2px solid #ECE8F8; position: relative; }
+        .ll-plan.free { border-color: var(--mint); background: #F0FBF7; }
+        .ll-plan-name { font-size: 13px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+        .ll-plan-price { font-family: 'Fredoka', sans-serif; font-size: 32px; font-weight: 600; color: var(--bark); line-height: 1.1; }
+        .ll-plan-price span { font-size: 15px; font-weight: 500; color: var(--muted); }
+        .ll-plan-note { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+        .ll-plan-tag { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--mint); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 100px; white-space: nowrap; }
+        .ll-pricing-note { font-size: 13px; color: var(--muted); text-align: center; margin-top: 12px; }
 
         /* FAMILY SECTION */
         .ll-family { background: var(--cream-dark); }
+        .ll-family .ll-section-label { background: #DDF0FD; color: #1C7DBF; }
+        .ll-family .ll-section-title em { color: #1C7DBF; }
         .ll-family-grid {
           display: grid; grid-template-columns: 1fr 1fr;
-          gap: 48px; align-items: center; margin-top: 64px;
+          gap: 56px; align-items: center; margin-top: 56px;
         }
         .ll-family-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .ll-family-card {
-          background: #fff; border-radius: 18px; padding: 24px;
-          box-shadow: 0 4px 20px rgba(61,46,34,.06); transition: transform .25s, box-shadow .25s;
+          background: #fff; border-radius: 24px; padding: 24px;
+          box-shadow: 0 6px 20px rgba(43,45,107,.06); transition: transform .25s, box-shadow .25s;
         }
-        .ll-family-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(61,46,34,.1); }
-        .ll-family-card:nth-child(1) { grid-column: span 2; background: var(--sage); color: #fff; }
-        .ll-family-card-icon { font-size: 28px; margin-bottom: 14px; }
-        .ll-family-card-title { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+        .ll-family-card:hover { transform: translateY(-4px) rotate(-.5deg); box-shadow: 0 14px 36px rgba(43,45,107,.1); }
+        .ll-family-card:nth-child(1) { background: linear-gradient(135deg, var(--sky), #3A8FE0); color: #fff; }
+        .ll-family-card-icon { width: 48px; height: 48px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 14px; }
+        .ll-family-card:nth-child(1) .ll-family-card-icon { background: rgba(255,255,255,.25); }
+        .ll-family-card:nth-child(2) .ll-family-card-icon { background: #DDF7EE; }
+        .ll-family-card:nth-child(3) .ll-family-card-icon { background: #FFF1CC; }
+        .ll-family-card:nth-child(4) .ll-family-card-icon { background: #FFE4DE; }
+        .ll-family-card-title { font-family: 'Fredoka', sans-serif; font-size: 18px; font-weight: 600; color: var(--bark); margin-bottom: 6px; }
+        .ll-family-card-desc { font-size: 14px; line-height: 1.6; color: var(--muted); }
         .ll-family-card:nth-child(1) .ll-family-card-title { color: #fff; }
-        .ll-family-card-desc { font-size: 13px; line-height: 1.6; color: var(--muted); }
-        .ll-family-card:nth-child(1) .ll-family-card-desc { color: rgba(255,255,255,.7); }
+        .ll-family-card:nth-child(1) .ll-family-card-desc { color: rgba(255,255,255,.9); }
+        .ll-step-row { display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start; }
+        .ll-step-dot { font-family: 'Fredoka', sans-serif; width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #fff; font-size: 17px; }
 
         /* HOW IT WORKS */
         .ll-how { background: var(--cream); }
-        .ll-how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 64px; }
-        .ll-step { position: relative; padding: 32px; background: #fff; border-radius: 20px; box-shadow: 0 2px 16px rgba(61,46,34,.05); }
-        .ll-step-num {
-          font-family: 'Fraunces', serif; font-size: 64px; font-weight: 300;
-          color: rgba(74,124,101,.15); line-height: 1; margin-bottom: 16px;
-          position: absolute; top: 16px; right: 20px;
-        }
-        .ll-step-icon { font-size: 28px; margin-bottom: 14px; }
-        .ll-step-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 500; color: var(--bark); margin-bottom: 10px; }
-        .ll-step-desc { font-size: 14px; line-height: 1.6; color: var(--muted); }
-
-        /* FOOTER */
-        .ll-footer {
-          background: var(--bark); color: rgba(255,255,255,.5);
-          padding: 48px; display: flex; align-items: center; justify-content: space-between;
-          flex-wrap: wrap; gap: 20px;
-        }
-        .ll-footer-brand .ll-nav-logo { font-size: 18px; }
-        .ll-footer-brand .ll-nav-sub { color: rgba(255,255,255,.3); }
-        .ll-footer-links { display: flex; gap: 24px; }
-        .ll-footer-links a { font-size: 13px; color: rgba(255,255,255,.4); text-decoration: none; cursor: pointer; transition: color .2s; }
-        .ll-footer-links a:hover { color: var(--sage-light); }
-        .ll-footer-copy { font-size: 12px; color: rgba(255,255,255,.3); }
+        .ll-how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 56px; }
+        .ll-step { position: relative; padding: 30px; background: #fff; border-radius: 28px; box-shadow: 0 8px 26px rgba(43,45,107,.07); border-top: 6px solid var(--sage); }
+        .ll-step:nth-child(2) { border-top-color: var(--sky); }
+        .ll-step:nth-child(3) { border-top-color: var(--mint); }
+        .ll-step-num { font-family: 'Fredoka', sans-serif; font-size: 56px; font-weight: 600; color: #F1EEF9; line-height: 1; position: absolute; top: 16px; right: 22px; }
+        .ll-step-icon { font-size: 30px; margin-bottom: 14px; position: relative; }
+        .ll-step-title { font-family: 'Fredoka', sans-serif; font-size: 20px; font-weight: 600; color: var(--bark); margin-bottom: 8px; position: relative; }
+        .ll-step-desc { font-size: 15px; line-height: 1.6; color: var(--muted); position: relative; }
 
         /* CTA BAND */
         .ll-cta-band {
-          background: var(--sage); padding: 80px 48px; text-align: center;
+          background: linear-gradient(135deg, var(--sage) 0%, #FF8E5E 100%); padding: 84px 48px; text-align: center;
           position: relative; overflow: hidden;
         }
-        .ll-cta-band::before {
-          content: ''; position: absolute; font-size: 300px; opacity: .04;
-          top: 50%; left: 50%; transform: translate(-50%, -50%);
-          pointer-events: none; line-height: 1;
-        }
-        .ll-cta-band-title { font-family: 'Fraunces', serif; font-size: clamp(28px, 4vw, 48px); font-weight: 500; color: #fff; margin-bottom: 16px; letter-spacing: -.02em; }
-        .ll-cta-band-desc { font-size: 16px; color: rgba(255,255,255,.7); margin-bottom: 36px; }
+        .ll-cta-band::before, .ll-cta-band::after { content: ''; position: absolute; border-radius: 50%; pointer-events: none; }
+        .ll-cta-band::before { width: 260px; height: 260px; background: rgba(255,194,60,.35); top: -90px; left: -60px; }
+        .ll-cta-band::after { width: 200px; height: 200px; background: rgba(255,255,255,.14); bottom: -80px; right: 6%; }
+        .ll-cta-band > * { position: relative; }
+        .ll-cta-band-title { font-family: 'Fredoka', sans-serif; font-size: clamp(30px, 4vw, 50px); font-weight: 600; color: #fff; margin-bottom: 14px; }
+        .ll-cta-band-desc { font-size: 17px; color: rgba(255,255,255,.92); margin-bottom: 34px; }
         .ll-cta-band-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-        .ll-btn-white { background: #fff; color: var(--sage); padding: 15px 30px; border-radius: 100px; font-size: 15px; font-weight: 500; border: none; cursor: pointer; transition: all .25s; }
-        .ll-btn-white:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,.15); }
-        .ll-btn-outline-white { background: transparent; color: #fff; padding: 15px 30px; border-radius: 100px; font-size: 15px; font-weight: 500; border: 1.5px solid rgba(255,255,255,.4); cursor: pointer; transition: all .25s; }
-        .ll-btn-outline-white:hover { border-color: #fff; background: rgba(255,255,255,.1); }
+        .ll-btn-white { font-family: 'Fredoka', sans-serif; background: #fff; color: var(--sage); padding: 15px 30px; border-radius: 100px; font-size: 17px; font-weight: 500; border: none; cursor: pointer; transition: all .2s; box-shadow: 0 5px 0 rgba(0,0,0,.12); }
+        .ll-btn-white:hover { transform: translateY(-2px); }
+        .ll-btn-outline-white { font-family: 'Fredoka', sans-serif; background: transparent; color: #fff; padding: 15px 30px; border-radius: 100px; font-size: 17px; font-weight: 500; border: 2px solid rgba(255,255,255,.75); cursor: pointer; transition: all .2s; }
+        .ll-btn-outline-white:hover { border-color: #fff; background: rgba(255,255,255,.12); }
 
-        @media (max-width: 768px) {
-          .ll-hero { grid-template-columns: 1fr; padding: 80px 24px 48px; }
-          .ll-hero-visual { display: none; }
-          .ll-section { padding: 64px 24px; }
-          .ll-nav { padding: 16px 24px; }
-          .ll-nav.scrolled { padding: 12px 24px; }
+        /* FOOTER */
+        .ll-footer {
+          background: var(--bark); color: rgba(255,255,255,.6);
+          padding: 44px 48px; display: flex; align-items: center; justify-content: space-between;
+          flex-wrap: wrap; gap: 20px;
+        }
+        .ll-footer .ll-nav-logo { color: #fff; font-size: 22px; }
+        .ll-footer-brand .ll-nav-sub { color: rgba(255,255,255,.45); }
+        .ll-footer-links { display: flex; gap: 24px; }
+        .ll-footer-links a { font-size: 14px; font-weight: 700; color: rgba(255,255,255,.7); text-decoration: none; cursor: pointer; transition: color .2s; }
+        .ll-footer-links a:hover { color: var(--gold); }
+        .ll-footer-copy { font-size: 12px; color: rgba(255,255,255,.45); }
+
+        @media (max-width: 900px) {
+          .ll-hero { grid-template-columns: 1fr; padding: 96px 20px 56px; min-height: auto; gap: 40px; }
+          .ll-floating-stat { display: none; }
+          .ll-shape.s1, .ll-shape.s3, .ll-shape.s5 { display: none; }
+          .ll-section { padding: 64px 20px; }
+          .ll-nav, .ll-nav.scrolled { padding: 14px 20px; }
           .ll-nav-links { display: none; }
-          .ll-sitter-grid, .ll-family-grid, .ll-how-grid { grid-template-columns: 1fr; }
+          .ll-sitter-grid, .ll-family-grid, .ll-how-grid, .ll-gps-grid { grid-template-columns: 1fr; gap: 36px; }
           .ll-family-cards { grid-template-columns: 1fr; }
-          .ll-family-card:nth-child(1) { grid-column: span 1; }
-          .ll-footer { flex-direction: column; padding: 32px 24px; text-align: center; }
-          .ll-cta-band { padding: 64px 24px; }
+          .ll-footer { flex-direction: column; padding: 32px 20px; text-align: center; }
+          .ll-footer-links { flex-wrap: wrap; justify-content: center; }
+          .ll-cta-band { padding: 64px 20px; }
+          .ll-hero-title em { white-space: normal; }
+          .ll-hero-frame { transform: none; }
         }
       `}</style>
 
@@ -327,9 +341,9 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
             <span className="ll-nav-sub">by Loopware Solutions</span>
           </div>
           <div className="ll-nav-links">
-            <a onClick={() => document.getElementById('gps-tracking')?.scrollIntoView({ behavior: 'smooth' })}>GPS Tracking</a>
+            <a onClick={() => document.getElementById('gps-tracking')?.scrollIntoView({ behavior: 'smooth' })}>Field Trips</a>
             <a onClick={() => document.getElementById('for-sitters')?.scrollIntoView({ behavior: 'smooth' })}>For Sitters</a>
-            <a onClick={() => document.getElementById('for-families')?.scrollIntoView({ behavior: 'smooth' })}>For Families</a>
+            <a onClick={() => document.getElementById('for-families')?.scrollIntoView({ behavior: 'smooth' })}>For Parents</a>
             <a onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>How It Works</a>
             <a onClick={onLogin}>Sign in</a>
           </div>
@@ -338,9 +352,15 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
 
         {/* HERO */}
         <section className="ll-hero">
+          <div className="ll-shape s1"/>
+          <div className="ll-shape s2"/>
+          <div className="ll-shape s3"/>
+          <div className="ll-shape s4">✦</div>
+          <div className="ll-shape s5">♥</div>
+
           <div>
             <div className="ll-hero-eyebrow">
-              <span></span> For independent sitters &amp; nannies · Always free for families
+              <span></span> For independent sitters &amp; nannies
             </div>
             <h1 className="ll-hero-title">
               Parents know they're safe.<br/><em>You look like a pro.</em>
@@ -356,107 +376,93 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
                 I'm a parent
               </button>
             </div>
-            <div style={{display:'flex', gap:24, marginTop:28, flexWrap:'wrap'}}>
-              <span style={{display:'flex', alignItems:'center', gap:7, fontSize:13, color:'var(--muted)', fontWeight:500}}>✓ No card needed</span>
-              <span style={{display:'flex', alignItems:'center', gap:7, fontSize:13, color:'var(--muted)', fontWeight:500}}>📍 Live GPS field trips</span>
-              <span style={{display:'flex', alignItems:'center', gap:7, fontSize:13, color:'var(--muted)', fontWeight:500}}>🔒 Free for families</span>
+            <div className="ll-hero-chips">
+              <span>✓ No card needed</span>
+              <span>📍 Live GPS field trips</span>
+              <span>💛 Always free for parents</span>
             </div>
           </div>
 
           <div className="ll-hero-visual">
-            <div style={{position:'relative', width:'100%', maxWidth:480}}>
-              <img
-                src="/screenshots/family-gps-desktop.png"
-                alt="littleloop family dashboard with live GPS tracking"
-                style={{width:'100%', borderRadius:20, boxShadow:'0 32px 80px rgba(61,46,34,.18)', border:'1px solid rgba(74,124,101,.15)'}}
-              />
-              <div className="ll-floating-stat" style={{position:'absolute', bottom:-16, left:-20, zIndex:10, animation:'float1 4s ease-in-out infinite'}}>
-                <div className="stat-icon">📍</div>
+            <div className="ll-hero-frame">
+              <img src="/screenshots/family-gps-desktop.png" alt="littleloop parent view with a live field trip map"/>
+              <div className="ll-floating-stat" style={{bottom:-22, left:-30, zIndex:10, animation:'float1 4s ease-in-out infinite'}}>
+                <div className="stat-icon ll-c2">📍</div>
                 <div>
-                  <div className="stat-val">Live GPS</div>
-                  <div className="stat-text">parents see location in real time</div>
+                  <div className="stat-val">Live field trip</div>
+                  <div className="stat-text">parents see the map in real time</div>
                 </div>
               </div>
-              <div className="ll-floating-stat" style={{position:'absolute', top:20, right:-24, zIndex:10, animation:'float2 5s ease-in-out infinite'}}>
-                <div className="stat-icon">✅</div>
+              <div className="ll-floating-stat" style={{top:26, right:-34, zIndex:10, animation:'float2 5s ease-in-out infinite'}}>
+                <div className="stat-icon ll-c0">✅</div>
                 <div>
-                  <div className="stat-val">Emma & Liam checked in</div>
-                  <div className="stat-text">by Sarah Mitchell · just now</div>
+                  <div className="stat-val">Emma &amp; Liam checked in</div>
+                  <div className="stat-text">just now</div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
+        <Wave from="var(--cream)" to="var(--bark)"/>
+
         {/* GPS FIELD TRIP SECTION */}
-        <section className="ll-section" id="gps-tracking" style={{background:'var(--bark)', padding:'100px 48px'}}>
-          <div data-id="gps-label" className={reveal('gps-label')} style={{marginBottom:64}}>
-            <div style={{display:'inline-flex', alignItems:'center', gap:8, background:'rgba(34,197,94,.12)', border:'1px solid rgba(34,197,94,.25)', borderRadius:100, padding:'6px 16px', marginBottom:16}}>
-              <div style={{width:8, height:8, borderRadius:'50%', background:'#22c55e', boxShadow:'0 0 0 3px rgba(34,197,94,0.3)'}}/>
-              <span style={{fontSize:12, fontWeight:600, color:'#4ade80', letterSpacing:'.08em', textTransform:'uppercase'}}>Live Feature</span>
-            </div>
-            <div className="ll-section-label" style={{color:'var(--sage-light)'}}>Field Trip Tracker</div>
-            <h2 className="ll-section-title" style={{color:'var(--sage-pale)'}}>Track field trips<br/><em>live on a map.</em></h2>
-            <p className="ll-section-desc" style={{color:'rgba(255,255,255,.55)'}}>When your sitter takes the kids out, you see exactly where they are in real time. No other childcare platform does this. Peace of mind, built right in.</p>
+        <section className="ll-section ll-gps" id="gps-tracking">
+          <div data-id="gps-label" className={reveal('gps-label')} style={{marginBottom:56}}>
+            <div className="ll-section-label">🚌 Field Trip Tracker</div>
+            <h2 className="ll-section-title">Park, library, zoo?<br/><em>Parents can follow along.</em></h2>
+            <p className="ll-section-desc">When you head out with the kids, parents see where you are on a live map, so they never have to text "where are you?"</p>
           </div>
 
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center'}}>
+          <div className="ll-gps-grid">
             <div data-id="gps-screenshot" className={reveal('gps-screenshot')}>
-              <div style={{position:'relative'}}>
-                <img
-                  src="/screenshots/gps-map-closeup.png"
-                  alt="littleloop live GPS field trip tracking map"
-                  style={{width:'100%', borderRadius:20, boxShadow:'0 24px 60px rgba(0,0,0,.4)', border:'1px solid rgba(255,255,255,.08)'}}
-                />
-                <div style={{position:'absolute', bottom:-12, right:-12, background:'rgba(34,197,94,.15)', border:'1px solid rgba(34,197,94,.3)', borderRadius:12, padding:'10px 16px', display:'flex', alignItems:'center', gap:8}}>
-                  <div style={{width:8, height:8, borderRadius:'50%', background:'#22c55e'}}/>
-                  <span style={{fontSize:13, color:'#4ade80', fontWeight:600}}>GPS tracking active</span>
-                </div>
-              </div>
+              <img className="ll-shot" src="/screenshots/gps-map-closeup.png" alt="littleloop live field trip map" style={{borderColor:'rgba(255,255,255,.12)'}}/>
             </div>
 
             <div data-id="gps-features" style={{transitionDelay:'.15s'}} className={reveal('gps-features')}>
-              <div style={{display:'flex', flexDirection:'column', gap:28}}>
+              <div style={{display:'flex', flexDirection:'column', gap:24}}>
                 {[
-                  { icon:'📍', title:'Real-time map view', desc:'Parents see a live map updated continuously while the sitter is out with the kids. No refreshing, no guessing.' },
-                  { icon:'👨‍👩‍👧', title:'Multi-family sharing', desc:'If the sitter watches kids from multiple families, all parents see the same live location simultaneously.' },
-                  { icon:'✅', title:'Child check-ins', desc:'Sitters check kids in at the start of each session. Parents see exactly who is checked in and when.' },
-                  { icon:'🔔', title:'Trip alerts', desc:'Get notified the moment a field trip begins and when everyone is safely back home.' },
-                ].map(f => (
-                  <div key={f.title} style={{display:'flex', gap:18, alignItems:'flex-start'}}>
-                    <div style={{width:44, height:44, borderRadius:12, flexShrink:0, background:'rgba(74,124,101,.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20}}>{f.icon}</div>
+                  { icon:'📍', title:'Real-time map', desc:'A live map that updates while you\'re out. No refreshing, no guessing.' },
+                  { icon:'👨‍👩‍👧', title:'Every family at once', desc:'Watching kids from more than one family? Each parent sees the same live trip.' },
+                  { icon:'✅', title:'Check-ins', desc:'Check kids in when they arrive. Parents see who\'s with you and since when.' },
+                  { icon:'🔔', title:'Trip alerts', desc:'Parents get a ping when the outing starts and when everyone is safely back.' },
+                ].map((f, i) => (
+                  <div key={f.title} style={{display:'flex', gap:16, alignItems:'flex-start'}}>
+                    <div className={`ll-tile ll-c${i}`}>{f.icon}</div>
                     <div>
-                      <div style={{fontFamily:"'Fraunces',serif", fontSize:17, fontWeight:500, color:'var(--sage-pale)', marginBottom:5}}>{f.title}</div>
-                      <div style={{fontSize:14, lineHeight:1.6, color:'rgba(255,255,255,.5)'}}>{f.desc}</div>
+                      <div className="ll-gps-feature-title">{f.title}</div>
+                      <div className="ll-gps-feature-desc">{f.desc}</div>
                     </div>
                   </div>
                 ))}
               </div>
-              <button className="ll-btn-primary" style={{marginTop:40}} onClick={onFamilySignup}>
-                Sign up free to see it live →
+              <button className="ll-btn-primary" style={{marginTop:36}} onClick={onSitterSignup}>
+                Try it free →
               </button>
             </div>
           </div>
         </section>
 
+        <Wave from="var(--bark)" to="var(--lilac)"/>
+
         {/* FOR SITTERS */}
         <section className="ll-section ll-sitter" id="for-sitters">
           <div data-id="sitter-label" className={reveal('sitter-label')}>
             <div className="ll-section-label">For Sitters</div>
-            <h2 className="ll-section-title">Your babysitting<br/>career, <em>elevated.</em></h2>
-            <p className="ll-section-desc">Build your reputation, manage your schedule, and connect with families who are looking for exactly what you offer — all in one place.</p>
+            <h2 className="ll-section-title">Less admin,<br/><em>more playtime.</em></h2>
+            <p className="ll-section-desc">Look professional, keep parents happy, and get paid on time, all from your phone.</p>
           </div>
 
           <div className="ll-sitter-grid">
-            <div className="ll-features" data-id="sitter-features" style={{transitionDelay:'.1s'}} className={`ll-features ${reveal('sitter-features')}`}>
+            <div data-id="sitter-features" style={{transitionDelay:'.1s'}} className={`ll-features ${reveal('sitter-features')}`}>
               {[
-                { icon: '👤', title: 'Your professional profile', desc: 'Showcase your experience, certifications, and availability. Families can find and vet you before reaching out.' },
-                { icon: '💬', title: 'Built-in messaging', desc: 'Communicate directly with families through secure in-app messaging. No sharing personal phone numbers.' },
-                { icon: '💰', title: 'Invoice & session tracking', desc: 'Send invoices, track sessions, and keep your earnings organized — all from your dashboard.' },
-                { icon: '🛡️', title: 'Verified badge system', desc: 'Get your background check, CPR card, and other certifications verified. Stand out to families who care about safety.' },
-              ].map(f => (
+                { icon: '📸', title: 'Daily updates parents love', desc: 'Share photos, meals, naps and milestones in a private family feed.' },
+                { icon: '💰', title: 'Invoices that get paid', desc: 'Send an invoice in seconds. Parents pay by Venmo, Zelle, Cash App or however you like.' },
+                { icon: '💬', title: 'Messaging, minus the group texts', desc: 'Chat with each family in the app, without handing out your personal number.' },
+                { icon: '🛡️', title: 'Show off your credentials', desc: 'Get your CPR card and background check verified, and earn badges parents trust.' },
+              ].map((f, i) => (
                 <div key={f.title} className="ll-feature">
-                  <div className="ll-feature-icon">{f.icon}</div>
+                  <div className={`ll-tile ll-c${i}`}>{f.icon}</div>
                   <div>
                     <div className="ll-feature-title">{f.title}</div>
                     <div className="ll-feature-desc">{f.desc}</div>
@@ -466,112 +472,103 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
             </div>
 
             <div data-id="pricing-card" className={reveal('pricing-card')}>
-              <div style={{position:'relative'}}>
-                <img
-                  src="/screenshots/sitter-dashboard-live.png"
-                  alt="Sarah Mitchell sitter dashboard with field trip live"
-                  style={{width:'100%', borderRadius:20, boxShadow:'0 24px 60px rgba(0,0,0,.4)', border:'1px solid rgba(255,255,255,.08)'}}
-                />
-                <div style={{position:'absolute', top:16, right:16, background:'rgba(34,197,94,.9)', borderRadius:100, padding:'6px 14px', display:'flex', alignItems:'center', gap:6}}>
-                  <div style={{width:7, height:7, borderRadius:'50%', background:'white'}}/>
-                  <span style={{fontSize:12, color:'white', fontWeight:700}}>LIVE</span>
-                </div>
-              </div>
-              <div style={{marginTop:24, background:'rgba(255,255,255,.06)', borderRadius:16, padding:'20px 24px', border:'1px solid rgba(255,255,255,.1)'}}>
-                <div style={{fontSize:12, color:'var(--sage-light)', letterSpacing:'.1em', textTransform:'uppercase', marginBottom:16}}>Simple pricing</div>
-                <div style={{display:'flex', gap:12, marginBottom:20}}>
-                  <div style={{flex:1, padding:'14px', borderRadius:12, textAlign:'center', border:'1.5px solid var(--sage-light)', background:'rgba(74,124,101,.15)'}}>
-                    <div style={{fontSize:11, color:'rgba(255,255,255,.4)', marginBottom:4}}>Free</div>
-                    <div style={{fontFamily:"'Fraunces',serif", fontSize:26, fontWeight:500, color:'#fff'}}>$0</div>
-                    <div style={{fontSize:11, color:'rgba(255,255,255,.55)', marginTop:4}}>Up to 2 families<br/>Every feature</div>
+              <img className="ll-shot" src="/screenshots/sitter-dashboard-live.png" alt="littleloop sitter dashboard"/>
+              <div className="ll-pricing">
+                <div className="ll-pricing-label">Simple pricing</div>
+                <div className="ll-plans">
+                  <div className="ll-plan free">
+                    <div className="ll-plan-tag">Start here</div>
+                    <div className="ll-plan-name">Free</div>
+                    <div className="ll-plan-price">$0</div>
+                    <div className="ll-plan-note">Up to 2 families<br/>Every feature</div>
                   </div>
-                  <div style={{flex:1, padding:'14px', borderRadius:12, textAlign:'center', border:'1.5px solid rgba(255,255,255,.1)'}}>
-                    <div style={{fontSize:11, color:'rgba(255,255,255,.4)', marginBottom:4}}>Pro</div>
-                    <div style={{fontFamily:"'Fraunces',serif", fontSize:26, fontWeight:500, color:'#fff'}}>$5<span style={{fontSize:14, color:'rgba(255,255,255,.5)'}}>/mo</span></div>
-                    <div style={{fontSize:11, color:'rgba(255,255,255,.55)', marginTop:4}}>Unlimited families<br/>or $50/yr</div>
+                  <div className="ll-plan">
+                    <div className="ll-plan-name">Pro</div>
+                    <div className="ll-plan-price">$5<span>/mo</span></div>
+                    <div className="ll-plan-note">Unlimited families<br/>or $50/yr</div>
                   </div>
                 </div>
                 <button className="ll-btn-primary" style={{width:'100%', justifyContent:'center'}} onClick={onSitterSignup}>
                   Start free
                 </button>
-                <div style={{fontSize:12, color:'rgba(255,255,255,.4)', textAlign:'center', marginTop:12}}>No card needed. Upgrade only when you need more families.</div>
+                <div className="ll-pricing-note">No card needed. Upgrade only when you need more families.</div>
               </div>
             </div>
           </div>
         </section>
 
+        <Wave from="var(--lilac)" to="var(--cream-dark)"/>
+
         {/* FOR FAMILIES */}
         <section className="ll-section ll-family" id="for-families">
           <div data-id="family-label" className={reveal('family-label')}>
-            <div className="ll-section-label">For Families</div>
+            <div className="ll-section-label">For Parents</div>
             <h2 className="ll-section-title">See their day,<br/><em>as it happens.</em></h2>
-            <p className="ll-section-desc">When your sitter uses littleloop, you get check-in alerts, photo updates, a live map on field trips, and simple invoices you can pay however you like. Families always use littleloop free.</p>
+            <p className="ll-section-desc">When your sitter uses littleloop, you get check-in alerts, photo updates, a live map on field trips, and simple invoices you can pay however you like. Always free for parents.</p>
           </div>
 
           <div className="ll-family-grid">
-            <div className="ll-family-cards" data-id="family-cards" className={`ll-family-cards ${reveal('family-cards')}`}>
+            <div data-id="family-cards" className={`ll-family-cards ${reveal('family-cards')}`}>
               <div className="ll-family-card">
                 <div className="ll-family-card-icon">📍</div>
-                <div className="ll-family-card-title">Live GPS field trip tracking</div>
-                <div className="ll-family-card-desc">See exactly where your kids are on a live map whenever the sitter takes them out.</div>
+                <div className="ll-family-card-title">Live field trip map</div>
+                <div className="ll-family-card-desc">See exactly where your kids are whenever your sitter takes them out.</div>
               </div>
               <div className="ll-family-card">
-                <div className="ll-family-card-icon">🆓</div>
-                <div className="ll-family-card-title">Always free for families</div>
-                <div className="ll-family-card-desc">Updates, messages, check-ins and invoices at no cost, ever. Your sitter covers it.</div>
+                <div className="ll-family-card-icon">💛</div>
+                <div className="ll-family-card-title">Always free</div>
+                <div className="ll-family-card-desc">Updates, messages, check-ins and invoices at no cost, ever.</div>
               </div>
               <div className="ll-family-card">
                 <div className="ll-family-card-icon">🛡️</div>
-                <div className="ll-family-card-title">Verified credentials</div>
-                <div className="ll-family-card-desc">Every verified badge is admin-confirmed — CPR, background checks, and more.</div>
+                <div className="ll-family-card-title">Verified badges</div>
+                <div className="ll-family-card-desc">CPR and background-check badges are confirmed by our team.</div>
               </div>
               <div className="ll-family-card">
-                <div className="ll-family-card-icon">💬</div>
-                <div className="ll-family-card-title">Direct communication</div>
-                <div className="ll-family-card-desc">Message sitters directly. No phone tag, no agency go-betweens.</div>
+                <div className="ll-family-card-icon">📸</div>
+                <div className="ll-family-card-title">Little moments</div>
+                <div className="ll-family-card-desc">Photos, meals, naps and milestones, right when they happen.</div>
               </div>
             </div>
 
             <div data-id="family-desc" style={{transitionDelay:'.15s'}} className={reveal('family-desc')}>
-              <img
-                src="/screenshots/sitter-profile.png"
-                alt="Sarah Mitchell verified sitter profile with CPR and background check badges"
-                style={{width:'100%', borderRadius:20, boxShadow:'0 20px 50px rgba(61,46,34,.12)', border:'1px solid rgba(74,124,101,.1)', marginBottom:28}}
-              />
-              <h3 style={{fontFamily:"'Fraunces',serif", fontSize:28, fontWeight:500, color:'var(--bark)', marginBottom:20, lineHeight:1.2}}>Get your sitter on littleloop</h3>
+              <img className="ll-shot" src="/screenshots/sitter-profile.png" alt="A verified sitter profile on littleloop" style={{marginBottom:30}}/>
+              <h3 style={{fontSize:28, fontWeight:600, color:'var(--bark)', marginBottom:22, lineHeight:1.2}}>Get your sitter on littleloop</h3>
               {[
-                { n:'01', t:'Share littleloop with your sitter', d:'It’s free for them to start, and they’ll send you an invite.' },
-                { n:'02', t:'Accept the invite', d:'Add your kids, allergies and emergency contacts in a couple of minutes. No payment info.' },
-                { n:'03', t:'Stay in the loop', d:'Check-ins, updates, messages and invoices, all in one place.' },
-              ].map(s => (
-                <div key={s.n} style={{display:'flex', gap:16, marginBottom:24, alignItems:'flex-start'}}>
-                  <div style={{fontFamily:"'Fraunces',serif", fontSize:32, fontWeight:300, color:'var(--sage)', lineHeight:1, flexShrink:0, width:48}}>{s.n}</div>
+                { t:'Share littleloop with your sitter', d:'It’s free for them to start, and they’ll send you an invite.', c:'var(--sage)' },
+                { t:'Accept the invite', d:'Add your kids, allergies and emergency contacts in a couple of minutes. No payment info.', c:'var(--sky)' },
+                { t:'Stay in the loop', d:'Check-ins, updates, messages and invoices, all in one place.', c:'var(--mint)' },
+              ].map((s, i) => (
+                <div key={s.t} className="ll-step-row">
+                  <div className="ll-step-dot" style={{background:s.c}}>{i + 1}</div>
                   <div>
-                    <div style={{fontFamily:"'Fraunces',serif", fontSize:16, fontWeight:500, color:'var(--bark)', marginBottom:4}}>{s.t}</div>
-                    <div style={{fontSize:14, color:'var(--muted)', lineHeight:1.6}}>{s.d}</div>
+                    <div style={{fontFamily:"'Fredoka',sans-serif", fontSize:18, fontWeight:600, color:'var(--bark)', marginBottom:2}}>{s.t}</div>
+                    <div style={{fontSize:15, color:'var(--muted)', lineHeight:1.6}}>{s.d}</div>
                   </div>
                 </div>
               ))}
               <button className="ll-btn-primary" style={{marginTop:8}} onClick={onFamilySignup}>
-                Create a family account →
+                Create a parent account →
               </button>
             </div>
           </div>
         </section>
 
+        <Wave from="var(--cream-dark)" to="var(--cream)"/>
+
         {/* HOW IT WORKS */}
         <section className="ll-section ll-how" id="how-it-works">
-          <div data-id="how-label" className={`hidden ${reveal('how-label')}`} style={{textAlign:'center'}}>
-            <div className="ll-section-label" style={{display:'flex',justifyContent:'center'}}>How It Works</div>
-            <h2 className="ll-section-title" style={{textAlign:'center'}}>Simple by <em>design.</em></h2>
+          <div data-id="how-label" className={reveal('how-label')} style={{textAlign:'center'}}>
+            <div className="ll-section-label">How It Works</div>
+            <h2 className="ll-section-title" style={{textAlign:'center'}}>Up and running <em>in minutes.</em></h2>
           </div>
           <div className="ll-how-grid">
             {[
-              { n:'01', icon:'✍️', title:'Sign up free', desc:'Create your sitter account in a minute. No card needed, and every feature is included for up to 2 families.' },
-              { n:'02', icon:'💌', title:'Invite your families', desc:'Send each family an invite. They join free and add their kids, allergies and emergency contacts.' },
-              { n:'03', icon:'🤝', title:'Run your day', desc:'Check kids in, post updates, share a live map on outings, and send invoices, all from your phone.' },
+              { n:'1', icon:'✍️', title:'Sign up free', desc:'Create your sitter account in a minute. No card needed, and every feature is included for up to 2 families.' },
+              { n:'2', icon:'💌', title:'Invite your families', desc:'Send each family an invite. They join free and add their kids, allergies and emergency contacts.' },
+              { n:'3', icon:'🎈', title:'Run your day', desc:'Check kids in, post updates, share a live map on outings, and send invoices, all from your phone.' },
             ].map((s, i) => (
-              <div key={s.n} className={`ll-step hidden ${reveal('step-' + i)}`} data-id={`step-${i}`} style={{transitionDelay:`${i * .15}s`}}>
+              <div key={s.n} className={`ll-step ${reveal('step-' + i)}`} data-id={`step-${i}`} style={{transitionDelay:`${i * .15}s`}}>
                 <div className="ll-step-num">{s.n}</div>
                 <div className="ll-step-icon">{s.icon}</div>
                 <div className="ll-step-title">{s.title}</div>
@@ -584,7 +581,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         {/* CTA BAND */}
         <section className="ll-cta-band">
           <div data-id="cta" className={reveal('cta')}>
-            <h2 className="ll-cta-band-title">Know they're safe. Always.</h2>
+            <h2 className="ll-cta-band-title">Happy kids. Calm parents.<br/>Easy days for you.</h2>
             <p className="ll-cta-band-desc">Free for sitters with up to 2 families. Always free for parents.</p>
             <div className="ll-cta-band-actions">
               <button className="ll-btn-white" onClick={onSitterSignup}>Start free as a Sitter</button>
@@ -603,12 +600,23 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
           </div>
           <div className="ll-footer-links">
             <a onClick={onSitterSignup}>Sitter Sign Up</a>
-            <a onClick={onFamilySignup}>Family Sign Up</a>
+            <a onClick={onFamilySignup}>Parent Sign Up</a>
             <a onClick={onLogin}>Sign In</a>
           </div>
           <div className="ll-footer-copy">© 2026 Loopware Solutions LLC. All rights reserved. · littleloop is a product of Loopware Solutions LLC</div>
         </footer>
       </div>
     </>
+  );
+}
+
+// Wavy divider: the top takes the previous section's color, the wave fills with the next one.
+function Wave({ from, to }) {
+  return (
+    <div style={{ background: from, lineHeight: 0 }} aria-hidden="true">
+      <svg className="ll-wave" viewBox="0 0 1440 60" preserveAspectRatio="none">
+        <path d="M0,32 C180,64 360,0 540,24 C720,48 900,64 1080,36 C1260,8 1350,20 1440,30 L1440,60 L0,60 Z" style={{ fill: to }}/>
+      </svg>
+    </div>
   );
 }
