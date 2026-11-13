@@ -3,10 +3,10 @@ import { supabase } from '../../lib/supabase';
 import Field from '../ui/Field';
 import Spinner from '../ui/Spinner';
 
-export default function AuthForm({ portal, inviteData, onBack }) {
+export default function AuthForm({ portal, inviteData, initialMode = 'login', onBack }) {
   const isParent = portal === 'parent';
 
-  const [mode,     setMode]     = useState(inviteData ? 'signup' : 'login');
+  const [mode,     setMode]     = useState(inviteData ? 'signup' : initialMode);
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState(inviteData?.admin_email || '');
   const [password, setPassword] = useState('');

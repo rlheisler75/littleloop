@@ -7,13 +7,14 @@ import SessionsList from '../children/SessionsList';
 import { ScheduleManager } from '../schedule/index';
 import { ChildProfileModal } from '../../components/modals/ChildModal';
 import InviteFamilyModal from '../../components/modals/InviteFamilyModal';
-import { Confirm } from '../../components/ui/Modal';
+import { Confirm, Modal } from '../../components/ui/Modal';
 import SectionLabel from '../../components/ui/SectionLabel';
 import Spinner from '../../components/ui/Spinner';
+import { FREE_FAMILY_LIMIT, COUNTED_LINK_STATUSES } from '../../lib/plan';
 
 // ─── Connection Requests (sitter side) ───────────────────────────────────────
 
-export function ConnectionRequests({ sitterId, onUpdate }) {
+export function ConnectionRequests({ sitterId, onUpdate, atLimit = false, onUpgrade }) {
   const [requests, setRequests] = useState([]);
   const [loading,  setLoading]  = useState(true);
 
@@ -65,7 +66,9 @@ export function ConnectionRequests({ sitterId, onUpdate }) {
               <div style={{ fontSize: 13, fontWeight: 600 }}>{r.families?.name || 'A family'}</div>
               <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>wants to connect with you</div>
             </div>
-            <button className="bp" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => respond(r.id, r.family_id, true)}>✓ Accept</button>
+            {atLimit
+              ? <button className="bp" style={{ fontSize: 11, padding: '5px 12px' }} onClick={onUpgrade}>Upgrade to accept</button>
+              : <button className="bp" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => respond(r.id, r.family_id, true)}>✓ Accept</button>}
             <button className="bg" style={{ fontSize: 11, padding: '5px 10px' }} onClick={() => respond(r.id, r.family_id, false)}>✕</button>
           </div>
         ))}
@@ -212,11 +215,13 @@ export function SitterFamilyDetail({ family, children, sitterId, sitterName, onD
 
 // ─── Families Tab (sitter) ────────────────────────────────────────────────────
 
-export function FamiliesTab({ sitterId, sitterName }) {
+export function FamiliesTab({ sitterId, sitterName, isPro = null, onUpgrade }) {
   const [families,   setFamilies]   = useState([]);
+  const [linkCount,  setLinkCount]  = useState(0);
   const [kids,       setKids]       = useState({});
   const [selected,   setSelected]   = useState(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [showLimit,  setShowLimit]  = useState(false);
   const [loading,    setLoading]    = useState(true);
 
   const load = useCallback(async () => {
@@ -224,6 +229,7 @@ export function FamiliesTab({ sitterId, sitterName }) {
     const { data: fsRows } = await supabase.from('family_sitters').select('status,families(*)').eq('sitter_id', sitterId).neq('status', 'inactive').order('joined_at', { ascending: false });
     const fams = (fsRows || []).map(r => r.families).filter(Boolean);
     setFamilies(fams);
+    setLinkCount((fsRows || []).filter(r => COUNTED_LINK_STATUSES.includes(r.status)).length);
     if (fams.length) {
       const { data: kds } = await supabase.from('children').select('*').in('family_id', fams.map(f => f.id));
       const g = {};
@@ -237,21 +243,30 @@ export function FamiliesTab({ sitterId, sitterName }) {
   useEffect(() => { if (families.length && !selected) setSelected(families[0].id); }, [families]);
 
   const selFam = families.find(f => f.id === selected);
+  const atLimit = isPro === false && linkCount >= FREE_FAMILY_LIMIT; // isPro null = still loading
+  const openInvite = () => (atLimit ? setShowLimit(true) : setShowInvite(true));
   if (loading) return <div style={{ textAlign: 'center', padding: '60px 0' }}><Spinner size={24}/></div>;
 
   return (
     <div>
-      <ConnectionRequests sitterId={sitterId} onUpdate={load}/>
+      <ConnectionRequests sitterId={sitterId} onUpdate={load} atLimit={atLimit} onUpgrade={onUpgrade}/>
+
+      {isPro === false && (
+        <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 10 }}>
+          Free plan: {Math.min(linkCount, FREE_FAMILY_LIMIT)} of {FREE_FAMILY_LIMIT} families used
+          {atLimit && <> · <span style={{ color: 'var(--accent,#7BAAEE)', cursor: 'pointer' }} onClick={onUpgrade}>Upgrade for unlimited</span></>}
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
         <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600 }}>
           Families <span style={{ fontSize: 14, color: 'var(--text-faint)', fontFamily: "'DM Sans',sans-serif", fontWeight: 400 }}>({families.length})</span>
         </div>
-        <button className="bp" onClick={() => setShowInvite(true)}>+ Invite Family</button>
+        <button className="bp" onClick={openInvite}>+ Invite Family</button>
       </div>
 
       {families.length === 0
-        ? <div className="es"><div className="ic">👨‍👩‍👧</div><h3>No families yet</h3><p>Invite your first family to get started.</p><button className="bp" onClick={() => setShowInvite(true)}>+ Invite your first family</button></div>
+        ? <div className="es"><div className="ic">👨‍👩‍👧</div><h3>No families yet</h3><p>Invite your first family to get started.</p><button className="bp" onClick={openInvite}>+ Invite your first family</button></div>
         : selected && selFam
           ? <div>
               <button className="bg" style={{ marginBottom: 12, fontSize: 12, padding: '6px 12px' }} onClick={() => setSelected(null)}>← All Families</button>
@@ -273,6 +288,17 @@ export function FamiliesTab({ sitterId, sitterName }) {
       }
 
       <InviteFamilyModal open={showInvite} onClose={() => setShowInvite(false)} sitterId={sitterId} sitterName={sitterName} onInvited={load}/>
+      <Modal open={showLimit} onClose={() => setShowLimit(false)}>
+        <div style={{ textAlign: 'center', padding: '6px 4px' }}>
+          <div style={{ fontSize: 34, marginBottom: 8 }}>🌱</div>
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 6 }}>You've outgrown the free plan</div>
+          <p style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.6, margin: '0 0 18px' }}>
+            The free plan includes {FREE_FAMILY_LIMIT} families. Upgrade to Pro to invite unlimited families. Everything you've set up stays as it is.
+          </p>
+          <button className="bp" style={{ width: '100%', marginBottom: 8 }} onClick={() => { setShowLimit(false); onUpgrade?.(); }}>See Pro plan</button>
+          <button className="bg" style={{ width: '100%' }} onClick={() => setShowLimit(false)}>Not now</button>
+        </div>
+      </Modal>
     </div>
   );
 }

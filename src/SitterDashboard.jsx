@@ -11,10 +11,10 @@ import { SitterInvoicesTab } from './features/invoices/index';
 import { SitterMessagesWrapper } from './features/messages/index';
 import { SitterProfileTab } from './features/profile/index';
 import SitterOnboarding from './features/onboarding/SitterOnboarding';
-import SubscribePage from './SubscribePage';
 import BillingTab from './BillingTab';
 import SitterFieldTripPanel from './components/FieldTrip/SitterFieldTripPanel';
 import SitterParentMap from './components/FieldTrip/SitterParentMap';
+import GettingStarted from './features/onboarding/GettingStarted';
 
 export default function SitterDashboard({ session, onSignOut }) {
   const sitterId = session.user.id;
@@ -26,7 +26,7 @@ export default function SitterDashboard({ session, onSignOut }) {
   const [checkedInKids, setCheckedInKids] = useState([]);
   const [familyIds,     setFamilyIds]     = useState([]);
 
-  const { status, loading: subLoading, isActive, isTrialing, isPastDue, trialDaysLeft, refresh: refreshSub } = useSubscription(session);
+  const { status, isPro, isTrialing, isPastDue, trialDaysLeft, refresh: refreshSub } = useSubscription(session);
 
   // Handle ?subscribed=true redirect from Stripe
   useEffect(() => {
@@ -153,8 +153,6 @@ export default function SitterDashboard({ session, onSignOut }) {
     return () => supabase.removeChannel(ch);
   }, [sitterId]);
 
-  const LOCKED_TABS = ['families', 'feed', 'invoices', 'messages'];
-  const isDashboardLocked = !subLoading && !isActive;
 
   const NAV = [
     { id: 'families', icon: '👨‍👩‍👧', label: 'Families', badge: (unread.eta || 0) + (unread.requests || 0) },
@@ -162,7 +160,7 @@ export default function SitterDashboard({ session, onSignOut }) {
     { id: 'invoices', icon: '💰',      label: 'Invoices', badge: 0 },
     { id: 'messages', icon: '💬',      label: 'Messages', badge: unread.messages },
     { id: 'profile',  icon: '⚙️',      label: 'Profile',  badge: 0 },
-    { id: 'billing',  icon: '💳',      label: 'Billing',  badge: isPastDue ? 1 : 0 },
+    { id: 'billing',  icon: '💳',      label: 'Plan',     badge: isPastDue ? 1 : 0 },
   ];
 
   if (!onboarded) return (
@@ -171,15 +169,6 @@ export default function SitterDashboard({ session, onSignOut }) {
       <SitterOnboarding session={session} onComplete={n => { setName(n); setOnboarded(true); }}/>
     </>
   );
-
-  if (onboarded && !subLoading && !status?.subscription_status) {
-    return (
-      <>
-        <Bg/>
-        <SubscribePage session={session} />
-      </>
-    );
-  }
 
   return (
     <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -194,6 +183,11 @@ export default function SitterDashboard({ session, onSignOut }) {
             <div style={{ fontSize: 11, color: '#F5A623', background: 'rgba(245,166,35,.12)', padding: '3px 10px', borderRadius: 20, fontWeight: 600 }}>
               {trialDaysLeft}d trial left
             </div>
+          )}
+          {status && !isPro && (
+            <button onClick={() => setTab('billing')} style={{ fontSize: 11, color: 'var(--accent,#7BAAEE)', background: 'rgba(123,170,238,.12)', border: 'none', padding: '4px 10px', borderRadius: 20, fontWeight: 600, cursor: 'pointer' }}>
+              Free plan · Upgrade
+            </button>
           )}
           <NotificationCenter userId={sitterId}/>
           <button className="bg" style={{ padding: '6px 12px', fontSize: 12 }} onClick={onSignOut}>Sign out</button>
@@ -215,56 +209,31 @@ export default function SitterDashboard({ session, onSignOut }) {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', maxWidth: 800, width: '100%', margin: '0 auto' }}>
-        {isDashboardLocked && LOCKED_TABS.includes(tab) ? (
-          <LockedOverlay session={session} status={status} onManageBilling={() => setTab('billing')} />
-        ) : (
+        {isPastDue && tab !== 'billing' && (
+          <div onClick={() => setTab('billing')} style={{ cursor: 'pointer', marginBottom: 14, padding: '10px 14px', background: 'rgba(224,90,90,.1)', border: '1px solid rgba(224,90,90,.25)', borderRadius: 10, fontSize: 13, color: '#E05A5A' }}>
+            ⚠️ Your last Pro payment failed. Update your payment method to keep unlimited families →
+          </div>
+        )}
+        {tab === 'families' && (
           <>
-            {tab === 'families' && (
-              <>
-                <div style={{ marginBottom: 20 }}>
-                  <SitterFieldTripPanel
-                    sitterId={sitterId}
-                    checkedInChildren={checkedInKids.map(c => c.child_id)}
-                    checkedInNames={checkedInKids.map(c => c.children?.name).filter(Boolean)}
-                  />
-                </div>
-                <SitterParentMap familyIds={familyIds} />
-                <FamiliesTab sitterId={sitterId} sitterName={name}/>
-              </>
-            )}
-            {tab === 'feed'     && <SitterFeedWrapper sitterId={sitterId} sitterName={name}/>}
-            {tab === 'invoices' && <SitterInvoicesTab sitterId={sitterId} sitterName={name}/>}
-            {tab === 'messages' && <SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
-            {tab === 'profile'  && <SitterProfileTab sitterId={sitterId} sitterName={name} onNameChange={setName}/>}
-            {tab === 'billing'  && <BillingTab session={session} subscriptionData={status}/>}
+            <GettingStarted sitterId={sitterId} onGoTo={setTab} />
+            <div style={{ marginBottom: 20 }}>
+              <SitterFieldTripPanel
+                sitterId={sitterId}
+                checkedInChildren={checkedInKids.map(c => c.child_id)}
+                checkedInNames={checkedInKids.map(c => c.children?.name).filter(Boolean)}
+              />
+            </div>
+            <SitterParentMap familyIds={familyIds} />
+            <FamiliesTab sitterId={sitterId} sitterName={name} isPro={status ? isPro : null} onUpgrade={() => setTab('billing')}/>
           </>
         )}
+        {tab === 'feed'     && <SitterFeedWrapper sitterId={sitterId} sitterName={name}/>}
+        {tab === 'invoices' && <SitterInvoicesTab sitterId={sitterId} sitterName={name}/>}
+        {tab === 'messages' && <SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
+        {tab === 'profile'  && <SitterProfileTab sitterId={sitterId} sitterName={name} onNameChange={setName}/>}
+        {tab === 'billing'  && <BillingTab session={session} subscriptionData={status} isPro={isPro}/>}
       </div>
-    </div>
-  );
-}
-
-function LockedOverlay({ session, status, onManageBilling }) {
-  const isPastDue = status?.subscription_status === 'past_due';
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400, textAlign: 'center', padding: 24 }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-      <h2 style={{ margin: '0 0 10px', fontSize: 20 }}>
-        {isPastDue ? 'Payment Required' : 'Subscription Ended'}
-      </h2>
-      <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 320, lineHeight: 1.6, margin: '0 0 24px' }}>
-        {isPastDue
-          ? 'Your last payment failed. Update your payment method to restore full access.'
-          : 'Your subscription has ended. Resubscribe to access your dashboard. Your profile remains visible to families.'}
-      </p>
-      <button
-        className="btn-primary"
-        onClick={onManageBilling}
-        style={{ padding: '12px 28px', fontSize: 14 }}
-      >
-        {isPastDue ? '💳 Update Payment Method' : '🔄 Resubscribe'}
-      </button>
     </div>
   );
 }

@@ -333,33 +333,33 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
             <a onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>How It Works</a>
             <a onClick={onLogin}>Sign in</a>
           </div>
-          <button className="ll-nav-cta" onClick={onFamilySignup}>Get Started Free</button>
+          <button className="ll-nav-cta" onClick={onSitterSignup}>Start Free</button>
         </nav>
 
         {/* HERO */}
         <section className="ll-hero">
           <div>
             <div className="ll-hero-eyebrow">
-              <span></span> Live GPS tracking · Verified sitters · Free for families
+              <span></span> For independent sitters &amp; nannies · Always free for families
             </div>
             <h1 className="ll-hero-title">
-              Know they're safe.<br/><em>Always.</em>
+              Parents know they're safe.<br/><em>You look like a pro.</em>
             </h1>
             <p className="ll-hero-desc">
-              littleloop connects you with verified local sitters — and lets you <strong>track field trips live on a map</strong>, so you always know where your kids are. Free for families, nationwide.
+              littleloop is the app independent sitters run their childcare on: check-ins, daily photo updates, <strong>live GPS field trips</strong> and invoices in one place. The families you care for get real peace of mind. Start free with up to 2 families.
             </p>
             <div className="ll-hero-actions">
-              <button className="ll-btn-primary" onClick={onFamilySignup}>
-                Find a Sitter Free →
+              <button className="ll-btn-primary" onClick={onSitterSignup}>
+                Start free as a Sitter →
               </button>
-              <button className="ll-btn-secondary" onClick={onSitterSignup}>
-                Join as a Sitter
+              <button className="ll-btn-secondary" onClick={onFamilySignup}>
+                I'm a parent
               </button>
             </div>
             <div style={{display:'flex', gap:24, marginTop:28, flexWrap:'wrap'}}>
+              <span style={{display:'flex', alignItems:'center', gap:7, fontSize:13, color:'var(--muted)', fontWeight:500}}>✓ No card needed</span>
+              <span style={{display:'flex', alignItems:'center', gap:7, fontSize:13, color:'var(--muted)', fontWeight:500}}>📍 Live GPS field trips</span>
               <span style={{display:'flex', alignItems:'center', gap:7, fontSize:13, color:'var(--muted)', fontWeight:500}}>🔒 Free for families</span>
-              <span style={{display:'flex', alignItems:'center', gap:7, fontSize:13, color:'var(--muted)', fontWeight:500}}>📍 Live GPS tracking</span>
-              <span style={{display:'flex', alignItems:'center', gap:7, fontSize:13, color:'var(--muted)', fontWeight:500}}>✓ Verified sitters</span>
             </div>
           </div>
 
@@ -478,22 +478,23 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
                 </div>
               </div>
               <div style={{marginTop:24, background:'rgba(255,255,255,.06)', borderRadius:16, padding:'20px 24px', border:'1px solid rgba(255,255,255,.1)'}}>
-                <div style={{fontSize:12, color:'var(--sage-light)', letterSpacing:'.1em', textTransform:'uppercase', marginBottom:16}}>Simple, flat pricing</div>
+                <div style={{fontSize:12, color:'var(--sage-light)', letterSpacing:'.1em', textTransform:'uppercase', marginBottom:16}}>Simple pricing</div>
                 <div style={{display:'flex', gap:12, marginBottom:20}}>
                   <div style={{flex:1, padding:'14px', borderRadius:12, textAlign:'center', border:'1.5px solid var(--sage-light)', background:'rgba(74,124,101,.15)'}}>
-                    <div style={{fontSize:11, color:'rgba(255,255,255,.4)', marginBottom:4}}>Monthly</div>
-                    <div style={{fontFamily:"'Fraunces',serif", fontSize:26, fontWeight:500, color:'#fff'}}>$5<span style={{fontSize:14, color:'rgba(255,255,255,.5)'}}>/mo</span></div>
+                    <div style={{fontSize:11, color:'rgba(255,255,255,.4)', marginBottom:4}}>Free</div>
+                    <div style={{fontFamily:"'Fraunces',serif", fontSize:26, fontWeight:500, color:'#fff'}}>$0</div>
+                    <div style={{fontSize:11, color:'rgba(255,255,255,.55)', marginTop:4}}>Up to 2 families<br/>Every feature</div>
                   </div>
-                  <div style={{flex:1, padding:'14px', borderRadius:12, textAlign:'center', border:'1.5px solid rgba(255,255,255,.1)', position:'relative'}}>
-                    <div style={{position:'absolute', top:-10, right:8, background:'var(--gold)', color:'#fff', fontSize:9, fontWeight:700, padding:'2px 8px', borderRadius:100}}>SAVE 17%</div>
-                    <div style={{fontSize:11, color:'rgba(255,255,255,.4)', marginBottom:4}}>Yearly</div>
-                    <div style={{fontFamily:"'Fraunces',serif", fontSize:26, fontWeight:500, color:'#fff'}}>$50<span style={{fontSize:14, color:'rgba(255,255,255,.5)'}}>/yr</span></div>
+                  <div style={{flex:1, padding:'14px', borderRadius:12, textAlign:'center', border:'1.5px solid rgba(255,255,255,.1)'}}>
+                    <div style={{fontSize:11, color:'rgba(255,255,255,.4)', marginBottom:4}}>Pro</div>
+                    <div style={{fontFamily:"'Fraunces',serif", fontSize:26, fontWeight:500, color:'#fff'}}>$5<span style={{fontSize:14, color:'rgba(255,255,255,.5)'}}>/mo</span></div>
+                    <div style={{fontSize:11, color:'rgba(255,255,255,.55)', marginTop:4}}>Unlimited families<br/>or $50/yr</div>
                   </div>
                 </div>
                 <button className="ll-btn-primary" style={{width:'100%', justifyContent:'center'}} onClick={onSitterSignup}>
-                  Start free trial
+                  Start free
                 </button>
-                <div style={{fontSize:12, color:'rgba(255,255,255,.4)', textAlign:'center', marginTop:12}}>First 20 sitters get 3 months free</div>
+                <div style={{fontSize:12, color:'rgba(255,255,255,.4)', textAlign:'center', marginTop:12}}>No card needed. Upgrade only when you need more families.</div>
               </div>
             </div>
           </div>
@@ -503,8 +504,8 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         <section className="ll-section ll-family" id="for-families">
           <div data-id="family-label" className={reveal('family-label')}>
             <div className="ll-section-label">For Families</div>
-            <h2 className="ll-section-title">Find childcare you<br/>can <em>actually trust.</em></h2>
-            <p className="ll-section-desc">Browse verified local sitters, track field trips live on a map, and connect directly — no agency fees, no middlemen. Families always use littleloop free.</p>
+            <h2 className="ll-section-title">See their day,<br/><em>as it happens.</em></h2>
+            <p className="ll-section-desc">When your sitter uses littleloop, you get check-in alerts, photo updates, a live map on field trips, and simple invoices you can pay however you like. Families always use littleloop free.</p>
           </div>
 
           <div className="ll-family-grid">
@@ -517,7 +518,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
               <div className="ll-family-card">
                 <div className="ll-family-card-icon">🆓</div>
                 <div className="ll-family-card-title">Always free for families</div>
-                <div className="ll-family-card-desc">Browse profiles, message sitters, and manage everything at no cost — ever.</div>
+                <div className="ll-family-card-desc">Updates, messages, check-ins and invoices at no cost, ever. Your sitter covers it.</div>
               </div>
               <div className="ll-family-card">
                 <div className="ll-family-card-icon">🛡️</div>
@@ -537,11 +538,11 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
                 alt="Sarah Mitchell verified sitter profile with CPR and background check badges"
                 style={{width:'100%', borderRadius:20, boxShadow:'0 20px 50px rgba(61,46,34,.12)', border:'1px solid rgba(74,124,101,.1)', marginBottom:28}}
               />
-              <h3 style={{fontFamily:"'Fraunces',serif", fontSize:28, fontWeight:500, color:'var(--bark)', marginBottom:20, lineHeight:1.2}}>From browsing to booked in minutes</h3>
+              <h3 style={{fontFamily:"'Fraunces',serif", fontSize:28, fontWeight:500, color:'var(--bark)', marginBottom:20, lineHeight:1.2}}>Get your sitter on littleloop</h3>
               {[
-                { n:'01', t:'Create a free account', d:'Sign up as a family in seconds — no payment info required.' },
-                { n:'02', t:'Browse sitter profiles', d:'Search local sitters by experience, certifications, and availability.' },
-                { n:'03', t:'Message and connect', d:'Reach out directly and build an ongoing relationship with sitters you trust.' },
+                { n:'01', t:'Share littleloop with your sitter', d:'It’s free for them to start, and they’ll send you an invite.' },
+                { n:'02', t:'Accept the invite', d:'Add your kids, allergies and emergency contacts in a couple of minutes. No payment info.' },
+                { n:'03', t:'Stay in the loop', d:'Check-ins, updates, messages and invoices, all in one place.' },
               ].map(s => (
                 <div key={s.n} style={{display:'flex', gap:16, marginBottom:24, alignItems:'flex-start'}}>
                   <div style={{fontFamily:"'Fraunces',serif", fontSize:32, fontWeight:300, color:'var(--sage)', lineHeight:1, flexShrink:0, width:48}}>{s.n}</div>
@@ -552,7 +553,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
                 </div>
               ))}
               <button className="ll-btn-primary" style={{marginTop:8}} onClick={onFamilySignup}>
-                Find a sitter →
+                Create a family account →
               </button>
             </div>
           </div>
@@ -566,9 +567,9 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
           </div>
           <div className="ll-how-grid">
             {[
-              { n:'01', icon:'✍️', title:'Sitter creates a profile', desc:'Sign up, complete onboarding, upload your certifications, and set your availability. Your profile goes live immediately.' },
-              { n:'02', icon:'🔎', title:'Families discover you', desc:'Local families browse sitters on Littleloop, filter by what matters to them, and reach out directly through the app.' },
-              { n:'03', icon:'🤝', title:'You connect & get booked', desc:'Chat, confirm details, and manage the relationship — invoices, session notes, and all — right from your dashboard.' },
+              { n:'01', icon:'✍️', title:'Sign up free', desc:'Create your sitter account in a minute. No card needed, and every feature is included for up to 2 families.' },
+              { n:'02', icon:'💌', title:'Invite your families', desc:'Send each family an invite. They join free and add their kids, allergies and emergency contacts.' },
+              { n:'03', icon:'🤝', title:'Run your day', desc:'Check kids in, post updates, share a live map on outings, and send invoices, all from your phone.' },
             ].map((s, i) => (
               <div key={s.n} className={`ll-step hidden ${reveal('step-' + i)}`} data-id={`step-${i}`} style={{transitionDelay:`${i * .15}s`}}>
                 <div className="ll-step-num">{s.n}</div>
@@ -584,10 +585,10 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         <section className="ll-cta-band">
           <div data-id="cta" className={reveal('cta')}>
             <h2 className="ll-cta-band-title">Know they're safe. Always.</h2>
-            <p className="ll-cta-band-desc">First 20 sitters get 3 months free. Families are always free.</p>
+            <p className="ll-cta-band-desc">Free for sitters with up to 2 families. Always free for parents.</p>
             <div className="ll-cta-band-actions">
-              <button className="ll-btn-white" onClick={onSitterSignup}>Join as a Sitter</button>
-              <button className="ll-btn-outline-white" onClick={onFamilySignup}>Find a Sitter</button>
+              <button className="ll-btn-white" onClick={onSitterSignup}>Start free as a Sitter</button>
+              <button className="ll-btn-outline-white" onClick={onFamilySignup}>I'm a parent</button>
             </div>
           </div>
         </section>
