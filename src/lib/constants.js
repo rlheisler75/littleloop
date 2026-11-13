@@ -60,10 +60,15 @@ export const POST_MOODS = [
 ];
 
 export const PAYMENT_TYPES = [
-  { id:'venmo',    label:'Venmo',         icon:'💜', placeholder:'@username',                  deeplink:(h,a,n)=>`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(h.replace('@',''))}&amount=${a}&note=${encodeURIComponent(n)}`, weblink:(h)=>`https://venmo.com/${h.replace('@','')}` },
-  { id:'paypal',   label:'PayPal',        icon:'💙', placeholder:'username',                   deeplink:(h,a)=>`https://paypal.me/${h}/${a}` },
+  // Venmo pre-fills recipient, amount and note from query params on the root URL (the old
+  // venmo://paycharge scheme and venmo.com/<user> no longer carry the amount over). On phones
+  // this https link opens the Venmo app.
+  { id:'venmo',    label:'Venmo',         icon:'💜', placeholder:'@username', brand:'#008CFF',
+    deeplink:(h,a,n)=>`https://venmo.com/?txn=pay&audience=private&recipients=${encodeURIComponent(h.replace(/^@/,''))}&amount=${a}&note=${encodeURIComponent(n)}`,
+    weblink:(h,a,n)=>`https://venmo.com/?txn=pay&audience=private&recipients=${encodeURIComponent(h.replace(/^@/,''))}&amount=${a}&note=${encodeURIComponent(n)}` },
+  { id:'paypal',   label:'PayPal',        icon:'💙', placeholder:'username', brand:'#0070E0',                   deeplink:(h,a)=>`https://paypal.me/${h}/${a}` },
   { id:'zelle',    label:'Zelle',         icon:'💛', placeholder:'email or phone',             deeplink:null },
-  { id:'cashapp',  label:'Cash App',      icon:'💚', placeholder:'$cashtag',                   deeplink:(h,a)=>`https://cash.app/${h.replace('$','')}/${a}`, weblink:(h)=>`https://cash.app/${h.replace('$','')}` },
+  { id:'cashapp',  label:'Cash App',      icon:'💚', placeholder:'$cashtag', brand:'#00A63E',                   deeplink:(h,a)=>`https://cash.app/${h.replace('$','')}/${a}`, weblink:(h,a)=>`https://cash.app/${h.replace('$','')}/${a}` },
   { id:'cash',     label:'Cash',          icon:'💵', placeholder:'(no handle needed)',         deeplink:null },
   { id:'check',    label:'Check',         icon:'📝', placeholder:'(no handle needed)',         deeplink:null },
   { id:'transfer', label:'Bank Transfer', icon:'🏦', placeholder:'routing/account or instructions', deeplink:null },

@@ -36,14 +36,19 @@ export function PayButtons({ sitter, invoice }) {
         {enabled.map(m => {
           const pt      = PAYMENT_TYPES.find(p => p.id === m.type);
           if (!pt) return null;
-          const link    = pt.deeplink ? pt.deeplink(m.handle, total.toFixed(2), invoice.invoice_number) : null;
-          const weblink = pt.weblink  ? pt.weblink(m.handle, total.toFixed(2), invoice.invoice_number) : link;
+          // No username saved means there's nothing to pay to, so show a plain label, not a dead link.
+          const handle  = (m.handle || '').trim();
+          const note    = `Invoice ${invoice.invoice_number || ''}`.trim();
+          const link    = handle && pt.deeplink ? pt.deeplink(handle, total.toFixed(2), note) : null;
+          const weblink = handle && pt.weblink  ? pt.weblink(handle, total.toFixed(2), note) : link;
           const isMobile = /android|iphone|ipad/i.test(navigator.userAgent);
           const href     = (isMobile && link) ? link : (weblink || link);
           return href
             ? <a key={m.type} href={href} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'rgba(255,255,255,.8)', textDecoration: 'none', fontSize: 12, fontWeight: 500 }}>
-                {pt.icon} {pt.label}{m.handle ? ` (${m.handle})` : ''}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10,
+                  background: pt.brand || 'var(--accent,#3A6FD4)', border: 'none', color: '#fff',
+                  textDecoration: 'none', fontSize: 12, fontWeight: 600, boxShadow: '0 2px 6px rgba(0,0,0,.15)' }}>
+                {pt.icon} Pay {fmt(total)} with {pt.label}
               </a>
             : <div key={m.type} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 12 }}>
                 {pt.icon} {pt.label}{m.handle ? `: ${m.handle}` : ''}

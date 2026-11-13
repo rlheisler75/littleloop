@@ -11,13 +11,8 @@ export default function InviteWelcome({ token, onContinue }) {
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase
-        .from('invite_tokens')
-        .select('*, sitters(name, avatar_url, city, state)')
-        .eq('token', token)
-        .gt('expires_at', new Date().toISOString())
-        .is('used_at', null)
-        .single();
+      // Looks up only this one live invite; invite_tokens itself isn't publicly readable.
+      const { data, error } = await supabase.rpc('get_invite', { p_token: token });
 
       if (error || !data) {
         setError('This invite link has expired or already been used.');
