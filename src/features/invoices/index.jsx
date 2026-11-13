@@ -39,8 +39,13 @@ export function PayButtons({ sitter, invoice }) {
           // No username saved means there's nothing to pay to, so show a plain label, not a dead link.
           const handle  = (m.handle || '').trim();
           const note    = `Invoice ${invoice.invoice_number || ''}`.trim();
-          const link    = handle && pt.deeplink ? pt.deeplink(handle, total.toFixed(2), note) : null;
-          const weblink = handle && pt.weblink  ? pt.weblink(handle, total.toFixed(2), note) : link;
+          let link      = handle && pt.deeplink ? pt.deeplink(handle, total.toFixed(2), note) : null;
+          let weblink   = handle && pt.weblink  ? pt.weblink(handle, total.toFixed(2), note) : link;
+          // Venmo without a saved username: still open Venmo with the amount and note filled in,
+          // and the parent picks the sitter as the recipient.
+          if (!handle && pt.id === 'venmo') {
+            link = weblink = `https://venmo.com/?txn=pay&audience=private&amount=${total.toFixed(2)}&note=${encodeURIComponent(note)}`;
+          }
           const isMobile = /android|iphone|ipad/i.test(navigator.userAgent);
           const href     = (isMobile && link) ? link : (weblink || link);
           return href

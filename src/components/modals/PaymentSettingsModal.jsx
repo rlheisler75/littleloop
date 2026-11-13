@@ -54,9 +54,18 @@ export default function PaymentSettingsModal({ open, onClose, sitterId, onSaved 
     return methods.find(m => m.type === id) || { type: id, handle: '', enabled: false };
   }
 
+  // Venmo, PayPal and Cash App need a username, or the family's pay button can't reach you.
+  const NEEDS_HANDLE = ['venmo', 'paypal', 'cashapp'];
+  const missingHandle = id => NEEDS_HANDLE.includes(id) && getMethod(id).enabled && !getMethod(id).handle.trim();
+
   async function save(e) {
     e.preventDefault();
     setAlert(null);
+    const missing = PAYMENT_TYPES.filter(pt => missingHandle(pt.id)).map(pt => pt.label);
+    if (missing.length) {
+      setAlert({ t: 'e', m: `Add your ${missing.join(' and ')} username so families can pay you in one tap, or uncheck it.` });
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.from('sitters').update({
       legal_name: legalName, address_line1: addr1, address_line2: addr2 || null,
@@ -100,8 +109,14 @@ export default function PaymentSettingsModal({ open, onClose, sitterId, onSaved 
                     </label>
                   </div>
                   {m.enabled && pt.placeholder !== '(no handle needed)' && (
-                    <input className="fi" value={m.handle} onChange={e => setHandle(pt.id, e.target.value)}
-                      placeholder={pt.placeholder} style={{ marginBottom: 0, fontSize: 12 }}/>
+                    <>
+                      <input className="fi" value={m.handle} onChange={e => setHandle(pt.id, e.target.value)}
+                        placeholder={pt.placeholder}
+                        style={{ marginBottom: 0, fontSize: 12, ...(missingHandle(pt.id) ? { borderColor: '#E05A5A' } : {}) }}/>
+                      {missingHandle(pt.id) && (
+                        <div style={{ fontSize: 11, color: '#E05A5A', marginTop: 4 }}>Required, so the family's "Pay with {pt.label}" button knows who to pay.</div>
+                      )}
+                    </>
                   )}
                 </div>
               );

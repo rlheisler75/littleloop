@@ -159,9 +159,18 @@ export default function ParentDashboard({ session, onSignOut }) {
       supabase.from('families').select('*').eq('id', mem.family_id).single(),
       supabase.from('children').select('*').eq('family_id', mem.family_id),
       supabase.from('members').select('*').eq('family_id', mem.family_id),
-      supabase.from('family_sitters').select('status,sitters(id,name,avatar_url)').eq('family_id', mem.family_id).neq('status', 'inactive'),
+      supabase.from('family_sitters').select('status,sitter_id,sitters(id,name,avatar_url)').eq('family_id', mem.family_id).neq('status', 'inactive'),
     ]);
-    const sittersList = (fsRows || []).map(r => ({ ...r.sitters, connection_status: r.status })).filter(Boolean);
+    // A sitter the family has only *requested* isn't connected yet, so the full sitters row
+    // isn't readable; fall back to their public profile for name and photo.
+    const missing = (fsRows || []).filter(r => !r.sitters).map(r => r.sitter_id);
+    const { data: pubs } = missing.length
+      ? await supabase.from('public_sitter_profiles').select('id,name,avatar_url').in('id', missing)
+      : { data: [] };
+    const sittersList = (fsRows || []).map(r => {
+      const s = r.sitters || (pubs || []).find(p => p.id === r.sitter_id) || { id: r.sitter_id, name: 'Sitter' };
+      return { ...s, connection_status: r.status };
+    });
     const famWithSitters = fam ? { ...fam, sitters_list: sittersList, sitter_name: sittersList[0]?.name || 'Sitter' } : fam;
     setFamily(famWithSitters);
     setChildren(kids || []);

@@ -1139,7 +1139,7 @@ export function PublicSitterProfile({ username, session = null }) {
 
   useEffect(() => {
     async function load() {
-      const { data: s, error } = await supabase.from('sitters')
+      const { data: s, error } = await supabase.from('public_sitter_profiles')
         .select('id,name,tagline,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,availability,years_experience,certifications,verified_certifications,services,comfortable_with,languages,has_car,can_drive_kids,background_check,background_check_date,background_check_verified,background_check_verified_at,response_time,education,avatar_url,headline_photo_url,photo_gallery,public_profile,promo_flyer_url')
         .eq('username', username).eq('public_profile', true).maybeSingle();
       if (!s || error) { setNotFound(true); setLoading(false); return; }
@@ -1501,7 +1501,7 @@ export function BrowseSitters({ session = null, familyId = null, familyName = ''
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('sitters')
+      const { data } = await supabase.from('public_sitter_profiles')
         .select('id,name,tagline,city,state,bio,age_ranges,hourly_rate_min,hourly_rate_max,years_experience,certifications,services,avatar_url,username,background_check')
         .eq('public_profile', true).order('name');
       setSitters(data || []);

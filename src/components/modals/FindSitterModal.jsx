@@ -21,7 +21,7 @@ export default function FindSitterModal({ open, onClose, familyId, familyName, o
     if (!query.trim()) return;
     setSearching(true);
     setAlert(null);
-    const { data } = await supabase.from('sitters')
+    const { data } = await supabase.from('public_sitter_profiles')
       .select('id,name,username,bio,avatar_url,hourly_rate_min,hourly_rate_max')
       .eq('public_profile', true)
       .or(`username.ilike.%${query.trim()}%,name.ilike.%${query.trim()}%`)
