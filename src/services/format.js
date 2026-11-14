@@ -1,5 +1,9 @@
 import { PAYMENT_TYPES } from '../lib/constants';
 
+export function esc(v) {
+  return String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+}
+
 // ─── Number / date formatters ─────────────────────────────────────────────────
 
 export function fmt(n) {
@@ -87,9 +91,9 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
     if (!pt) return '';
     const link = pt.deeplink ? pt.deeplink(m.handle, total.toFixed(2), invoice.invoice_number) : '';
     if (link) {
-      return `<a href="${link}" style="display:inline-block;padding:12px 20px;background:#1a2a3a;border:1px solid #3A6FD4;border-radius:10px;color:#7BAAEE;text-decoration:none;font-size:14px;font-weight:600;margin:4px">${pt.icon} Pay with ${pt.label}${m.handle ? ' · ' + m.handle : ''}</a>`;
+      return `<a href="${esc(link)}" style="display:inline-block;padding:12px 20px;background:#1a2a3a;border:1px solid #3A6FD4;border-radius:10px;color:#7BAAEE;text-decoration:none;font-size:14px;font-weight:600;margin:4px">${pt.icon} Pay with ${pt.label}${m.handle ? ' · ' + esc(m.handle) : ''}</a>`;
     }
-    return `<div style="display:inline-block;padding:12px 20px;background:#1a2a3a;border:1px solid #444;border-radius:10px;color:#aaa;font-size:14px;margin:4px">${pt.icon} ${pt.label}${m.handle ? ' · ' + m.handle : ''}</div>`;
+    return `<div style="display:inline-block;padding:12px 20px;background:#1a2a3a;border:1px solid #444;border-radius:10px;color:#aaa;font-size:14px;margin:4px">${pt.icon} ${pt.label}${m.handle ? ' · ' + esc(m.handle) : ''}</div>`;
   }).join('\n');
 
   const html = `<!DOCTYPE html>
@@ -97,7 +101,7 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${invoice.invoice_number} - littleloop</title>
+<title>${esc(invoice.invoice_number)} - littleloop</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#14243A;padding:24px 16px;max-width:760px;margin:0 auto;font-size:14px}
@@ -146,7 +150,7 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
     <div class="logo">➿ littleloop<span>Independent Childcare</span></div>
   </div>
   <div style="text-align:right">
-    <div class="inv-num">${invoice.invoice_number}</div>
+    <div class="inv-num">${esc(invoice.invoice_number)}</div>
     <div class="inv-meta">Issued: ${fmtDate(invoice.issued_date)}</div>
     ${invoice.due_date ? `<div class="inv-meta">Due: ${fmtDate(invoice.due_date)}</div>` : ''}
     <div style="margin-top:6px"><span class="status status-${invoice.status}">${invoice.status}</span></div>
@@ -156,15 +160,15 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
 <div class="parties">
   <div class="party">
     <h3>Care Provider</h3>
-    <p><strong>${sitter.legal_name || sitter.name || sitter.sitter_name || 'Care Provider'}</strong><br>
-    ${sitter.address_line1 || ''}<br>
-    ${sitter.address_line2 ? sitter.address_line2 + '<br>' : ''}
-    ${[sitter.city, sitter.state, sitter.zip].filter(Boolean).join(', ')}</p>
+    <p><strong>${esc(sitter.legal_name || sitter.name || sitter.sitter_name || 'Care Provider')}</strong><br>
+    ${esc(sitter.address_line1)}<br>
+    ${sitter.address_line2 ? esc(sitter.address_line2) + '<br>' : ''}
+    ${esc([sitter.city, sitter.state, sitter.zip].filter(Boolean).join(', '))}</p>
   </div>
   <div class="party">
     <h3>Billed To</h3>
-    <p><strong>${family.name}</strong><br>
-    ${adminMember?.name || ''}</p>
+    <p><strong>${esc(family.name)}</strong><br>
+    ${esc(adminMember?.name)}</p>
   </div>
 </div>
 
@@ -186,7 +190,7 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
     <tr class="credit-row">
       <td>${fmtDate(it.service_date)}</td>
       <td>—</td>
-      <td>${it.description || 'Credit'}</td>
+      <td>${esc(it.description || 'Credit')}</td>
       <td>Credit</td>
       <td>—</td>
       <td>—</td>
@@ -194,8 +198,8 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
     </tr>` : `
     <tr>
       <td>${it.end_date && it.end_date !== it.service_date ? fmtDate(it.service_date) + ' – ' + fmtDate(it.end_date) : fmtDate(it.service_date)}</td>
-      <td>${it.child_name}</td>
-      <td>${it.description || '—'}</td>
+      <td>${esc(it.child_name)}</td>
+      <td>${esc(it.description || '—')}</td>
       <td style="text-transform:capitalize">${it.rate_type}</td>
       <td>${it.rate_type === 'hourly' ? (it.hours || 0).toFixed(2) : '—'}</td>
       <td>${fmt(it.rate)}${it.rate_type === 'hourly' ? '/hr' : ''}</td>
@@ -211,7 +215,7 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
   <div class="totals-row grand"><span>Total Due</span><span>${fmt(total)}</span></div>
 </div>
 
-${invoice.notes ? `<div style="margin-bottom:24px"><div class="section-title">Notes</div><p style="font-size:13px;color:#555;line-height:1.6">${invoice.notes}</p></div>` : ''}
+${invoice.notes ? `<div style="margin-bottom:24px"><div class="section-title">Notes</div><p style="font-size:13px;color:#555;line-height:1.6">${esc(invoice.notes)}</p></div>` : ''}
 
 ${enabledMethods.length > 0 ? `
 <div class="payment-section no-print">

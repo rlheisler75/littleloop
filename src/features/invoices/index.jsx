@@ -8,6 +8,7 @@ import PaymentSettingsModal from '../../components/modals/PaymentSettingsModal';
 import { Confirm } from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import RecurringInvoices from './RecurringInvoices';
+import { SitterYearEnd, FamilyYearEnd } from './YearEndStatements';
 
 // ─── Pay Buttons (family side) ────────────────────────────────────────────────
 
@@ -160,6 +161,7 @@ export function SitterInvoicesTab({ sitterId, sitterName, isPro = false, onUpgra
       </div>
 
       <RecurringInvoices sitterId={sitterId} families={families} familyChildren={familyChildren} isPro={isPro} onUpgrade={onUpgrade}/>
+      <SitterYearEnd sitterId={sitterId} sitter={sitter} families={families} onOpenSettings={() => setShowSettings(true)}/>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
         {['all', 'draft', 'sent', 'paid'].map(s => (
@@ -253,6 +255,7 @@ export function FamilyInvoicesTab({ familyId, currentUserId }) {
   return (
     <div>
       <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Invoices</div>
+      <FamilyYearEnd familyId={familyId} role={member?.role}/>
       {invoices.length === 0
         ? <div className="es"><div className="ic">💰</div><h3>No invoices yet</h3><p>Your sitter hasn't sent any invoices yet.</p></div>
         : (
