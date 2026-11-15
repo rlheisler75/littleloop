@@ -53,7 +53,9 @@ serve(async (req) => {
     });
     if (tokenErr) throw new Error(tokenErr.message);
 
-    const inviteUrl = `https://littleloop.xyz/?invite=${inviteToken}`;
+    // Parents who already have an account sign in and accept from their dashboard instead.
+    const { data: hasAccount } = await supabase.rpc("email_has_account", { p_email: parentEmail });
+    const inviteUrl = hasAccount ? "https://littleloop.xyz/?portal=parent" : `https://littleloop.xyz/?invite=${inviteToken}`;
     const S = esc(sitterName), F = esc(familyName), E = esc(parentEmail);
 
     const res = await fetch("https://api.resend.com/emails", {
@@ -75,9 +77,11 @@ serve(async (req) => {
       <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:3px">Independent childcare, thoughtfully connected.</div>
     </div>
     <div style="padding:32px 36px">
-      <h1 style="font-size:22px;font-weight:700;color:#14243A;margin:0 0 12px">You've been invited!</h1>
+      <h1 style="font-size:22px;font-weight:700;color:#14243A;margin:0 0 12px">${hasAccount ? "A new sitter invite" : "You've been invited!"}</h1>
       <p style="font-size:15px;color:#3A5070;line-height:1.6;margin:0 0 24px">
-        <strong>${S}</strong> has invited <strong>${F}</strong> to join littleloop, a private app to stay connected about your children's day.
+        ${hasAccount
+          ? `<strong>${S}</strong> wants to connect with <strong>${F}</strong> on littleloop. Sign in to accept or decline.`
+          : `<strong>${S}</strong> has invited <strong>${F}</strong> to join littleloop, a private app to stay connected about your children's day.`}
       </p>
       <div style="background:#F0F5FF;border-radius:12px;padding:18px 20px;margin-bottom:28px">
         <div style="font-size:12px;font-weight:700;color:#3A6FD4;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:12px">What you'll get</div>
@@ -87,10 +91,12 @@ serve(async (req) => {
         <div><span style="font-size:18px">💳</span> <strong style="font-size:13px;color:#14243A">Invoices</strong> <span style="font-size:12px;color:#7A90AA">View and pay invoices in one place</span></div>
       </div>
       <div style="text-align:center;margin-bottom:24px">
-        <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#3A6FD4,#2550A8);color:#fff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">Accept Invitation →</a>
+        <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#3A6FD4,#2550A8);color:#fff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">${hasAccount ? "Sign in to accept →" : "Accept Invitation →"}</a>
       </div>
       <p style="font-size:12px;color:#9AAABB;line-height:1.6;text-align:center;margin:0">
-        This invitation expires in 7 days.<br>Sign up with <strong>${E}</strong> to connect automatically.
+        ${hasAccount
+          ? `You already have a littleloop account. Sign in with <strong>${E}</strong> and you'll see ${S} under Sitters.`
+          : `This invitation expires in 7 days.<br>Sign up with <strong>${E}</strong> to connect automatically.`}
       </p>
     </div>
     <div style="padding:18px 36px;border-top:1px solid #EAF0F8;text-align:center">

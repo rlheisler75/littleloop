@@ -61,9 +61,12 @@ Deno.serve(async (req) => {
       if (invited) {
         await admin.from('members').update({ user_id: user.id, status: 'active', name: userName || email.split('@')[0] }).eq('id', invited.id);
         const { data: fam } = await admin.from('families').update({ status: 'active' })
-          .eq('id', invited.family_id).eq('status', 'pending').select('id');
+          .eq('id', invited.family_id).eq('status', 'pending').select('id,sitter_id');
         if (fam?.length) {
-          await admin.from('family_sitters').update({ status: 'active' }).eq('family_id', invited.family_id).eq('status', 'pending');
+          // Only the inviting sitter connects; other sitters' invites wait for Accept/Decline.
+          let q = admin.from('family_sitters').update({ status: 'active' }).eq('family_id', invited.family_id).eq('status', 'pending');
+          if (fam[0].sitter_id) q = q.eq('sitter_id', fam[0].sitter_id);
+          await q;
         }
         return json({ success: true, familyId: invited.family_id, existing: true });
       }

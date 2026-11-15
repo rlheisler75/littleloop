@@ -22,7 +22,11 @@ export default function App() {
   const [session,      setSession]      = useState(undefined);
   const [userRole,     setUserRole]     = useState(null);
   const [inviteData,   setInviteData]   = useState(null);
-  const [authPortal,   setAuthPortal]   = useState(null); // 'sitter' | 'parent' | null
+  // ?portal=parent|sitter (e.g. from an invite email) opens straight to sign-in.
+  const [authPortal,   setAuthPortal]   = useState(() => {
+    const p = new URLSearchParams(window.location.search).get('portal');
+    return p === 'parent' || p === 'sitter' ? p : null;
+  }); // 'sitter' | 'parent' | null
   const [authMode,     setAuthMode]     = useState('login'); // 'login' | 'signup'
 
   const portal      = getPortal();
