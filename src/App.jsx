@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import LoopMark from './components/ui/LoopMark';
 import { Analytics } from '@vercel/analytics/react';
 import { supabase } from './lib/supabase';
 import { applyTheme } from './lib/theme';
 import { CSS } from './styles/global';
+import { DEFAULT_THEME } from './styles/themes';
 import { getPortal, getInviteToken, getSitterParam, getBrowseParam, rememberRef } from './lib/utils';
 import Bg from './components/ui/Bg';
 import Spinner from './components/ui/Spinner';
@@ -41,14 +43,15 @@ export default function App() {
     const tag = document.createElement('style');
     tag.textContent = CSS;
     document.head.appendChild(tag);
-    applyTheme(localStorage.getItem('ll_theme') || 'midnight');
+    applyTheme(localStorage.getItem('ll_theme') || DEFAULT_THEME);
     return () => document.head.removeChild(tag);
   }, []);
 
   // Auth state
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.includes('type=recovery')) {
+    // Reset emails land on /reset-password#...type=recovery (vercel.json rewrites the path to the app).
+    if (hash.includes('type=recovery') || window.location.pathname === '/reset-password') {
       setUserRole('__reset__');
       supabase.auth.getSession().then(({ data: { session } }) => setSession(session ?? null));
       return;
@@ -82,7 +85,7 @@ export default function App() {
       <Bg/>
       <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
-          <div className="leaf" style={{ fontSize: 40, marginBottom: 12 }}>➿</div>
+          <div className="leaf" style={{ marginBottom: 12 }}><LoopMark size={40}/></div>
           <Spinner size={20}/>
         </div>
       </div>

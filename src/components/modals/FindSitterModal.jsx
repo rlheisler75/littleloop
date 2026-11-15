@@ -57,7 +57,7 @@ export default function FindSitterModal({ open, onClose, familyId, familyName, o
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 6 }}>Find a Sitter</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 6 }}>Find a Sitter</div>
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16, lineHeight: 1.6 }}>Search by name or username to send a connection request.</p>
       {alert && <div className={`al al-${alert.t}`} style={{ marginBottom: 12 }}>{alert.m}</div>}
 

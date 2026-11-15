@@ -32,7 +32,7 @@ export function PayButtons({ sitter, invoice }) {
   if (!enabled.length || !items) return null;
 
   return (
-    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
       <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.9px', textTransform: 'uppercase', color: 'var(--text-faint)', marginBottom: 8 }}>Pay {fmt(total)}</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {enabled.map(m => {
@@ -146,14 +146,14 @@ export function SitterInvoicesTab({ sitterId, sitterName, isPro = false, onUpgra
   }
 
   const filtered     = filter === 'all' ? invoices : invoices.filter(i => i.status === filter);
-  const statusColors = { draft: '#B0B8C8', sent: '#7BAAEE', paid: '#88D8B8' };
+  const statusColors = { draft: 'var(--muted-text)', sent: 'var(--accent)', paid: 'var(--ok-text)' };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '60px 0' }}><Spinner size={24}/></div>;
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600 }}>Invoices</div>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600 }}>Invoices</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="bg" style={{ padding: '7px 12px', fontSize: 12 }} onClick={() => setShowSettings(true)}>⚙️ Settings</button>
           <button className="bp" onClick={() => setShowNew(true)}>+ New Invoice</button>
@@ -166,7 +166,7 @@ export function SitterInvoicesTab({ sitterId, sitterName, isPro = false, onUpgra
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
         {['all', 'draft', 'sent', 'paid'].map(s => (
           <button key={s} onClick={() => setFilter(s)}
-            style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${filter === s ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: filter === s ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.04)', color: filter === s ? '#7BAAEE' : 'rgba(255,255,255,.4)', fontSize: 11, cursor: 'pointer', textTransform: 'capitalize' }}>
+            style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${filter === s ? 'var(--accent)' : 'var(--border)'}`, background: filter === s ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', color: filter === s ? 'var(--accent)' : 'var(--text-dim)', fontSize: 11, cursor: 'pointer', textTransform: 'capitalize' }}>
             {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
@@ -188,14 +188,14 @@ export function SitterInvoicesTab({ sitterId, sitterName, isPro = false, onUpgra
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{fam?.name} · Issued {fmtDate(inv.issued_date)}</div>
                       {inv.due_date  && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Due {fmtDate(inv.due_date)}</div>}
-                      {inv.paid_date && <div style={{ fontSize: 11, color: '#88D8B8' }}>Paid {fmtDate(inv.paid_date)}</div>}
+                      {inv.paid_date && <div style={{ fontSize: 11, color: 'var(--ok-text)' }}>Paid {fmtDate(inv.paid_date)}</div>}
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <button className="bg" style={{ padding: '5px 10px', fontSize: 11 }} onClick={() => openPrint(inv)}>🖨️ PDF</button>
                       {inv.status !== 'paid' && <button className="bg" style={{ padding: '5px 10px', fontSize: 11 }} onClick={() => setEditInv(inv)}>✏️ Edit</button>}
                       {inv.status === 'sent' && <button className="bp" style={{ padding: '5px 10px', fontSize: 11, background: 'linear-gradient(135deg,#3A9E7A,#2A7A5A)' }} onClick={() => setConfirmPaid(inv)}>✅ Mark Paid</button>}
                       {inv.status === 'sent' && <button className="bg" style={{ padding: '5px 10px', fontSize: 11, color: reminderSent === inv.id ? '#5EE89A' : 'inherit' }} onClick={() => sendReminder(inv)}>{reminderSent === inv.id ? '✓ Sent!' : '🔔 Remind'}</button>}
-                      {inv.status === 'paid' && <button className="bg" style={{ padding: '5px 10px', fontSize: 11, color: '#F5AAAA' }} onClick={() => setConfirmUnpaid(inv)}>↩ Unmark Paid</button>}
+                      {inv.status === 'paid' && <button className="bg" style={{ padding: '5px 10px', fontSize: 11, color: 'var(--err-text)' }} onClick={() => setConfirmUnpaid(inv)}>↩ Unmark Paid</button>}
                       {inv.status === 'draft' && <button className="bd" style={{ padding: '5px 10px', fontSize: 11 }} onClick={async () => { await supabase.from('invoices').delete().eq('id', inv.id); load(); }}>🗑️</button>}
                     </div>
                   </div>
@@ -249,12 +249,12 @@ export function FamilyInvoicesTab({ familyId, currentUserId }) {
     printInvoice(inv, items || [], sit || sitter || {}, family || { name: '—' }, member);
   }
 
-  const statusColors = { sent: '#7BAAEE', paid: '#88D8B8' };
+  const statusColors = { sent: 'var(--accent)', paid: 'var(--ok-text)' };
   if (loading) return <div style={{ textAlign: 'center', padding: '60px 0' }}><Spinner size={24}/></div>;
 
   return (
     <div>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Invoices</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Invoices</div>
       <FamilyYearEnd familyId={familyId} role={member?.role}/>
       {invoices.length === 0
         ? <div className="es"><div className="ic">💰</div><h3>No invoices yet</h3><p>Your sitter hasn't sent any invoices yet.</p></div>
@@ -270,7 +270,7 @@ export function FamilyInvoicesTab({ familyId, currentUserId }) {
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Issued {fmtDate(inv.issued_date)}</div>
                     {inv.due_date  && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Due {fmtDate(inv.due_date)}</div>}
-                    {inv.paid_date && <div style={{ fontSize: 11, color: '#88D8B8' }}>Paid {fmtDate(inv.paid_date)}</div>}
+                    {inv.paid_date && <div style={{ fontSize: 11, color: 'var(--ok-text)' }}>Paid {fmtDate(inv.paid_date)}</div>}
                   </div>
                   <button className="bg" style={{ padding: '5px 10px', fontSize: 11 }} onClick={() => openPrint(inv)}>🖨️ PDF</button>
                 </div>
@@ -279,7 +279,7 @@ export function FamilyInvoicesTab({ familyId, currentUserId }) {
                   <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(88,216,184,.1)', border: '1px solid rgba(88,216,184,.25)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 16 }}>✅</span>
                     <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#88D8B8' }}>Payment Received</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ok-text)' }}>Payment Received</div>
                       {inv.paid_date && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Marked paid on {fmtDate(inv.paid_date)}</div>}
                     </div>
                   </div>

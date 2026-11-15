@@ -70,12 +70,12 @@ export function ChildProfileModal({ open, onClose, child, sitterId, canEdit, isP
           {child.avatar || '🌟'}
         </div>
         <div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600 }}>{child.name}</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600 }}>{child.name}</div>
           {age !== null && <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>Age {age} · Born {dob.toLocaleDateString()}</div>}
         </div>
       </div>
 
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,.07)', marginBottom: 20 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
         {[['info', '📋 Info'], ['notes', isParent ? '📝 Sitter Notes' : '📝 My Notes']].map(([id, label]) => (
           <div key={id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>{label}</div>
         ))}
@@ -88,7 +88,7 @@ export function ChildProfileModal({ open, onClose, child, sitterId, canEdit, isP
               <SectionLabel>Allergies</SectionLabel>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {child.allergies.map((a, i) => (
-                  <span key={i} className="chip" style={{ background: 'rgba(192,80,80,.1)', borderColor: 'rgba(192,80,80,.2)', color: '#F5AAAA' }}>⚠️ {a}</span>
+                  <span key={i} className="chip" style={{ background: 'rgba(192,80,80,.1)', borderColor: 'rgba(192,80,80,.2)', color: 'var(--err-text)' }}>⚠️ {a}</span>
                 ))}
               </div>
             </div>
@@ -118,7 +118,7 @@ export function ChildProfileModal({ open, onClose, child, sitterId, canEdit, isP
               <Field label="Add a note" as="textarea" rows={3} value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Write a note about this child…" required={false}/>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: -8 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: 'var(--text-dim)' }}>
-                  <input type="checkbox" checked={visible} onChange={e => setVisible(e.target.checked)} style={{ accentColor: '#7BAAEE' }}/>
+                  <input type="checkbox" checked={visible} onChange={e => setVisible(e.target.checked)} style={{ accentColor: 'var(--accent)' }}/>
                   Visible to family
                 </label>
                 <button className="bp" onClick={addNote} disabled={saving || !newNote.trim()} style={{ padding: '8px 16px', fontSize: 12 }}>
@@ -146,7 +146,7 @@ export function ChildProfileModal({ open, onClose, child, sitterId, canEdit, isP
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
                     <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>{new Date(n.created_at).toLocaleString()}</span>
-                    {n.visible_to_family && <span style={{ fontSize: 10, color: '#88D8B8' }}>👁️ Shared with family</span>}
+                    {n.visible_to_family && <span style={{ fontSize: 10, color: 'var(--ok-text)' }}>👁️ Shared with family</span>}
                   </div>
                 </div>
               ))
@@ -222,7 +222,7 @@ export function ChildModal({ open, onClose, familyId, child, onSaved }) {
   return (
     <>
       <Modal open={open && !confirmDel} onClose={onClose}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 20 }}>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 20 }}>
           {isEdit ? 'Edit Child' : 'Add Child'}
         </div>
         {alert && <div className={`al al-${alert.t}`}>{alert.m}</div>}
@@ -235,7 +235,7 @@ export function ChildModal({ open, onClose, familyId, child, onSaved }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {CHILD_AVATARS.map(a => (
                 <button key={a} type="button" onClick={() => setAvatar(a)}
-                  style={{ width: 36, height: 36, borderRadius: 10, border: `2px solid ${avatar === a ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: avatar === a ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.04)', cursor: 'pointer', fontSize: 20 }}>
+                  style={{ width: 36, height: 36, borderRadius: 10, border: `2px solid ${avatar === a ? 'var(--accent)' : 'var(--border)'}`, background: avatar === a ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', cursor: 'pointer', fontSize: 20 }}>
                   {a}
                 </button>
               ))}

@@ -79,7 +79,7 @@ export default function PaymentSettingsModal({ open, onClose, sitterId, onSaved 
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Invoice Settings</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Invoice Settings</div>
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 20, lineHeight: 1.6 }}>This info appears on your invoices for FSA reimbursement.</p>
       {alert && <div className={`al al-${alert.t}`}>{alert.m}</div>}
 
@@ -99,12 +99,12 @@ export default function PaymentSettingsModal({ open, onClose, sitterId, onSaved 
             {PAYMENT_TYPES.map(pt => {
               const m = getMethod(pt.id);
               return (
-                <div key={pt.id} style={{ borderRadius: 12, border: `1px solid ${m.enabled ? 'rgba(111,163,232,.3)' : 'rgba(255,255,255,.07)'}`, background: m.enabled ? 'rgba(111,163,232,.06)' : 'rgba(255,255,255,.02)', padding: '10px 14px' }}>
+                <div key={pt.id} style={{ borderRadius: 12, border: `1px solid ${m.enabled ? 'color-mix(in srgb,var(--accent) 30%,transparent)' : 'var(--border)'}`, background: m.enabled ? 'color-mix(in srgb,var(--accent) 6%,transparent)' : 'var(--input-bg)', padding: '10px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: m.enabled ? 8 : 0 }}>
                     <span style={{ fontSize: 20 }}>{pt.icon}</span>
                     <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{pt.label}</span>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                      <input type="checkbox" checked={m.enabled} onChange={() => toggleMethod(pt.id)} style={{ accentColor: '#7BAAEE', width: 16, height: 16 }}/>
+                      <input type="checkbox" checked={m.enabled} onChange={() => toggleMethod(pt.id)} style={{ accentColor: 'var(--accent)', width: 16, height: 16 }}/>
                       <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Accept</span>
                     </label>
                   </div>

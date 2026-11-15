@@ -51,7 +51,7 @@ export const POST_TYPES = [
 export const POST_MOODS = [
   { id:'happy',   icon:'😄' },
   { id:'content', icon:'😊' },
-  { id:'proud',   icon:'🥹' },
+  { id:'proud',   icon:'🥰' },
   { id:'excited', icon:'🤩' },
   { id:'tired',   icon:'😴' },
   { id:'fussy',   icon:'😣' },

@@ -104,7 +104,7 @@ export function MultiCheckInButton({ children, familyId, currentUserId, checkerN
 
   return (
     <button onClick={checkAll} disabled={loading || done}
-      style={{ padding: '4px 10px', borderRadius: 10, border: '1px solid rgba(58,158,122,.3)', background: 'rgba(58,158,122,.1)', color: '#88D8B8', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+      style={{ padding: '4px 10px', borderRadius: 10, border: '1px solid rgba(58,158,122,.3)', background: 'rgba(58,158,122,.1)', color: 'var(--ok-text)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
       {loading ? <Spinner size={10}/> : done ? '✓ Done' : '⊕ Check in all'}
     </button>
   );

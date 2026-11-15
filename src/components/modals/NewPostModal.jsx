@@ -97,7 +97,7 @@ export default function NewPostModal({
 
   return (
     <Modal open={open} onClose={close}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, marginBottom: 4 }}>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, fontWeight: 600, marginBottom: 4 }}>
         {startWithPhoto && !preview ? '📷 Add a Photo' : 'New Post'}
       </div>
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 20, lineHeight: 1.6 }}>
@@ -120,7 +120,7 @@ export default function NewPostModal({
                 </label>
               </div>
             ) : (
-              <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: startWithPhoto ? '40px 16px' : '12px 16px', borderRadius: 12, border: `1px dashed ${startWithPhoto ? 'rgba(58,111,212,.4)' : 'rgba(255,255,255,.15)'}`, cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, background: startWithPhoto ? 'rgba(58,111,212,.05)' : 'transparent' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: startWithPhoto ? '40px 16px' : '12px 16px', borderRadius: 12, border: `1px dashed ${startWithPhoto ? 'color-mix(in srgb,var(--accent) 40%,transparent)' : 'var(--border)'}`, cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, background: startWithPhoto ? 'color-mix(in srgb,var(--accent) 5%,transparent)' : 'transparent' }}>
                 <span style={{ fontSize: startWithPhoto ? 36 : 20 }}>📷</span>
                 <span>{startWithPhoto ? 'Tap to choose a photo' : 'Choose a photo'}</span>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }}/>
@@ -134,7 +134,7 @@ export default function NewPostModal({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {POST_TYPES.map(t => (
               <button key={t.id} type="button" onClick={() => setType(t.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: `1px solid ${type === t.id ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: type === t.id ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.04)', color: type === t.id ? '#7BAAEE' : 'rgba(255,255,255,.5)', fontSize: 12, cursor: 'pointer' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: `1px solid ${type === t.id ? 'var(--accent)' : 'var(--border)'}`, background: type === t.id ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', color: type === t.id ? 'var(--accent)' : 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>
                 {t.icon} {t.label}
               </button>
             ))}
@@ -146,7 +146,7 @@ export default function NewPostModal({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {POST_MOODS.map(m => (
               <button key={m.id} type="button" onClick={() => setMood(mood === m.id ? '' : m.id)}
-                style={{ width: 36, height: 36, borderRadius: 10, border: `2px solid ${mood === m.id ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: mood === m.id ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.04)', cursor: 'pointer', fontSize: 20 }}>
+                style={{ width: 36, height: 36, borderRadius: 10, border: `2px solid ${mood === m.id ? 'var(--accent)' : 'var(--border)'}`, background: mood === m.id ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', cursor: 'pointer', fontSize: 20 }}>
                 {m.icon}
               </button>
             ))}
@@ -159,7 +159,7 @@ export default function NewPostModal({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {children.map(c => (
                 <button key={c.id} type="button" onClick={() => toggleChild(c.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, border: `1px solid ${tagged.includes(c.id) ? c.color || '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: tagged.includes(c.id) ? `${c.color || '#8B78D4'}22` : 'rgba(255,255,255,.04)', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, border: `1px solid ${tagged.includes(c.id) ? c.color || 'var(--accent)' : 'var(--border)'}`, background: tagged.includes(c.id) ? `${c.color || '#8B78D4'}22` : 'var(--input-bg)', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>
                   {c.avatar} {c.name}
                 </button>
               ))}

@@ -187,7 +187,7 @@ export default function PublicSitterProfile({ username, session }) {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ textAlign: 'center', maxWidth: 320 }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-        <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, marginBottom: 8 }}>Profile not found</h2>
+        <h2 style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, marginBottom: 8 }}>Profile not found</h2>
         <p style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.6, marginBottom: 20 }}>
           This sitter hasn't set up a public profile yet, or the link may have changed.
         </p>
@@ -249,7 +249,7 @@ export default function PublicSitterProfile({ username, session }) {
         border: '1px solid rgba(58,158,122,.25)',
         textAlign: 'center',
       }}>
-        <div style={{ fontSize: 13, color: '#88D8B8', fontWeight: 600 }}>✅ Connected</div>
+        <div style={{ fontSize: 13, color: 'var(--ok-text)', fontWeight: 600 }}>✅ Connected</div>
         <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>
           You're already connected with {firstName}.
         </div>
@@ -264,7 +264,7 @@ export default function PublicSitterProfile({ username, session }) {
         border: '1px solid rgba(200,120,74,.25)',
         textAlign: 'center',
       }}>
-        <div style={{ fontSize: 13, color: '#F5C098', fontWeight: 600 }}>⏳ Request Pending</div>
+        <div style={{ fontSize: 13, color: 'var(--pend-text)', fontWeight: 600 }}>⏳ Request Pending</div>
         <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>
           Waiting for {firstName} to accept your request.
         </div>
@@ -377,7 +377,7 @@ export default function PublicSitterProfile({ username, session }) {
                   <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={88} style={{ borderRadius: '50%' }} />
                 </div>
                 <div style={{ paddingBottom: 4, minWidth: 0 }}>
-                  <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 700, lineHeight: 1.2, marginBottom: 2 }}>
+                  <h1 style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 700, lineHeight: 1.2, marginBottom: 2 }}>
                     {sitter.name}
                   </h1>
                   {sitter.tagline && (
@@ -413,7 +413,7 @@ export default function PublicSitterProfile({ username, session }) {
               }}>
                 <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={120} style={{ borderRadius: '50%' }} />
               </div>
-              <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 26, fontWeight: 700, lineHeight: 1.2, marginBottom: 4 }}>
+              <h1 style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.2, marginBottom: 4 }}>
                 {sitter.name}
               </h1>
               {sitter.tagline && (

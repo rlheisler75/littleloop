@@ -77,7 +77,7 @@ export function NotificationCenter({ userId }) {
       {open && (
         <div style={{ position: 'fixed', top: 60, right: 12, width: Math.min(360, window.innerWidth - 24), maxHeight: '80vh', overflowY: 'auto', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'inset 0 0 0 1000px var(--body-bg, #0C1420), 0 20px 60px rgba(0,0,0,.5)', zIndex: 200, padding: '16px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 600 }}>Notifications</div>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 600 }}>Notifications</div>
             <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-faint)', lineHeight: 1, padding: '0 4px' }}>✕</button>
           </div>
           {loading
@@ -87,7 +87,7 @@ export function NotificationCenter({ userId }) {
               : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {notifs.map(n => (
-                    <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 10, background: n.read ? 'transparent' : 'rgba(111,163,232,.06)', border: `1px solid ${n.read ? 'transparent' : 'rgba(111,163,232,.12)'}` }}>
+                    <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 10, background: n.read ? 'transparent' : 'color-mix(in srgb,var(--accent) 6%,transparent)', border: `1px solid ${n.read ? 'transparent' : 'color-mix(in srgb,var(--accent) 12%,transparent)'}` }}>
                       <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>{NOTIF_ICONS[n.type] || '🔔'}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: n.read ? 400 : 600, color: 'var(--text-dim)', lineHeight: 1.4 }}>{n.title}</div>
@@ -133,9 +133,9 @@ export function EmailPreferencesCard({ userId, isSitter }) {
 
   return (
     <div className="card" style={{ padding: '20px 18px', marginBottom: 14 }}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>📧 Email Notifications</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>📧 Email Notifications</div>
       <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Choose which emails you'd like to receive.</div>
-      {saved && <div style={{ fontSize: 11, color: '#5EE89A', marginBottom: 10 }}>✓ Saved</div>}
+      {saved && <div style={{ fontSize: 11, color: 'var(--ok-text)', marginBottom: 10 }}>✓ Saved</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {PREFS.map(p => {
           const isOn = prefs[p.key] !== false;
@@ -195,7 +195,7 @@ export function PushPreferencesCard({ userId, isSitter }) {
 
   return (
     <div className="card" style={{ padding: '20px 18px', marginBottom: 14 }}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🔔 Push Notifications</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🔔 Push Notifications</div>
       <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Get notified even when littleloop isn't open.</div>
 
       {permission === 'denied' ? (
@@ -209,11 +209,11 @@ export function PushPreferencesCard({ userId, isSitter }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#5EE89A' }}/>
-            <div style={{ fontSize: 12, color: '#5EE89A', fontWeight: 500 }}>Push notifications enabled</div>
+            <div style={{ fontSize: 12, color: 'var(--ok-text)', fontWeight: 500 }}>Push notifications enabled</div>
             {saved && <div style={{ fontSize: 11, color: 'var(--text-faint)', marginLeft: 'auto' }}>✓ Saved</div>}
           </div>
           {/android/i.test(navigator.userAgent) && (
-            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8, background: 'rgba(58,111,212,.1)', border: '1px solid rgba(58,111,212,.2)', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8, background: 'color-mix(in srgb,var(--accent) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--accent) 20%,transparent)', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.6 }}>
               💡 <strong>Tip:</strong> To get pop-up notifications, open Chrome → tap the lock icon → <strong>Notifications</strong> → enable <strong>Pop on screen</strong> and <strong>Vibrate</strong>.
             </div>
           )}
@@ -240,7 +240,7 @@ export function PushPreferencesCard({ userId, isSitter }) {
 
 function Toggle({ isOn, onToggle }) {
   return (
-    <div onClick={onToggle} style={{ width: 40, height: 22, borderRadius: 11, cursor: 'pointer', transition: 'background .2s', flexShrink: 0, background: isOn ? 'var(--accent)' : 'rgba(255,255,255,.1)', position: 'relative' }}>
+    <div onClick={onToggle} style={{ width: 40, height: 22, borderRadius: 11, cursor: 'pointer', transition: 'background .2s', flexShrink: 0, background: isOn ? 'var(--accent)' : 'var(--pill-bg)', position: 'relative' }}>
       <div style={{ position: 'absolute', top: 3, left: isOn ? 21 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }}/>
     </div>
   );

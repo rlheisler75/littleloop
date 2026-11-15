@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import LoopMark from './components/ui/LoopMark';
 import { supabase } from './lib/supabase';
 import { subscribeToPush } from './services/push';
 import { ROLE_LABELS } from './lib/constants';
@@ -64,7 +65,7 @@ function NewFamilySetup({ session, onComplete, onSignOut }) {
     <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ width: '100%', maxWidth: 480 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div className="leaf" style={{ fontSize: 36, marginBottom: 8 }}>&#x27BF;</div>
+          <div className="leaf" style={{ marginBottom: 8 }}><LoopMark size={36}/></div>
           <div className="logo-text" style={{ fontSize: 28, marginBottom: 4 }}>littleloop</div>
           <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>Family Setup</div>
         </div>
@@ -75,7 +76,7 @@ function NewFamilySetup({ session, onComplete, onSignOut }) {
         {step === 0 && (
           <div className="card" style={{ padding: '32px 28px', textAlign: 'center' }}>
             <div style={{ fontSize: 52, marginBottom: 16 }}>&#x1F468;&#x200D;&#x1F469;&#x200D;&#x1F467;</div>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, marginBottom: 10 }}>Welcome, {userName}!</div>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, fontWeight: 600, marginBottom: 10 }}>Welcome, {userName}!</div>
             <p style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.7, marginBottom: 28 }}>
               littleloop connects your family with your childcare provider. Let's get your family set up.
             </p>
@@ -97,7 +98,7 @@ function NewFamilySetup({ session, onComplete, onSignOut }) {
         )}
         {step === 1 && (
           <div className="card" style={{ padding: '32px 28px' }}>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Name your family</div>
+            <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Name your family</div>
             <p style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 24, lineHeight: 1.6 }}>
               This is how your sitter will see you &mdash; usually your last name works great.
             </p>
@@ -249,9 +250,9 @@ export default function ParentDashboard({ session, onSignOut }) {
 
   return (
     <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,.06)', background: 'var(--nav-bg,rgba(0,0,0,.2))', backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 10 }}>
+      <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg,rgba(0,0,0,.2))', backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div className="leaf" style={{ fontSize: 22, filter: 'drop-shadow(0 0 10px rgba(58,158,122,.4))' }}>&#x27BF;</div>
+          <LoopMark size={20}/>
           <div className="logo-text" style={{ fontSize: 20 }}>littleloop</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -259,7 +260,7 @@ export default function ParentDashboard({ session, onSignOut }) {
           <button className="bg" style={{ padding: '6px 12px', fontSize: 12 }} onClick={onSignOut}>Sign out</button>
         </div>
       </div>
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,.06)', background: 'var(--nav-bg,rgba(0,0,0,.15))', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg,rgba(0,0,0,.15))', overflowX: 'auto' }}>
         {NAV.map(n => (
           <div key={n.id} className={`nav-tab ${tab === n.id ? 'active' : ''}`} onClick={() => setTab(n.id)}>
             <span style={{ position: 'relative', display: 'inline-block' }}>
@@ -343,7 +344,7 @@ export default function ParentDashboard({ session, onSignOut }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {members.map(m => (
-                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--card-bg)', borderRadius: 12, border: '1px solid rgba(255,255,255,.06)' }}>
+                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           {m.photo_url ? <img src={m.photo_url} style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover' }} alt={m.name}/> : <span style={{ fontSize: 22 }}>{m.avatar || '&#x1F464;'}</span>}
                           <div>

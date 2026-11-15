@@ -47,7 +47,7 @@ export function LeaveReviewModal({ open, onClose, sitterId, sitterName, familyId
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>
         {existing ? 'Edit Review' : 'Leave a Review'}
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>for {sitterName}</div>
@@ -111,7 +111,7 @@ export function ScheduleSlotModal({ open, onClose, sitterId, familyId, slot, onS
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 20 }}>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 20 }}>
         {slot ? 'Edit Schedule' : 'Add Schedule'}
       </div>
       {alert && <div className={`al al-${alert.t}`}>{alert.m}</div>}
@@ -121,7 +121,7 @@ export function ScheduleSlotModal({ open, onClose, sitterId, familyId, slot, onS
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {DAYS.map((d, i) => (
               <button key={i} type="button" onClick={() => setDay(i)}
-                style={{ padding: '7px 10px', borderRadius: 10, fontSize: 12, cursor: 'pointer', border: `1px solid ${day === i ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: day === i ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.04)', color: day === i ? '#7BAAEE' : 'rgba(255,255,255,.5)' }}>
+                style={{ padding: '7px 10px', borderRadius: 10, fontSize: 12, cursor: 'pointer', border: `1px solid ${day === i ? 'var(--accent)' : 'var(--border)'}`, background: day === i ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', color: day === i ? 'var(--accent)' : 'var(--text-dim)' }}>
                 {d}
               </button>
             ))}

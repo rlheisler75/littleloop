@@ -158,7 +158,7 @@ export default function SitterParentMap({ familyIds = [] }) {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(94,207,170,0.15)', color: '#5ECFAA', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(94,207,170,0.15)', color: 'var(--ok-text)', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5ECFAA', display: 'inline-block' }}/>
           Live
         </div>

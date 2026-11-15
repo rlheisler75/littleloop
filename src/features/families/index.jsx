@@ -58,11 +58,11 @@ export function ConnectionRequests({ sitterId, onUpdate, atLimit = false, onUpgr
   if (loading || !requests.length) return null;
 
   return (
-    <div className="card" style={{ padding: '16px 18px', marginBottom: 14, border: '1px solid rgba(111,163,232,.2)', background: 'rgba(111,163,232,.04)' }}>
+    <div className="card" style={{ padding: '16px 18px', marginBottom: 14, border: '1px solid rgba(111,163,232,.2)', background: 'color-mix(in srgb,var(--accent) 4%,transparent)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span style={{ fontSize: 16 }}>🤝</span>
-        <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600 }}>Connection Requests</span>
-        <span style={{ background: '#3A6FD4', color: '#fff', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{requests.length}</span>
+        <span style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600 }}>Connection Requests</span>
+        <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{requests.length}</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {requests.map(r => (
@@ -152,7 +152,7 @@ export function SitterFamilyDetail({ family, children, sitterId, sitterName, onD
           <div key={eta.id} style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 12, background: 'rgba(58,158,122,.12)', border: '1px solid rgba(94,207,170,.3)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 20 }}>🚗</span>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#5ECFAA' }}>{eta.member_name} is on the way!</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ok-text)' }}>{eta.member_name} is on the way!</div>
               <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{minsLeft > 0 ? `~${minsLeft} min away · ` : 'Arriving soon · '}{etaTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
             </div>
           </div>
@@ -192,7 +192,7 @@ export function SitterFamilyDetail({ family, children, sitterId, sitterName, onD
           : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {children.map(c => (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: `${c.color || '#8B78D4'}12`, borderRadius: 14, border: `1px solid ${c.color || '#8B78D4'}33` }}>
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: `color-mix(in srgb,${c.color || 'var(--accent)'} 7%,transparent)`, borderRadius: 14, border: `1px solid color-mix(in srgb,${c.color || 'var(--accent)'} 20%,transparent)` }}>
                   <button onClick={() => setSelectedChild(c)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', flex: 1, minWidth: 0, padding: 0 }}>
                     <span style={{ fontSize: 22 }}>{c.avatar || '🌟'}</span>
                     <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{c.name}</span>
@@ -203,12 +203,12 @@ export function SitterFamilyDetail({ family, children, sitterId, sitterName, onD
             </div>
           )
         }
-        <SessionsList familyId={family.id} childrenMap={{}} showTitle={true}/>
+        <div style={{ marginTop: 18 }}><SessionsList familyId={family.id} childrenMap={{}} showTitle={true}/></div>
       </div>
 
       <ScheduleManager sitterId={sitterId} familyId={family.id} familyName={family.name}/>
 
-      <div style={{ borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 16 }}>
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
         <button className="bd" onClick={() => setConfirmRemove(true)} disabled={loading}>🔕 Remove from my families</button>
       </div>
 
@@ -264,7 +264,7 @@ export function FamiliesTab({ sitterId, sitterName, isPro = null, onUpgrade }) {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600 }}>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600 }}>
           Families <span style={{ fontSize: 14, color: 'var(--text-faint)', fontFamily: "'DM Sans',sans-serif", fontWeight: 400 }}>({families.length})</span>
         </div>
         <button className="bp" onClick={openInvite}>+ Invite Family</button>
@@ -296,7 +296,7 @@ export function FamiliesTab({ sitterId, sitterName, isPro = null, onUpgrade }) {
       <Modal open={showLimit} onClose={() => setShowLimit(false)}>
         <div style={{ textAlign: 'center', padding: '6px 4px' }}>
           <div style={{ fontSize: 34, marginBottom: 8 }}>🌱</div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 6 }}>You've outgrown the free plan</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 6 }}>You've outgrown the free plan</div>
           <p style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.6, margin: '0 0 18px' }}>
             The free plan includes {FREE_FAMILY_LIMIT} families. Upgrade to Pro to invite unlimited families. Everything you've set up stays as it is.
           </p>

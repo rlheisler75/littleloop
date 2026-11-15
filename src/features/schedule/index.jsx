@@ -48,7 +48,7 @@ export function ScheduleManager({ sitterId, familyId, familyName }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {slots.map(s => (
                 <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: 'var(--card-bg)', borderRadius: 10, border: '1px solid var(--border)' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(58,111,212,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#7BAAEE', flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'color-mix(in srgb,var(--accent) 12%,transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
                     {DAYS[s.day_of_week]}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -111,9 +111,9 @@ export function WeeklyScheduleCard({ familyId, sitters }) {
         style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: collapsed ? 0 : 14, cursor: 'pointer', userSelect: 'none' }}
       >
         <span style={{ fontSize: 18 }}>📅</span>
-        <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 600, flex: 1 }}>This Week</span>
+        <span style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 17, fontWeight: 600, flex: 1 }}>This Week</span>
         {collapsed && todayCount > 0 && (
-          <span style={{ fontSize: 11, color: '#7BAAEE', background: 'rgba(111,163,232,.12)', borderRadius: 10, padding: '2px 8px' }}>
+          <span style={{ fontSize: 11, color: 'var(--accent)', background: 'color-mix(in srgb,var(--accent) 12%,transparent)', borderRadius: 10, padding: '2px 8px' }}>
             {todayCount} today
           </span>
         )}
@@ -127,15 +127,15 @@ export function WeeklyScheduleCard({ familyId, sitters }) {
               const sitter  = (sitters || []).find(st => st.id === s.sitter_id);
               const isToday = dayLabel === 'Today';
               return (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: isToday ? 'rgba(58,111,212,.1)' : 'var(--input-bg)', border: isToday ? '1px solid rgba(58,111,212,.3)' : '1px solid var(--border)' }}>
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: isToday ? 'color-mix(in srgb,var(--accent) 10%,transparent)' : 'var(--input-bg)', border: isToday ? '1px solid color-mix(in srgb,var(--accent) 30%,transparent)' : '1px solid var(--border)' }}>
                   <div style={{ width: 40, textAlign: 'center', flexShrink: 0 }}>
                     <div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: .5 }}>{DAYS[dow]}</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: isToday ? '#7BAAEE' : 'var(--text-dim)', lineHeight: 1.2 }}>{date.getDate()}</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: isToday ? 'var(--accent)' : 'var(--text-dim)', lineHeight: 1.2 }}>{date.getDate()}</div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 500 }}>
                       {fmt12(s.start_time)} – {fmt12(s.end_time)}
-                      {isToday && <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(58,111,212,.2)', color: '#7BAAEE', borderRadius: 4, padding: '1px 6px' }}>Today</span>}
+                      {isToday && <span style={{ marginLeft: 6, fontSize: 10, background: 'color-mix(in srgb,var(--accent) 20%,transparent)', color: 'var(--accent)', borderRadius: 4, padding: '1px 6px' }}>Today</span>}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{sitter?.name || 'Sitter'}{s.label && ` · ${s.label}`}</div>
                   </div>
@@ -232,7 +232,7 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 18 }}>🚗</span>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#5ECFAA' }}>On the way!</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ok-text)' }}>On the way!</div>
                 <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{minsLeft > 0 ? `~${minsLeft} min away` : 'Arriving soon'}</div>
               </div>
             </div>
@@ -241,7 +241,7 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
 
           {isSharing && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid rgba(94,207,170,.2)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#5ECFAA', fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ok-text)', fontWeight: 600 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5ECFAA', display: 'inline-block' }}/>
                 Sharing live location with sitter
               </div>
@@ -251,7 +251,7 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
 
           {!isSharing && (
             <div style={{ paddingTop: 8, borderTop: '1px solid rgba(94,207,170,.2)' }}>
-              <button onClick={startSharing} style={{ background: 'none', border: 'none', fontSize: 12, color: '#5ECFAA', cursor: 'pointer', fontWeight: 600 }}>
+              <button onClick={startSharing} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--ok-text)', cursor: 'pointer', fontWeight: 600 }}>
                 📍 Share my location with sitter
               </button>
             </div>
@@ -269,15 +269,15 @@ export function OnMyWayButton({ familyId, memberId, memberName }) {
   return (
     <div style={{ marginTop: 12 }}>
       {!expanded
-        ? <button onClick={() => setExpanded(true)} style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(94,207,170,.3)', background: 'rgba(58,158,122,.08)', color: '#5ECFAA', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        ? <button onClick={() => setExpanded(true)} style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(94,207,170,.3)', background: 'rgba(58,158,122,.08)', color: 'var(--ok-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <span>🚗</span>{sent ? 'Sitter notified! ✓' : 'On My Way — notify sitter'}
           </button>
         : <div style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(94,207,170,.3)', background: 'rgba(58,158,122,.06)' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#5ECFAA', marginBottom: 10 }}>How far away are you?</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ok-text)', marginBottom: 10 }}>How far away are you?</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
               {ETA_OPTIONS.map(o => (
                 <button key={o.minutes} onClick={() => send(o.minutes)} disabled={loading}
-                  style={{ padding: '7px 14px', borderRadius: 20, border: '1px solid rgba(94,207,170,.3)', background: 'rgba(58,158,122,.1)', color: '#5ECFAA', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  style={{ padding: '7px 14px', borderRadius: 20, border: '1px solid rgba(94,207,170,.3)', background: 'rgba(58,158,122,.1)', color: 'var(--ok-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   {loading ? <Spinner size={10}/> : o.label}
                 </button>
               ))}

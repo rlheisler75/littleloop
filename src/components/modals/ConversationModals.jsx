@@ -96,7 +96,7 @@ export function NewConversationModal({
 
   return (
     <Modal open={open} onClose={close}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, marginBottom: 4 }}>New Conversation</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, fontWeight: 600, marginBottom: 4 }}>New Conversation</div>
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 20, lineHeight: 1.6 }}>
         {isSitter ? 'Start a conversation with family members.' : 'Start a conversation with your sitter and family members.'}
       </p>
@@ -121,12 +121,12 @@ export function NewConversationModal({
                 const sel = selectedSitters.includes(s.id);
                 return (
                   <div key={s.id} onClick={() => setSelectedSitters(prev => sel ? prev.filter(id => id !== s.id) : [...prev, s.id])}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${sel ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: sel ? 'rgba(111,163,232,.1)' : 'rgba(255,255,255,.03)' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${sel ? 'var(--accent)' : 'var(--border)'}`, background: sel ? 'color-mix(in srgb,var(--accent) 10%,transparent)' : 'var(--input-bg)' }}>
                     <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--border)', flexShrink: 0 }}>
                       <SitterAvatar url={s.avatar_url} name={s.name} size={32} radius="0"/>
                     </div>
                     <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{s.name}</span>
-                    {sel && <span style={{ fontSize: 14, color: '#7BAAEE' }}>✓</span>}
+                    {sel && <span style={{ fontSize: 14, color: 'var(--accent)' }}>✓</span>}
                   </div>
                 );
               })}
@@ -153,7 +153,7 @@ export function NewConversationModal({
                   const sel = !!selected.find(x => x.user_id === m.user_id);
                   return (
                     <div key={m.id} onClick={() => toggleMember(m)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1px solid ${sel ? '#7BAAEE' : 'rgba(255,255,255,.07)'}`, background: sel ? 'rgba(111,163,232,.1)' : 'rgba(255,255,255,.03)', cursor: 'pointer' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1px solid ${sel ? 'var(--accent)' : 'var(--border)'}`, background: sel ? 'color-mix(in srgb,var(--accent) 10%,transparent)' : 'var(--input-bg)', cursor: 'pointer' }}>
                       <span style={{ fontSize: 22 }}>{m.avatar || '👤'}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name}</div>
@@ -218,7 +218,7 @@ export function AddParticipantModal({ open, onClose, convId, familyId, currentPa
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 16 }}>Add People</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 16 }}>Add People</div>
       {members.length === 0
         ? <p style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 20 }}>Everyone is already in this conversation.</p>
         : (
@@ -227,7 +227,7 @@ export function AddParticipantModal({ open, onClose, convId, familyId, currentPa
               const sel = !!selected.find(x => x.user_id === m.user_id);
               return (
                 <div key={m.id} onClick={() => toggle(m)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1px solid ${sel ? '#7BAAEE' : 'rgba(255,255,255,.07)'}`, background: sel ? 'rgba(111,163,232,.1)' : 'rgba(255,255,255,.03)', cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1px solid ${sel ? 'var(--accent)' : 'var(--border)'}`, background: sel ? 'color-mix(in srgb,var(--accent) 10%,transparent)' : 'var(--input-bg)', cursor: 'pointer' }}>
                   <span style={{ fontSize: 22 }}>{m.avatar || '👤'}</span>
                   <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{m.name}</span>
                   <span style={{ fontSize: 16 }}>{sel ? '✅' : '○'}</span>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import LoopMark from './components/ui/LoopMark';
 import { supabase } from './lib/supabase';
 import { subscribeToPush } from './services/push';
 import { useSubscription } from './useSubscription';
@@ -173,9 +174,9 @@ export default function SitterDashboard({ session, onSignOut }) {
   return (
     <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,.06)', background: 'var(--nav-bg,rgba(0,0,0,.2))', backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 10 }}>
+      <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg,rgba(0,0,0,.2))', backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div className="leaf" style={{ fontSize: 22, filter: 'drop-shadow(0 0 10px rgba(58,158,122,.4))' }}>➿</div>
+          <LoopMark size={20}/>
           <div className="logo-text" style={{ fontSize: 20 }}>littleloop</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -195,7 +196,7 @@ export default function SitterDashboard({ session, onSignOut }) {
       </div>
 
       {/* Nav tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,.06)', background: 'var(--nav-bg,rgba(0,0,0,.15))', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg,rgba(0,0,0,.15))', overflowX: 'auto' }}>
         {NAV.map(n => (
           <div key={n.id} className={`nav-tab ${tab === n.id ? 'active' : ''}`} onClick={() => setTab(n.id)}>
             <span style={{ position: 'relative', display: 'inline-block' }}>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import LoopMark from './components/ui/LoopMark';
 
 export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin }) {
   const [scrolled, setScrolled] = useState(false);
@@ -343,7 +344,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         {/* NAV */}
         <nav className={`ll-nav ${scrolled ? 'scrolled' : ''}`}>
           <div className="ll-nav-brand">
-            <span className="ll-nav-logo"><span style={{fontFamily:"Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif", fontSize:"inherit", lineHeight:1}}>➿</span> littleloop</span>
+            <span className="ll-nav-logo"><LoopMark size={20} color="#E8553F"/> littleloop</span>
             <span className="ll-nav-sub">by Loopware Solutions</span>
           </div>
           <div className="ll-nav-links">
@@ -603,7 +604,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
         <footer className="ll-footer">
           <div className="ll-footer-brand">
             <div className="ll-nav-brand">
-              <span className="ll-nav-logo"><span style={{fontFamily:"Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif", fontSize:"inherit", lineHeight:1}}>➿</span> littleloop</span>
+              <span className="ll-nav-logo"><LoopMark size={18} color="#FFC23C"/> littleloop</span>
               <span className="ll-nav-sub">by Loopware Solutions</span>
             </div>
           </div>

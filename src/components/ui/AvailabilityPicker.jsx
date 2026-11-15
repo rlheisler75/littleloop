@@ -40,9 +40,9 @@ export function AvailabilityPicker({ value, onChange }) {
                       fontSize:    11,
                       fontWeight:  700,
                       cursor:      'pointer',
-                      border:      `1px solid ${allOn ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`,
-                      background:  allOn ? 'rgba(111,163,232,.2)' : 'transparent',
-                      color:       allOn ? '#7BAAEE' : 'var(--text-dim)',
+                      border:      `1px solid ${allOn ? 'var(--accent)' : 'var(--border)'}`,
+                      background:  allOn ? 'color-mix(in srgb,var(--accent) 20%,transparent)' : 'transparent',
+                      color:       allOn ? 'var(--accent)' : 'var(--text-dim)',
                     }}
                   >
                     {d}
@@ -72,8 +72,8 @@ export function AvailabilityPicker({ value, onChange }) {
                         height:       28,
                         borderRadius: 8,
                         cursor:       'pointer',
-                        border:       `1px solid ${on ? '#7BAAEE' : 'rgba(255,255,255,.08)'}`,
-                        background:   on ? 'rgba(111,163,232,.2)' : 'rgba(255,255,255,.03)',
+                        border:       `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
+                        background:   on ? 'color-mix(in srgb,var(--accent) 20%,transparent)' : 'var(--input-bg)',
                         fontSize:     14,
                         display:      'flex',
                         alignItems:   'center',

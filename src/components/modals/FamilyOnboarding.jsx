@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import LoopMark from '../ui/LoopMark';
 import { supabase } from '../../lib/supabase';
 import { FAMILY_ICONS, CHILD_AVATARS } from '../../lib/constants';
 import { Modal } from '../ui/Modal';
@@ -22,7 +23,7 @@ export function FamilyIconPicker({ open, onClose, familyId, current, onSaved }) 
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 6 }}>Family Icon</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 6 }}>Family Icon</div>
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Choose an icon for your family.</p>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
@@ -34,7 +35,7 @@ export function FamilyIconPicker({ open, onClose, familyId, current, onSaved }) 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20, maxHeight: 280, overflowY: 'auto' }}>
         {FAMILY_ICONS.map(icon => (
           <button key={icon} type="button" onClick={() => setSelected(icon)}
-            style={{ width: 44, height: 44, borderRadius: 12, fontSize: 24, cursor: 'pointer', border: `2px solid ${selected === icon ? '#7BAAEE' : 'rgba(255,255,255,.08)'}`, background: selected === icon ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color .15s' }}>
+            style={{ width: 44, height: 44, borderRadius: 12, fontSize: 24, cursor: 'pointer', border: `2px solid ${selected === icon ? 'var(--accent)' : 'var(--border)'}`, background: selected === icon ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color .15s' }}>
             {icon}
           </button>
         ))}
@@ -80,13 +81,13 @@ export function FamilyOnboarding({ open, onClose, familyId, familyName, onDone }
   return (
     <Modal open={open} onClose={onClose}>
       <div style={{ height: 3, background: 'var(--border)', borderRadius: 3, marginBottom: 24, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg,#3A6FD4,#3A9E7A)', borderRadius: 3, transition: 'width .4s ease' }}/>
+        <div style={{ height: '100%', width: `${progress}%`, background: 'var(--accent-grad)', borderRadius: 3, transition: 'width .4s ease' }}/>
       </div>
 
       {step === 0 && (
         <div style={{ textAlign: 'center', padding: '8px 0' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>➿</div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, marginBottom: 8 }}>Welcome to littleloop!</div>
+          <div style={{ marginBottom: 12 }}><LoopMark size={44}/></div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, fontWeight: 600, marginBottom: 8 }}>Welcome to littleloop!</div>
           <p style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.7, marginBottom: 24 }}>
             littleloop connects your family with your childcare provider — posts, messages, invoices, check-ins, and more. Let's get you set up in two quick steps.
           </p>
@@ -96,7 +97,7 @@ export function FamilyOnboarding({ open, onClose, familyId, familyName, onDone }
 
       {step === 1 && (
         <div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Add your first child</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Add your first child</div>
           <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 20, lineHeight: 1.6 }}>Your sitter will see this when they check in. You can add more later.</p>
           <div style={{ marginBottom: 14 }}>
             <label className="fl">Child's name</label>
@@ -107,7 +108,7 @@ export function FamilyOnboarding({ open, onClose, familyId, familyName, onDone }
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {CHILD_AVATARS.map(a => (
                 <button key={a} type="button" onClick={() => setChildAvatar(a)}
-                  style={{ width: 38, height: 38, borderRadius: 10, fontSize: 22, cursor: 'pointer', border: `2px solid ${childAvatar === a ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: childAvatar === a ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.04)' }}>
+                  style={{ width: 38, height: 38, borderRadius: 10, fontSize: 22, cursor: 'pointer', border: `2px solid ${childAvatar === a ? 'var(--accent)' : 'var(--border)'}`, background: childAvatar === a ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)' }}>
                   {a}
                 </button>
               ))}
@@ -121,7 +122,7 @@ export function FamilyOnboarding({ open, onClose, familyId, familyName, onDone }
 
       {step === 2 && (
         <div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Connect with a sitter</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Connect with a sitter</div>
           <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 20, lineHeight: 1.6 }}>Search for your sitter by name or username, or skip this and they can invite you.</p>
           <div style={{ background: 'var(--card-bg)', borderRadius: 12, padding: '14px 16px', border: '1px solid var(--border)', marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Option 1 — Search for your sitter</div>
@@ -139,7 +140,7 @@ export function FamilyOnboarding({ open, onClose, familyId, familyName, onDone }
       {step === 3 && (
         <div style={{ textAlign: 'center', padding: '8px 0' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, marginBottom: 8 }}>You're all set!</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, fontWeight: 600, marginBottom: 8 }}>You're all set!</div>
           <p style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.7, marginBottom: 24 }}>Your family profile is ready. Once your sitter connects, you'll see their posts, invoices, and check-ins all in one place.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20, textAlign: 'left' }}>
             {[

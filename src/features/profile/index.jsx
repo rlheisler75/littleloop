@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import LoopMark from '../../components/ui/LoopMark';
 import { supabase } from '../../lib/supabase';
 import { applyTheme } from '../../lib/theme';
 import Field from '../../components/ui/Field';
@@ -8,6 +9,7 @@ import StarRating from '../../components/ui/StarRating';
 import { AvailabilityPicker, AvailabilityDisplay } from '../../components/ui/AvailabilityPicker';
 import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 import SitterAvatar from '../../components/ui/SitterAvatar';
+import { DEFAULT_THEME } from '../../styles/themes';
 
 // ─── Version stamp ────────────────────────────────────────────────────────────
 // Bump this string every time you deploy a new version of this file.
@@ -71,7 +73,7 @@ function ThemeSection({ currentTheme, onSelect }) {
   const [customName, setCustomName] = useState(() => localStorage.getItem('ll_custom_name') || 'My Theme');
 
   function defaultCustom() {
-    return { body: '#0D1B2A', card: '#1A2A3A', accent: '#7BAAEE', accent2: '#4A7FCC', nav: '#0A1520' };
+    return { body: '#0D1B2A', card: '#1A2A3A', accent: 'var(--accent)', accent2: '#4A7FCC', nav: '#0A1520' };
   }
 
   function hexToRgba(hex, alpha) {
@@ -149,7 +151,7 @@ function ThemeSection({ currentTheme, onSelect }) {
   ];
 
   const seeds = [
-    { label: 'Navy',    colors: { body:'#0D1B2A', card:'#1A2A3A', accent:'#7BAAEE', accent2:'#4A7FCC', nav:'#0A1520' }, dark: true  },
+    { label: 'Navy',    colors: { body:'#0D1B2A', card:'#1A2A3A', accent:'var(--accent)', accent2:'#4A7FCC', nav:'#0A1520' }, dark: true  },
     { label: 'Forest',  colors: { body:'#0D1F1A', card:'#1A2E22', accent:'#4CD99A', accent2:'#28A870', nav:'#0A1810' }, dark: true  },
     { label: 'Galaxy',  colors: { body:'#0A0814', card:'#180F28', accent:'#C8A0FF', accent2:'#FF70B8', nav:'#080610' }, dark: true  },
     { label: 'Sunrise', colors: { body:'#FFF8F0', card:'#FFFFFF', accent:'#C85020', accent2:'#A03010', nav:'#FFF0E8' }, dark: false },
@@ -159,7 +161,7 @@ function ThemeSection({ currentTheme, onSelect }) {
 
   return (
     <div className="card" style={{ padding: '20px 18px', marginBottom: 14 }}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🎨 App Theme</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🎨 App Theme</div>
       <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 14 }}>Choose a preset or build your own.</div>
 
       {/* Tabs */}
@@ -168,7 +170,7 @@ function ThemeSection({ currentTheme, onSelect }) {
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             padding: '7px 16px', border: 'none', cursor: 'pointer', background: 'transparent',
             fontSize: 13, fontWeight: tab === t.id ? 700 : 400,
-            color: tab === t.id ? 'var(--accent)' : 'var(--text-faint)',
+            color: tab === t.id ? 'var(--accent)' : 'var(--text-dim)',
             borderBottom: `2px solid ${tab === t.id ? 'var(--accent)' : 'transparent'}`,
             marginBottom: -1, transition: 'all .15s',
           }}>{t.label}</button>
@@ -263,7 +265,7 @@ function ThemeSection({ currentTheme, onSelect }) {
 // ─── Sitter Profile Tab (account settings) ────────────────────────────────────
 
 export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
-  const [theme,         setTheme]         = useState(localStorage.getItem('ll_theme') || 'midnight');
+  const [theme,         setTheme]         = useState(localStorage.getItem('ll_theme') || DEFAULT_THEME);
   const [name,          setName]          = useState('');
   const [email,         setEmail]         = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
@@ -343,10 +345,10 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
 
   return (
     <div>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, marginBottom: 20 }}>Account Settings</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600, marginBottom: 20 }}>Account Settings</div>
 
       <div className="card" style={{ padding: '20px 18px', marginBottom: 14 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>👤 Your Account</div>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>👤 Your Account</div>
         {profileAlert && <div className={`al al-${profileAlert.t}`}>{profileAlert.m}</div>}
         <form onSubmit={saveProfile}>
           <Field label="Display name" value={name} onChange={e => setName(e.target.value)} placeholder="Your name"/>
@@ -356,7 +358,7 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
       </div>
 
       <div className="card" style={{ padding: '20px 18px', marginBottom: 14 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>🔒 Change Password</div>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>🔒 Change Password</div>
         {passAlert && <div className={`al al-${passAlert.t}`}>{passAlert.m}</div>}
         <form onSubmit={savePassword}>
           <Field label="Current password" type="password" value={curPassword} onChange={e => setCurPassword(e.target.value)}/>
@@ -378,7 +380,7 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
       </div>
 
       <div className="card" style={{ padding: '20px 18px', marginBottom: 14, border: '1px solid rgba(192,80,80,.2)', background: 'rgba(192,80,80,.04)' }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 8, color: '#F5AAAA' }}>⚠️ Delete Account</div>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--err-text)' }}>⚠️ Delete Account</div>
         <p style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.6, marginBottom: 16 }}>Permanently deletes your account and all data. Cannot be undone.</p>
         {!showDel
           ? <button className="bd" onClick={() => setShowDel(true)}>Delete my account</button>
@@ -526,7 +528,7 @@ function BgCheckUploader({ sitterId }) {
                 <span style={{
                   fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10,
                   background: doc.status === 'approved' ? 'rgba(11,165,173,.15)' : doc.status === 'rejected' ? 'rgba(192,80,80,.15)' : 'rgba(245,146,74,.12)',
-                  color:      doc.status === 'approved' ? '#0BA5AD'               : doc.status === 'rejected' ? '#F5AAAA'              : '#F5C098',
+                  color:      doc.status === 'approved' ? '#0BA5AD'               : doc.status === 'rejected' ? 'var(--err-text)'              : 'var(--pend-text)',
                 }}>
                   {doc.status === 'approved' ? '✓ Approved' : doc.status === 'rejected' ? '✗ Rejected' : '⏳ Pending'}
                 </span>
@@ -537,7 +539,7 @@ function BgCheckUploader({ sitterId }) {
                 ? <a href={doc.file_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--accent)', textDecoration: 'none' }}>View</a>
                 : <button onClick={() => window.open(doc.file_url, '_blank')} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--accent)', cursor: 'pointer' }}>View</button>
               }
-              <button onClick={() => deleteDoc(doc)} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'rgba(192,80,80,.08)', border: '1px solid rgba(192,80,80,.2)', color: '#F5AAAA', cursor: 'pointer' }}>Remove</button>
+              <button onClick={() => deleteDoc(doc)} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'rgba(192,80,80,.08)', border: '1px solid rgba(192,80,80,.2)', color: 'var(--err-text)', cursor: 'pointer' }}>Remove</button>
             </div>
           </div>
         );
@@ -786,7 +788,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
 
   return (
     <div className="card" style={{ padding: '20px 18px', marginBottom: 14 }}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🌐 Public Profile</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🌐 Public Profile</div>
       <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Let families discover you on littleloop.</div>
 
       {alert && <div className={`al al-${alert.t}`} style={{ marginBottom: 12 }}>{alert.m}</div>}
@@ -802,7 +804,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
 
       {/* Profile link */}
       {pub && username && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '10px 12px', background: 'rgba(58,111,212,.08)', borderRadius: 10, border: '1px solid rgba(58,111,212,.2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '10px 12px', background: 'color-mix(in srgb,var(--accent) 8%,transparent)', borderRadius: 10, border: '1px solid color-mix(in srgb,var(--accent) 20%,transparent)' }}>
           <span style={{ fontSize: 12, color: 'var(--text-faint)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             littleloop.xyz/?sitter={username}
           </span>
@@ -834,7 +836,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
       <div style={{ display: 'flex', gap: 2, marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
-            style={{ padding: '8px 14px', fontSize: 12, fontWeight: activeTab === t.id ? 600 : 400, border: 'none', background: 'none', cursor: 'pointer', color: activeTab === t.id ? 'var(--accent,#7BAAEE)' : 'var(--text-faint)', borderBottom: `2px solid ${activeTab === t.id ? 'var(--accent,#7BAAEE)' : 'transparent'}`, marginBottom: -1 }}>
+            style={{ padding: '8px 14px', fontSize: 12, fontWeight: activeTab === t.id ? 600 : 400, border: 'none', background: 'none', cursor: 'pointer', color: activeTab === t.id ? 'var(--accent,#7BAAEE)' : 'var(--text-dim)', borderBottom: `2px solid ${activeTab === t.id ? 'var(--accent,#7BAAEE)' : 'transparent'}`, marginBottom: -1 }}>
             {t.label}
           </button>
         ))}
@@ -874,7 +876,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {RESPONSE_TIMES.map(r => (
                 <button key={r} type="button" onClick={() => setResponseTime(responseTime === r ? '' : r)}
-                  style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${responseTime === r ? '#7BAAEE' : 'var(--border)'}`, background: responseTime === r ? 'rgba(111,163,232,.15)' : 'transparent', color: responseTime === r ? '#7BAAEE' : 'var(--text-faint)', fontSize: 11, cursor: 'pointer' }}>
+                  style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${responseTime === r ? 'var(--accent)' : 'var(--border)'}`, background: responseTime === r ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'transparent', color: responseTime === r ? 'var(--accent)' : 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>
                   {r}
                 </button>
               ))}
@@ -885,7 +887,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {LANGUAGES.map(l => (
                 <button key={l} type="button" onClick={() => toggle(languages, setLanguages, l)}
-                  style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${languages.includes(l) ? '#7BAAEE' : 'var(--border)'}`, background: languages.includes(l) ? 'rgba(111,163,232,.15)' : 'transparent', color: languages.includes(l) ? '#7BAAEE' : 'var(--text-faint)', fontSize: 11, cursor: 'pointer' }}>
+                  style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${languages.includes(l) ? 'var(--accent)' : 'var(--border)'}`, background: languages.includes(l) ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'transparent', color: languages.includes(l) ? 'var(--accent)' : 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>
                   {l}
                 </button>
               ))}
@@ -976,7 +978,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
                     </span>
                     <input ref={flyerInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => uploadFlyer(e.target.files[0])}/>
                   </label>
-                  <button onClick={removeFlyer} className="bg" style={{ fontSize: 12, padding: '7px 14px', color: '#F5AAAA' }}>
+                  <button onClick={removeFlyer} className="bg" style={{ fontSize: 12, padding: '7px 14px', color: 'var(--err-text)' }}>
                     Remove
                   </button>
                 </div>
@@ -1012,10 +1014,10 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {AGE_RANGES.map(r => (
                 <button key={r.id} type="button" onClick={() => toggle(ageRanges, setAgeRanges, r.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: `1px solid ${ageRanges.includes(r.id) ? '#7BAAEE' : 'var(--border)'}`, background: ageRanges.includes(r.id) ? 'rgba(111,163,232,.15)' : 'var(--card-bg)', cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: `1px solid ${ageRanges.includes(r.id) ? 'var(--accent)' : 'var(--border)'}`, background: ageRanges.includes(r.id) ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--card-bg)', cursor: 'pointer' }}>
                   <span style={{ fontSize: 16 }}>{r.icon}</span>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: ageRanges.includes(r.id) ? '#7BAAEE' : 'var(--text-dim)' }}>{r.label}</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: ageRanges.includes(r.id) ? 'var(--accent)' : 'var(--text-dim)' }}>{r.label}</div>
                     <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>{r.sub}</div>
                   </div>
                 </button>
@@ -1058,7 +1060,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {SERVICES.map(s => (
                 <button key={s} type="button" onClick={() => toggle(services, setServices, s)}
-                  style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${services.includes(s) ? '#7BAAEE' : 'var(--border)'}`, background: services.includes(s) ? 'rgba(111,163,232,.15)' : 'var(--card-bg)', color: services.includes(s) ? '#7BAAEE' : 'var(--text-faint)', fontSize: 12, cursor: 'pointer' }}>
+                  style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${services.includes(s) ? 'var(--accent)' : 'var(--border)'}`, background: services.includes(s) ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--card-bg)', color: services.includes(s) ? 'var(--accent)' : 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>
                   {s}
                 </button>
               ))}
@@ -1071,7 +1073,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {COMFORTABLE_WITH.map(c => (
                 <button key={c} type="button" onClick={() => toggle(comfortable, setComfortable, c)}
-                  style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${comfortable.includes(c) ? 'rgba(200,120,74,.4)' : 'var(--border)'}`, background: comfortable.includes(c) ? 'rgba(200,120,74,.12)' : 'var(--card-bg)', color: comfortable.includes(c) ? '#F5C098' : 'var(--text-faint)', fontSize: 12, cursor: 'pointer' }}>
+                  style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${comfortable.includes(c) ? 'rgba(200,120,74,.4)' : 'var(--border)'}`, background: comfortable.includes(c) ? 'rgba(200,120,74,.12)' : 'var(--card-bg)', color: comfortable.includes(c) ? 'var(--pend-text)' : 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>
                   {c}
                 </button>
               ))}
@@ -1192,7 +1194,7 @@ export function PublicSitterProfile({ username, session = null }) {
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spinner size={28}/></div>;
   if (notFound) return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20 }}>
-      <div style={{ fontSize: 40 }}>➿</div>
+      <div><LoopMark size={40}/></div>
       <div style={{ fontSize: 16, fontWeight: 600 }}>Profile not found</div>
       <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>This sitter profile doesn't exist or isn't public.</div>
       <button className="bp" onClick={() => window.location.href = '/?browse'} style={{ marginTop: 8 }}>Browse Sitters</button>
@@ -1221,13 +1223,13 @@ export function PublicSitterProfile({ username, session = null }) {
     );
     if (connStatus === 'active') return (
       <div style={{ padding: pad, borderRadius: 14, background: 'rgba(58,158,122,.08)', border: '1px solid rgba(58,158,122,.25)', textAlign: 'center' }}>
-        <div style={{ fontSize: 13, color: '#88D8B8', fontWeight: 600 }}>✅ Connected with {firstName}</div>
+        <div style={{ fontSize: 13, color: 'var(--ok-text)', fontWeight: 600 }}>✅ Connected with {firstName}</div>
         <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Message them from the Messages tab</div>
       </div>
     );
     if (connStatus === 'requested') return (
       <div style={{ padding: pad, borderRadius: 14, background: 'rgba(200,120,74,.08)', border: '1px solid rgba(200,120,74,.25)', textAlign: 'center' }}>
-        <div style={{ fontSize: 13, color: '#F5C098', fontWeight: 600 }}>⏳ Request sent to {firstName}</div>
+        <div style={{ fontSize: 13, color: 'var(--pend-text)', fontWeight: 600 }}>⏳ Request sent to {firstName}</div>
         <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Waiting for them to accept</div>
       </div>
     );
@@ -1297,7 +1299,7 @@ export function PublicSitterProfile({ username, session = null }) {
                     <span style={{ fontSize: 12, color: isVerified ? '#0BA5AD' : '#5EE89A' }}>{c?.label || id}</span>
                     {isVerified
                       ? <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: 'rgba(11,165,173,.2)', color: '#0BA5AD' }}>🛡️ Verified</span>
-                      : <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', fontStyle: 'italic' }}>self-reported</span>
+                      : <span style={{ fontSize: 10, color: 'var(--text-faint)', fontStyle: 'italic' }}>self-reported</span>
                     }
                   </div>
                 );
@@ -1343,7 +1345,7 @@ export function PublicSitterProfile({ username, session = null }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(58,158,122,.06)', border: '1px solid rgba(58,158,122,.2)' }}>
                 <span style={{ fontSize: 20 }}>✅</span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#88D8B8' }}>Background check on file</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ok-text)' }}>Background check on file</div>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Self-reported · pending verification</div>
                 </div>
               </div>
@@ -1436,7 +1438,7 @@ export function PublicSitterProfile({ username, session = null }) {
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.55) 100%)' }}/>
         </div>
         <div style={{ position: 'absolute', top: 12, left: 14, zIndex: 2 }}>
-          <button className="bg" onClick={() => window.history.back()} style={{ padding: '6px 12px', fontSize: 12, background: 'rgba(0,0,0,.4)', border: '1px solid rgba(255,255,255,.15)' }}>← Back</button>
+          <button className="bg" onClick={() => window.history.back()} style={{ padding: '6px 12px', fontSize: 12, background: 'rgba(0,0,0,.4)', border: '1px solid var(--border)' }}>← Back</button>
         </div>
         {!session && (
           <div style={{ position: 'absolute', top: 12, right: 14, zIndex: 2 }}>
@@ -1467,7 +1469,7 @@ export function PublicSitterProfile({ username, session = null }) {
           <div style={{ height: 52 }}/>
           {/* Name + tagline beside avatar (avatar is position:absolute so name floats right) */}
           <div style={{ padding: '0 16px', paddingLeft: 120, minHeight: 44, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', marginBottom: 12 }}>
-            <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{sitter.name}</h1>
+            <h1 style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{sitter.name}</h1>
             {sitter.tagline && <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '3px 0 0', fontStyle: 'italic' }}>{sitter.tagline}</p>}
           </div>
           <div style={{ padding: '0 16px 40px' }}>
@@ -1485,7 +1487,7 @@ export function PublicSitterProfile({ username, session = null }) {
               onClick={() => sitter.avatar_url && setLightbox(sitter.avatar_url)}>
               <SitterAvatar url={sitter.avatar_url} name={sitter.name} size={120} radius="0"/>
             </div>
-            <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 26, fontWeight: 700, lineHeight: 1.2, marginBottom: 4 }}>{sitter.name}</h1>
+            <h1 style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.2, marginBottom: 4 }}>{sitter.name}</h1>
             {sitter.tagline && <p style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic', marginBottom: 12, lineHeight: 1.4 }}>{sitter.tagline}</p>}
             <div style={{ marginBottom: 16 }}><StatList column/></div>
             <CtaBlock/>
@@ -1565,7 +1567,7 @@ export function BrowseSitters({ session = null, familyId = null, familyName = ''
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px', position: 'relative', zIndex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: isLoggedInFamily ? 22 : 28, fontWeight: 600 }}>Find a Sitter ➿</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: isLoggedInFamily ? 22 : 28, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>Find a Sitter <LoopMark size={isLoggedInFamily ? 16 : 20}/></div>
           <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>Browse independent sitters in your area</div>
         </div>
         {isPublic && <button className="bp" onClick={() => window.location.href = '/?portal=parent'} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>Sign Up Free</button>}
@@ -1615,7 +1617,7 @@ export function BrowseSitters({ session = null, familyId = null, familyName = ''
                             <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', lineHeight: 1.3 }}>{s.name}</div>
                           </button>
                           {(s.hourly_rate_min || s.hourly_rate_max) && (
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#7BAAEE', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                               from ${s.hourly_rate_min || s.hourly_rate_max}/hr
                             </div>
                           )}
@@ -1630,7 +1632,7 @@ export function BrowseSitters({ session = null, familyId = null, familyName = ''
                           {s.background_check && <Tag label="✅ Checked" color="rgba(60,180,100,.15)" textColor="#5EE89A" borderColor="rgba(60,180,100,.25)"/>}
                           {(s.age_ranges || []).slice(0, 2).map(id => {
                             const r = AGE_RANGES.find(a => a.id === id);
-                            return r ? <Tag key={id} label={`${r.icon} ${r.label}`} color="rgba(58,111,212,.1)" textColor="var(--accent,#7BAAEE)" borderColor="rgba(58,111,212,.2)"/> : null;
+                            return r ? <Tag key={id} label={`${r.icon} ${r.label}`} color="color-mix(in srgb,var(--accent) 10%,transparent)" textColor="var(--accent,#7BAAEE)" borderColor="color-mix(in srgb,var(--accent) 20%,transparent)"/> : null;
                           })}
                         </div>
                         {/* CTA — own row, right-aligned, never overflows */}
@@ -1642,7 +1644,7 @@ export function BrowseSitters({ session = null, familyId = null, familyName = ''
                           )}
                           {isLoggedInFamily && (
                             connStatus === 'active'
-                              ? <span style={{ fontSize: 11, color: '#88D8B8', fontWeight: 600, alignSelf: 'center' }}>✓ Connected</span>
+                              ? <span style={{ fontSize: 11, color: 'var(--ok-text)', fontWeight: 600, alignSelf: 'center' }}>✓ Connected</span>
                               : connStatus === 'requested'
                                 ? <span style={{ fontSize: 11, color: 'var(--text-faint)', alignSelf: 'center' }}>Requested…</span>
                                 : <button className="bp" style={{ fontSize: 11, padding: '5px 12px' }} disabled={requesting[s.id]}
@@ -1679,7 +1681,7 @@ export function BrowseSitters({ session = null, familyId = null, familyName = ''
 
 function Toggle({ isOn, onToggle }) {
   return (
-    <div onClick={onToggle} style={{ width: 44, height: 24, borderRadius: 12, cursor: 'pointer', transition: 'background .2s', flexShrink: 0, background: isOn ? 'var(--accent,#3A6FD4)' : 'rgba(255,255,255,.1)', position: 'relative' }}>
+    <div onClick={onToggle} style={{ width: 44, height: 24, borderRadius: 12, cursor: 'pointer', transition: 'background .2s', flexShrink: 0, background: isOn ? 'var(--accent,#3A6FD4)' : 'var(--pill-bg)', position: 'relative' }}>
       <div style={{ position: 'absolute', top: 3, left: isOn ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .2s' }}/>
     </div>
   );
@@ -1700,7 +1702,7 @@ function ToggleRow({ label, sub, isOn, onToggle }) {
 function ProfileSection({ title, children }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 600, marginBottom: 12 }}>{title}</h2>
+      <h2 style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 600, marginBottom: 12 }}>{title}</h2>
       {children}
     </div>
   );

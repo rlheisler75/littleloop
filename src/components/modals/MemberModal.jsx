@@ -85,7 +85,7 @@ export default function MemberModal({
   return (
     <>
       <Modal open={open && !confirmDel} onClose={onClose}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 20 }}>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 20 }}>
           {isEdit ? 'Edit Member' : 'Add Member'}
         </div>
         {alert && <div className={`al al-${alert.t}`}>{alert.m}</div>}
@@ -121,7 +121,7 @@ export default function MemberModal({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {AVATARS.map(a => (
                   <button key={a} type="button" onClick={() => setAv(a)}
-                    style={{ width: 36, height: 36, borderRadius: 10, border: `2px solid ${avatar === a ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: avatar === a ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.04)', cursor: 'pointer', fontSize: 20 }}>
+                    style={{ width: 36, height: 36, borderRadius: 10, border: `2px solid ${avatar === a ? 'var(--accent)' : 'var(--border)'}`, background: avatar === a ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', cursor: 'pointer', fontSize: 20 }}>
                     {a}
                   </button>
                 ))}
@@ -135,7 +135,7 @@ export default function MemberModal({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {Object.entries(ROLE_LABELS).map(([r, l]) => (
                   <button key={r} type="button" onClick={() => setRole(r)}
-                    style={{ padding: '7px 14px', borderRadius: 20, border: `1px solid ${role === r ? '#7BAAEE' : 'rgba(255,255,255,.12)'}`, background: role === r ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.04)', color: role === r ? '#7BAAEE' : 'rgba(255,255,255,.5)', fontSize: 12, cursor: 'pointer' }}>
+                    style={{ padding: '7px 14px', borderRadius: 20, border: `1px solid ${role === r ? 'var(--accent)' : 'var(--border)'}`, background: role === r ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', color: role === r ? 'var(--accent)' : 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>
                     {l}
                   </button>
                 ))}

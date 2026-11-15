@@ -18,7 +18,7 @@ export function Modal({ open, onClose, children }) {
 export function Confirm({ open, title, message, onConfirm, onCancel, danger = false }) {
   return (
     <Modal open={open} onClose={onCancel}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
         {title}
       </div>
       <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24, lineHeight: 1.6 }}>

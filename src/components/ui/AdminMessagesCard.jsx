@@ -49,14 +49,14 @@ export default function AdminMessagesCard({ userId }) {
   const unreadCount = messages.filter(m => !m.read_at).length;
 
   return (
-    <div className="card" style={{ padding: '20px 18px', marginBottom: 14, border: '1px solid rgba(58,111,212,.2)', background: 'rgba(58,111,212,.04)' }}>
+    <div className="card" style={{ padding: '20px 18px', marginBottom: 14, border: '1px solid color-mix(in srgb,var(--accent) 20%,transparent)', background: 'color-mix(in srgb,var(--accent) 4%,transparent)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
         <div style={{ fontSize: 16 }}>📬</div>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, flex: 1 }}>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, flex: 1 }}>
           Messages from littleloop
         </div>
         {unreadCount > 0 && (
-          <span style={{ fontSize: 10, fontWeight: 700, background: '#3A6FD4', color: '#fff', borderRadius: 10, padding: '2px 8px' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--accent)', color: '#fff', borderRadius: 10, padding: '2px 8px' }}>
             {unreadCount} new
           </span>
         )}
@@ -69,13 +69,13 @@ export default function AdminMessagesCard({ userId }) {
             style={{
               padding: '12px 14px', borderRadius: 12, cursor: 'pointer', transition: 'all .15s',
               background: expanded === msg.id ? 'var(--input-bg)' : 'var(--card-bg)',
-              border: `1px solid ${!msg.read_at ? 'rgba(58,111,212,.4)' : 'var(--border)'}`,
+              border: `1px solid ${!msg.read_at ? 'color-mix(in srgb,var(--accent) 40%,transparent)' : 'var(--border)'}`,
             }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                   {!msg.read_at && (
-                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#3A6FD4', flexShrink: 0 }}/>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }}/>
                   )}
                   <div style={{ fontSize: 13, fontWeight: !msg.read_at ? 700 : 500 }}>{msg.subject}</div>
                 </div>

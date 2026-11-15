@@ -69,11 +69,11 @@ export default function SessionsList({ familyId, childrenMap, dateRange = 'week'
     <div>
       {showTitle && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 600 }}>⏱ Hours Log</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 17, fontWeight: 600 }}>⏱ Hours Log</div>
           <div style={{ display: 'flex', gap: 6 }}>
             {['today', 'week', 'month', 'all'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                style={{ padding: '4px 9px', borderRadius: 20, fontSize: 10, cursor: 'pointer', border: `1px solid ${filter === f ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: filter === f ? 'rgba(111,163,232,.15)' : 'transparent', color: filter === f ? '#7BAAEE' : 'var(--text-faint)', textTransform: 'capitalize' }}>
+                style={{ padding: '4px 9px', borderRadius: 20, fontSize: 10, cursor: 'pointer', border: `1px solid ${filter === f ? 'var(--accent)' : 'var(--border)'}`, background: filter === f ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'transparent', color: filter === f ? 'var(--accent)' : 'var(--text-dim)', textTransform: 'capitalize' }}>
                 {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
@@ -86,7 +86,7 @@ export default function SessionsList({ familyId, childrenMap, dateRange = 'week'
         <div key={s.checkin_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, marginBottom: 8, background: 'rgba(200,120,74,.1)', border: '1px solid rgba(200,120,74,.3)' }}>
           <span style={{ fontSize: 18 }}>⚠️</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#F5C098' }}>Missing checkout</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--pend-text)' }}>Missing checkout</div>
             <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
               {s.children?.name} checked in {fmtDateTime(s.checked_in_at)} at {fmtTime(s.checked_in_at)} — no checkout recorded
             </div>
@@ -101,9 +101,9 @@ export default function SessionsList({ familyId, childrenMap, dateRange = 'week'
           <span style={{ fontSize: 20 }}>{s.children?.avatar || '🧒'}</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{s.children?.name}</div>
-            <div style={{ fontSize: 11, color: '#88D8B8' }}>Checked in at {fmtTime(s.checked_in_at)} · {fmtHours(s.hours)} so far</div>
+            <div style={{ fontSize: 11, color: 'var(--ok-text)' }}>Checked in at {fmtTime(s.checked_in_at)} · {fmtHours(s.hours)} so far</div>
           </div>
-          <span style={{ fontSize: 10, background: 'rgba(58,158,122,.2)', color: '#88D8B8', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>Active</span>
+          <span style={{ fontSize: 10, background: 'rgba(58,158,122,.2)', color: 'var(--ok-text)', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>Active</span>
         </div>
       ))}
 
@@ -115,7 +115,7 @@ export default function SessionsList({ familyId, childrenMap, dateRange = 'week'
               ? `${totalCount} session${totalCount !== 1 ? 's' : ''} total`
               : `${closedSessions.length} session${closedSessions.length !== 1 ? 's' : ''}`}
           </span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#7BAAEE' }}>{fmtHours(totalHours)} total</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>{fmtHours(totalHours)} total</span>
         </div>
       )}
 
@@ -131,18 +131,18 @@ export default function SessionsList({ familyId, childrenMap, dateRange = 'week'
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 18, flexShrink: 0 }}>{s.children?.avatar || '🧒'}</span>
                     <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{s.children?.name}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#7BAAEE' }}>{fmtHours(s.hours)}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{fmtHours(s.hours)}</span>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button onClick={() => setEditEntry({ id: s.checkin_id, checked_at: s.checked_in_at, checked_by_name: s.checked_in_by, label: 'Check-in' })}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 8, background: 'rgba(58,158,122,.1)', border: '1px solid rgba(58,158,122,.2)', color: '#88D8B8', fontSize: 10, cursor: 'pointer' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 8, background: 'rgba(58,158,122,.1)', border: '1px solid rgba(58,158,122,.2)', color: 'var(--ok-text)', fontSize: 10, cursor: 'pointer' }}>
                       <span>▶ In</span>
                       <span style={{ fontWeight: 600 }}>{fmtDateTime(s.checked_in_at)} {fmtTime(s.checked_in_at)}</span>
                       {s.checkin_edited && <span style={{ opacity: .6 }}>·edited</span>}
                       <span style={{ opacity: .5 }}>✏️</span>
                     </button>
                     <button onClick={() => setEditEntry({ id: s.checkout_id, checked_at: s.checked_out_at, checked_by_name: s.checked_out_by, label: 'Check-out' })}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 8, background: 'rgba(192,80,80,.1)', border: '1px solid rgba(192,80,80,.2)', color: '#F5AAAA', fontSize: 10, cursor: 'pointer' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 8, background: 'rgba(192,80,80,.1)', border: '1px solid rgba(192,80,80,.2)', color: 'var(--err-text)', fontSize: 10, cursor: 'pointer' }}>
                       <span>■ Out</span>
                       <span style={{ fontWeight: 600 }}>{fmtDateTime(s.checked_out_at)} {fmtTime(s.checked_out_at)}</span>
                       {s.checkout_edited && <span style={{ opacity: .6 }}>·edited</span>}

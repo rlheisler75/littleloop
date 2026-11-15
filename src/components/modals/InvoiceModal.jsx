@@ -55,7 +55,7 @@ export function LineItemRow({ item, children, onChange, onRemove, index }) {
           <input className="fi" type="number" step="0.01" min="0" value={item.rate || ''} onChange={e => onChange(index, { rate: parseFloat(e.target.value) || 0 })} style={{ marginBottom: 0 }}/>
         </div>
         <div style={{ paddingBottom: 2 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#88D8B8', textAlign: 'right', minWidth: 60 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ok-text)', textAlign: 'right', minWidth: 60 }}>
             {fmt(item.rate_type === 'hourly' ? (item.hours || 0) * item.rate : item.rate)}
           </div>
         </div>
@@ -76,7 +76,7 @@ export function CreditRow({ item, onChange, onRemove, index }) {
     <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(58,158,122,.06)', border: '1px solid rgba(58,158,122,.2)', marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: 14 }}>💚</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#88D8B8' }}>Credit / Discount</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ok-text)' }}>Credit / Discount</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px auto', gap: 8, alignItems: 'end' }}>
         <div>
@@ -96,7 +96,7 @@ export function CreditRow({ item, onChange, onRemove, index }) {
             placeholder="0.00" style={{ marginBottom: 0 }}/>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 2 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#88D8B8', minWidth: 60, textAlign: 'right' }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ok-text)', minWidth: 60, textAlign: 'right' }}>
             -{fmt(Math.abs(parseFloat(item.rate) || 0))}
           </div>
           <button onClick={() => onRemove(index)}
@@ -256,7 +256,7 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 16 }}>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 16 }}>
         {isEdit ? 'Edit Invoice' : 'New Invoice'}
       </div>
       {alert && <div className={`al al-${alert.t}`}>{alert.m}</div>}
@@ -279,7 +279,7 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
           <SectionLabel>Line Items</SectionLabel>
           <div style={{ display: 'flex', gap: 6 }}>
             <button type="button" className="bp" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setItems(its => [...its, blankItem()])}>+ Add Item</button>
-            <button type="button" className="bg" style={{ padding: '5px 12px', fontSize: 11, color: '#88D8B8', borderColor: 'rgba(58,158,122,.3)' }} onClick={() => setItems(its => [...its, blankCredit()])}>+ Credit</button>
+            <button type="button" className="bg" style={{ padding: '5px 12px', fontSize: 11, color: 'var(--ok-text)', borderColor: 'rgba(58,158,122,.3)' }} onClick={() => setItems(its => [...its, blankCredit()])}>+ Credit</button>
             {!isEdit && sessions.length > 0 && (
               <button type="button" className="bg" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setShowSessions(!showSessions)}>
                 📋 Import Sessions ({sessions.length})
@@ -321,11 +321,11 @@ export function InvoiceModal({ open, onClose, sitterId, sitterName, families, al
           return credits < 0 ? (
             <div style={{ textAlign: 'right', marginTop: 8 }}>
               <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 2 }}>Subtotal: {fmt(subtotal)}</div>
-              <div style={{ fontSize: 12, color: '#88D8B8', marginBottom: 4 }}>Credits: -{fmt(Math.abs(credits))}</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#88D8B8' }}>Total: {fmt(total)}</div>
+              <div style={{ fontSize: 12, color: 'var(--ok-text)', marginBottom: 4 }}>Credits: -{fmt(Math.abs(credits))}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ok-text)' }}>Total: {fmt(total)}</div>
             </div>
           ) : (
-            <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 600, color: '#88D8B8', marginTop: 8 }}>Total: {fmt(total)}</div>
+            <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 600, color: 'var(--ok-text)', marginTop: 8 }}>Total: {fmt(total)}</div>
           );
         })()}
       </div>

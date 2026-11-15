@@ -66,16 +66,16 @@ function Swatch({ p, isActive, onSelect }) {
 export default function ThemePicker({ currentTheme, onSelect }) {
   return (
     <div>
-      <div className="theme-section-label">Dark themes</div>
+      <div className="theme-section-label">Light themes</div>
       <div className="theme-picker-grid">
-        {DARK_PALETTES.map(p => (
+        {LIGHT_PALETTES.map(p => (
           <Swatch key={p.id} p={p} isActive={currentTheme === p.id} onSelect={onSelect} />
         ))}
       </div>
 
-      <div className="theme-section-label">Light themes</div>
+      <div className="theme-section-label">Dark themes</div>
       <div className="theme-picker-grid" style={{ marginBottom: 0 }}>
-        {LIGHT_PALETTES.map(p => (
+        {DARK_PALETTES.map(p => (
           <Swatch key={p.id} p={p} isActive={currentTheme === p.id} onSelect={onSelect} />
         ))}
       </div>

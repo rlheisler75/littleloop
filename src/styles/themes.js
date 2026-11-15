@@ -138,6 +138,21 @@ export const PALETTES = [
   // ── LIGHT THEMES ─────────────────────────────────────────────────────────────
   // All accent colors darkened to achieve ≥4.5:1 contrast on their backgrounds
 
+  // Default. Matches the landing page (cream, coral, sunshine, sky, mint).
+  {
+    id:         'sunshine',
+    name:       'Sunshine ☀',
+    dark:       false,
+    body:       '#FFFBF3',
+    orb1:       'rgba(255,194,60,.28)',
+    orb2:       'rgba(76,181,245,.18)',
+    card:       'rgba(255,255,255,.92)',
+    accent:     '#C93C29',   // ~4.9:1 on #FFFBF3 ✓
+    accentGrad: 'linear-gradient(135deg,#E8553F,#C93C29)',
+    nav:        'rgba(255,251,243,.90)',
+    logo:       'linear-gradient(90deg,#FF6B57,#FFB13C,#4CB5F5,#FFB13C,#FF6B57)',
+  },
+
   {
     id:         'cloud',
     name:       'Cloud',
@@ -399,8 +414,10 @@ export const PALETTES = [
  * @param {string} id
  * @returns {object} palette
  */
+export const DEFAULT_THEME = 'sunshine';
+
 export function getPalette(id) {
-  return PALETTES.find(p => p.id === id) || PALETTES[0];
+  return PALETTES.find(p => p.id === id) || PALETTES.find(p => p.id === DEFAULT_THEME);
 }
 
 /** Convenience: all dark palettes */

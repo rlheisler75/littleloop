@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import LoopMark from '../../components/ui/LoopMark';
 import { supabase } from '../../lib/supabase';
 import { PAYMENT_TYPES, SITTER_AVATARS } from '../../lib/constants';
 import Field from '../../components/ui/Field';
@@ -60,7 +61,7 @@ export default function SitterOnboarding({ session, onComplete }) {
       <div style={{ width: '100%', maxWidth: 520 }}>
 
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div className="leaf" style={{ fontSize: 36, marginBottom: 8 }}>➿</div>
+          <div className="leaf" style={{ marginBottom: 8 }}><LoopMark size={36}/></div>
           <div className="logo-text" style={{ fontSize: 28, marginBottom: 4 }}>littleloop</div>
           <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>Sitter Setup</div>
         </div>
@@ -70,7 +71,7 @@ export default function SitterOnboarding({ session, onComplete }) {
         </div>
 
         <div style={{ marginBottom: 22 }}>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{STEPS[step].title}</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{STEPS[step].title}</div>
           <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>{STEPS[step].sub}</div>
         </div>
 
@@ -86,7 +87,7 @@ export default function SitterOnboarding({ session, onComplete }) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
                   {SITTER_AVATARS.map(a => (
                     <button key={a} onClick={() => setAvatar(a)}
-                      style={{ width: 44, height: 44, borderRadius: 12, fontSize: 22, border: `2px solid ${avatar === a ? 'var(--accent,#7BAAEE)' : 'var(--border)'}`, background: avatar === a ? 'rgba(111,163,232,.12)' : 'var(--input-bg)', cursor: 'pointer', transition: 'all .15s' }}>
+                      style={{ width: 44, height: 44, borderRadius: 12, fontSize: 22, border: `2px solid ${avatar === a ? 'var(--accent,#7BAAEE)' : 'var(--border)'}`, background: avatar === a ? 'color-mix(in srgb,var(--accent) 12%,transparent)' : 'var(--input-bg)', cursor: 'pointer', transition: 'all .15s' }}>
                       {a}
                     </button>
                   ))}
@@ -132,7 +133,7 @@ export default function SitterOnboarding({ session, onComplete }) {
                 const m          = methods.find(x => x.type === pt.id);
                 const hasHandle  = pt.placeholder !== '(no handle needed)';
                 return (
-                  <div key={pt.id} style={{ marginBottom: 12, padding: '12px 14px', borderRadius: 12, background: m.enabled ? 'rgba(111,163,232,.06)' : 'var(--input-bg)', border: `1px solid ${m.enabled ? 'rgba(111,163,232,.25)' : 'var(--border)'}`, transition: 'all .2s' }}>
+                  <div key={pt.id} style={{ marginBottom: 12, padding: '12px 14px', borderRadius: 12, background: m.enabled ? 'color-mix(in srgb,var(--accent) 6%,transparent)' : 'var(--input-bg)', border: `1px solid ${m.enabled ? 'color-mix(in srgb,var(--accent) 25%,transparent)' : 'var(--border)'}`, transition: 'all .2s' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: m.enabled && hasHandle ? 10 : 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 20 }}>{pt.icon}</span>

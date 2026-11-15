@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import LoopMark, { AvatarGlyph } from '../../components/ui/LoopMark';
 import { supabase } from '../../lib/supabase';
 import { subscribeToPush, invokeNotification, sendPushNotification } from '../../services/push';
 import { timeAgo, getMoodIcon, getTypeIcon } from '../../services/format';
@@ -66,16 +67,16 @@ export function PostCard({ post, taggedChildren, currentUserId, memberId, isSitt
           <img src={post.photo_url} alt="post" style={{ width: '100%', maxHeight: post.text ? 360 : 520, minHeight: post.text ? 200 : 280, objectFit: 'cover', display: 'block' }}/>
           {!post.text && (
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent,rgba(0,0,0,.6))', padding: '32px 14px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#3A6FD4,#3A9E7A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>➿</div>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent-grad)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}><LoopMark size={11} color="#fff"/></div>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>{sitterName}</div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.6)' }}>{timeAgo(post.created_at)}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.75)' }}>{timeAgo(post.created_at)}</div>
               </div>
-              <div style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(255,255,255,.5)' }}>tap to expand</div>
+              <div style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(255,255,255,.65)' }}>tap to expand</div>
             </div>
           )}
           {post.text && (
-            <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,.4)', borderRadius: 6, padding: '3px 7px', fontSize: 10, color: 'rgba(255,255,255,.7)' }}>tap to expand</div>
+            <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,.4)', borderRadius: 6, padding: '3px 7px', fontSize: 10, color: 'rgba(255,255,255,.8)' }}>tap to expand</div>
           )}
         </div>
       )}
@@ -83,7 +84,7 @@ export function PostCard({ post, taggedChildren, currentUserId, memberId, isSitt
       <div style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 12, background: 'linear-gradient(135deg,#3A6FD4,#3A9E7A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>➿</div>
+            <div style={{ width: 36, height: 36, borderRadius: 12, background: 'var(--accent-grad)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}><LoopMark size={14} color="#fff"/></div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{sitterName}</span>
@@ -104,14 +105,14 @@ export function PostCard({ post, taggedChildren, currentUserId, memberId, isSitt
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
           {memberId && (
-            <button onClick={toggleLike} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: liked ? '#F5AAAA' : 'rgba(255,255,255,.35)', fontSize: 12, padding: 0 }}>
+            <button onClick={toggleLike} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: liked ? 'var(--err-text)' : 'var(--text-faint)', fontSize: 12, padding: 0 }}>
               <span style={{ fontSize: 16 }}>{liked ? '❤️' : '🤍'}</span>
               {likes.length > 0 && <span>{likes.length}</span>}
             </button>
           )}
-          <button onClick={() => setShowComments(!showComments)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: showComments ? '#7BAAEE' : 'rgba(255,255,255,.35)', fontSize: 12, padding: 0 }}>
+          <button onClick={() => setShowComments(!showComments)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: showComments ? 'var(--accent)' : 'var(--text-faint)', fontSize: 12, padding: 0 }}>
             <span style={{ fontSize: 16 }}>💬</span>
             <span>{comments.length > 0 ? comments.length : 'Comment'}</span>
           </button>
@@ -119,10 +120,10 @@ export function PostCard({ post, taggedChildren, currentUserId, memberId, isSitt
         </div>
 
         {showComments && (
-          <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 12 }}>
+          <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
             {comments.map(c => (
               <div key={c.id} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 20, flexShrink: 0 }}>{c.author_avatar}</span>
+                <span style={{ fontSize: 20, flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}><AvatarGlyph value={c.author_avatar} size={20}/></span>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                     <span style={{ fontSize: 12, fontWeight: 600 }}>{c.author_name}</span>
@@ -191,9 +192,9 @@ export function FeedTab({ familyId, sitterId, memberId, isSitter, children, unse
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600 }}>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600 }}>
           Feed
-          {unseenCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#3A6FD4', fontSize: 11, fontWeight: 700, marginLeft: 6 }}>{unseenCount}</span>}
+          {unseenCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', fontSize: 11, fontWeight: 700, marginLeft: 6 }}>{unseenCount}</span>}
         </div>
         {isSitter && (
           <div style={{ display: 'flex', gap: 8 }}>
@@ -206,7 +207,7 @@ export function FeedTab({ familyId, sitterId, memberId, isSitter, children, unse
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
         {[{ id: 'all', icon: '📋', label: 'All' }, ...POST_TYPES].map(t => (
           <button key={t.id} type="button" onClick={() => setFilter(t.id)}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 11px', borderRadius: 20, border: `1px solid ${filter === t.id ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: filter === t.id ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.04)', color: filter === t.id ? '#7BAAEE' : 'rgba(255,255,255,.4)', fontSize: 11, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 11px', borderRadius: 20, border: `1px solid ${filter === t.id ? 'var(--accent)' : 'var(--border)'}`, background: filter === t.id ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', color: filter === t.id ? 'var(--accent)' : 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>
             {t.icon} {t.label}
           </button>
         ))}
@@ -262,7 +263,7 @@ export function SitterFeedWrapper({ sitterId, sitterName }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
           {families.map(f => (
             <button key={f.id} type="button" onClick={() => setSelected(f.id)}
-              style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${selected === f.id ? '#7BAAEE' : 'rgba(255,255,255,.1)'}`, background: selected === f.id ? 'rgba(111,163,232,.15)' : 'rgba(255,255,255,.04)', color: selected === f.id ? '#7BAAEE' : 'rgba(255,255,255,.5)', fontSize: 12, cursor: 'pointer' }}>
+              style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${selected === f.id ? 'var(--accent)' : 'var(--border)'}`, background: selected === f.id ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', color: selected === f.id ? 'var(--accent)' : 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>
               {f.name}
             </button>
           ))}

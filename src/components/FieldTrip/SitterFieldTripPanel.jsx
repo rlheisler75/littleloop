@@ -168,8 +168,8 @@ function PulsingDot() {
 // ─────────────────────────────────────────────
 const styles = {
   card: {
-    background: 'var(--color-surface, #fff)',
-    border: '1px solid var(--color-border, #e5e7eb)',
+    background: 'var(--card-bg)',
+    border: '1px solid var(--border)',
     borderRadius: 16,
     padding: '20px 24px',
     fontFamily: 'inherit',
@@ -181,8 +181,8 @@ const styles = {
     marginBottom: 20,
   },
   headerIcon: { fontSize: 28 },
-  headerTitle: { fontWeight: 700, fontSize: 17, color: 'var(--color-text, #111)' },
-  headerSub: { fontSize: 13, color: 'var(--color-text-muted, #6b7280)', marginTop: 2 },
+  headerTitle: { fontWeight: 700, fontSize: 17, color: 'var(--text)' },
+  headerSub: { fontSize: 13, color: 'var(--text-dim)', marginTop: 2 },
   liveBadge: {
     marginLeft: 'auto',
     display: 'flex',
@@ -217,7 +217,7 @@ const styles = {
     alignItems: 'flex-start',
   },
   activeInfo: {
-    background: 'var(--color-surface-alt, #f9fafb)',
+    background: 'var(--input-bg)',
     borderRadius: 12,
     padding: '14px 16px',
     marginBottom: 14,
@@ -230,8 +230,8 @@ const styles = {
     justifyContent: 'space-between',
     fontSize: 13,
   },
-  label: { color: 'var(--color-text-muted, #6b7280)', fontWeight: 500 },
-  value: { color: 'var(--color-text, #111)', fontWeight: 600 },
+  label: { color: 'var(--text-dim)', fontWeight: 500 },
+  value: { color: 'var(--text)', fontWeight: 600 },
   trackingIndicator: {
     display: 'flex',
     alignItems: 'center',
@@ -266,7 +266,7 @@ const styles = {
     transition: 'opacity 0.15s, transform 0.1s',
   },
   btnStart: {
-    background: 'var(--color-primary, #6366f1)',
+    background: 'var(--accent)',
     color: '#fff',
   },
   btnStop: {
@@ -278,14 +278,14 @@ const styles = {
   childPills: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   pill: {
     background: 'var(--color-primary-light, #eef2ff)',
-    color: 'var(--color-primary, #6366f1)',
+    color: 'var(--accent)',
     borderRadius: 999,
     padding: '3px 10px',
     fontSize: 13,
     fontWeight: 600,
   },
   emptyState: {
-    color: 'var(--color-text-muted, #6b7280)',
+    color: 'var(--text-dim)',
     fontSize: 13,
     textAlign: 'center',
     padding: '12px 0',
@@ -300,7 +300,7 @@ const styles = {
     flex: 1,
     padding: '10px 14px',
     borderRadius: 10,
-    border: '1.5px solid var(--color-border, #e5e7eb)',
+    border: '1.5px solid var(--border)',
     fontSize: 13,
     outline: 'none',
     fontFamily: 'inherit',
@@ -317,7 +317,7 @@ const styles = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    color: 'var(--color-primary, #6366f1)',
+    color: 'var(--accent)',
     fontSize: 13,
     fontWeight: 600,
     padding: '0 0 12px 0',

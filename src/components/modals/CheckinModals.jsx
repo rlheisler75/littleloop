@@ -20,7 +20,7 @@ export function CheckinHistoryModal({ open, onClose, familyId, children }) {
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>Hours & Check-ins</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>Hours & Check-ins</div>
       <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Sessions, hours logged, and editable times.</div>
       {SessionsList
         ? <SessionsList familyId={familyId} childrenMap={{}} showTitle={true}/>
@@ -69,7 +69,7 @@ export function EditCheckinModal({ open, onClose, entry, label, onSaved }) {
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
         Edit {label} Time
       </div>
       {alert && <div className={`al al-${alert.t}`}>{alert.m}</div>}
@@ -129,7 +129,7 @@ export function ManualCheckoutModal({ open, onClose, session, familyId, onSaved 
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, marginBottom: 6 }}>Add Missing Checkout</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600, marginBottom: 6 }}>Add Missing Checkout</div>
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16, lineHeight: 1.6 }}>Set the actual time this child was picked up.</p>
       <form onSubmit={save}>
         <div style={{ marginBottom: 14 }}>

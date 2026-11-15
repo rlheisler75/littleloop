@@ -1,3 +1,4 @@
+import LoopMark from '../ui/LoopMark';
 // Styled to match the landing page (coral / sun / sky / mint, Fredoka + Nunito).
 export const AUTH_STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap');
@@ -67,7 +68,7 @@ export default function AuthShell({ onBack, children }) {
       <div className="ll-auth-wrap">
         {onBack && <button className="ll-auth-back" onClick={onBack}>← Back to littleloop</button>}
         <div className="ll-auth-brand">
-          <div className="ll-auth-logo">➿ littleloop</div>
+          <div className="ll-auth-logo"><LoopMark size={24} color="#E8553F"/> littleloop</div>
           <div className="ll-auth-tag">Independent childcare, thoughtfully connected.</div>
         </div>
         <div className="ll-auth-card">{children}</div>

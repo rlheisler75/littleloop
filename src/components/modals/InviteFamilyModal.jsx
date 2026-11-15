@@ -56,7 +56,7 @@ export default function InviteFamilyModal({ open, onClose, sitterId, sitterName,
 
   return (
     <Modal open={open} onClose={close}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, marginBottom: 4 }}>Invite a Family</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 24, fontWeight: 600, marginBottom: 4 }}>Invite a Family</div>
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 22, lineHeight: 1.6 }}>The email you enter becomes the family admin.</p>
       {alert && <div className={`al al-${alert.t}`}>{alert.m}</div>}
       <form onSubmit={submit}>

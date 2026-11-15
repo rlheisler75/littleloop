@@ -4,6 +4,7 @@ import { invokeNotification, sendPushNotification } from '../../services/push';
 import { timeAgo } from '../../services/format';
 import { NewConversationModal, AddParticipantModal } from '../../components/modals/ConversationModals';
 import Spinner from '../../components/ui/Spinner';
+import { AvatarGlyph } from '../../components/ui/LoopMark';
 
 // ─── Conversation Thread ──────────────────────────────────────────────────────
 
@@ -82,7 +83,7 @@ export function ConversationThread({ conv, currentUserId, isSitter, familyId, on
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 160px)', minHeight: 400 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,.06)', marginBottom: 12, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)', marginBottom: 12, flexShrink: 0 }}>
         <button onClick={onBack} className="bg" style={{ padding: '6px 10px', fontSize: 12 }}>← Back</button>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 600, fontSize: 14 }}>{convTitle}</div>
@@ -99,11 +100,11 @@ export function ConversationThread({ conv, currentUserId, isSitter, familyId, on
             const showAvatar = i === 0 || messages[i - 1].sender_id !== m.sender_id;
             return (
               <div key={m.id} style={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: 8 }}>
-                {!isMe && showAvatar  && <span style={{ fontSize: 22, flexShrink: 0 }}>{m.sender_avatar}</span>}
+                {!isMe && showAvatar  && <span style={{ fontSize: 22, flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}><AvatarGlyph value={m.sender_avatar} size={22}/></span>}
                 {!isMe && !showAvatar && <span style={{ width: 30, flexShrink: 0 }}/>}
                 <div style={{ maxWidth: '80%' }}>
                   {showAvatar && !isMe && <div style={{ fontSize: 10, color: 'var(--text-faint)', marginBottom: 3, marginLeft: 2 }}>{m.sender_name}</div>}
-                  <div style={{ padding: '9px 13px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: isMe ? 'linear-gradient(135deg,#3A6FD4,#2550A8)' : 'rgba(255,255,255,.08)', fontSize: 13, lineHeight: 1.5, color: '#E4EAF4', wordBreak: 'break-word' }}>{m.text}</div>
+                  <div style={{ padding: '9px 13px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: isMe ? 'var(--accent-grad)' : 'var(--input-bg)', fontSize: 13, lineHeight: 1.5, color: isMe ? 'var(--btn-text,#fff)' : 'var(--text)', wordBreak: 'break-word' }}>{m.text}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 3, textAlign: isMe ? 'right' : 'left' }}>{timeAgo(m.created_at)}</div>
                   {isMe && i === messages.length - 1 && seenBy.length > 0 && (
                     <div style={{ fontSize: 9, color: 'var(--text-faint)', textAlign: 'right', marginTop: 1 }}>
@@ -118,7 +119,7 @@ export function ConversationThread({ conv, currentUserId, isSitter, familyId, on
         <div ref={bottomRef}/>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 8, paddingTop: 12, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
         <input className="fi" value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder="Type a message…" style={{ marginBottom: 0, flex: 1 }}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}/>
         <button className="bp" onClick={send} disabled={sending || !newMsg.trim()} style={{ padding: '8px 16px', flexShrink: 0 }}>
@@ -269,13 +270,13 @@ export function MessagesTab({ currentUserId, isSitter, families = [], memberInfo
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             {showPart?.participant_avatar?.startsWith('http')
               ? <img src={showPart.participant_avatar} style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }} alt={showPart.participant_name}/>
-              : <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#3A6FD4,#3A9E7A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{showPart?.participant_avatar || '💬'}</div>
+              : <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--accent-grad)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}><AvatarGlyph value={showPart?.participant_avatar || '💬'} size={22} color="#fff"/></div>
             }
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
                 <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                   {title}
-                  {unseen > 0 && !isHidden && <span style={{ background: '#3A6FD4', borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{unseen}</span>}
+                  {unseen > 0 && !isHidden && <span style={{ background: 'var(--accent)', borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{unseen}</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {last && <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>{timeAgo(last.created_at)}</div>}
@@ -288,7 +289,7 @@ export function MessagesTab({ currentUserId, isSitter, families = [], memberInfo
                   </button>
                 </div>
               </div>
-              {isSitter && fam && <div style={{ fontSize: 10, color: 'rgba(111,163,232,.6)', marginBottom: 3 }}>{fam.name}</div>}
+              {isSitter && fam && <div style={{ fontSize: 10, color: 'color-mix(in srgb,var(--accent) 60%,transparent)', marginBottom: 3 }}>{fam.name}</div>}
               {last
                 ? <div style={{ fontSize: 12, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><strong style={{ color: 'var(--text-dim)' }}>{last.sender_id === currentUserId ? 'You' : last.sender_name}:</strong> {last.text}</div>
                 : <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No messages yet</div>
@@ -322,8 +323,8 @@ export function MessagesTab({ currentUserId, isSitter, families = [], memberInfo
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600 }}>
-          Messages {totalUnseen > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: '#3A6FD4', fontSize: 11, fontWeight: 700, marginLeft: 6 }}>{totalUnseen}</span>}
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600 }}>
+          Messages {totalUnseen > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', fontSize: 11, fontWeight: 700, marginLeft: 6 }}>{totalUnseen}</span>}
         </div>
         <button className="bp" onClick={() => { setNewConvFamId(families[0]?.id || familyId || null); setShowNew(true); }}>+ New</button>
       </div>

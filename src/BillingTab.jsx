@@ -7,8 +7,8 @@ const formatDate = iso => iso
   ? new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   : '—';
 
-const box = { background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '12px 14px' };
-const label = { fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.05em' };
+const box = { background: 'var(--input-bg)', borderRadius: 10, padding: '12px 14px' };
+const label = { fontSize: 11, color: 'var(--text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.05em' };
 
 export default function BillingTab({ session, subscriptionData, isPro }) {
   const [loading, setLoading] = useState(false);
@@ -54,7 +54,7 @@ export default function BillingTab({ session, subscriptionData, isPro }) {
         </div>
 
         {comp ? (
-          <div style={{ padding: 14, background: 'rgba(58,158,122,.08)', border: '1px solid rgba(58,158,122,.2)', borderRadius: 12, fontSize: 13, color: 'var(--text-muted)' }}>
+          <div style={{ padding: 14, background: 'rgba(58,158,122,.08)', border: '1px solid rgba(58,158,122,.2)', borderRadius: 12, fontSize: 13, color: 'var(--text-dim)' }}>
             🎁 You're on a complimentary Pro plan as an early member. Thank you! No billing required.
           </div>
         ) : (
@@ -71,7 +71,7 @@ export default function BillingTab({ session, subscriptionData, isPro }) {
             </div>
           </div>
         )}
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 14 }}>Unlimited families and automatic recurring invoices.</div>
+        <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 14 }}>Unlimited families and automatic recurring invoices.</div>
       </div>
 
       {!comp && stripe_customer_id && (
@@ -79,7 +79,7 @@ export default function BillingTab({ session, subscriptionData, isPro }) {
           {loading ? 'Opening billing portal…' : '💳 Manage subscription'}
         </button>
       )}
-      {!comp && <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 14 }}>Billing is managed securely through Stripe. Cancel anytime.</p>}
+      {!comp && <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', marginTop: 14 }}>Billing is managed securely through Stripe. Cancel anytime.</p>}
     </div>
   );
 
@@ -98,16 +98,16 @@ export default function BillingTab({ session, subscriptionData, isPro }) {
       <div className="card" style={{ padding: 20, marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Free</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', background: 'rgba(255,255,255,.06)', padding: '3px 10px', borderRadius: 20 }}>Current plan</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', background: 'var(--input-bg)', padding: '3px 10px', borderRadius: 20 }}>Current plan</div>
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
           Check-ins, daily updates, GPS field trips, invoices and messaging for up to {FREE_FAMILY_LIMIT} families. No card needed.
         </div>
       </div>
 
       <div className="card" style={{ padding: 20, border: '1.5px solid var(--accent,#7BAAEE)' }}>
         <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Pro</div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 16 }}>
           Unlimited families, plus recurring invoices that send themselves every week or month.
         </div>
 
@@ -118,10 +118,10 @@ export default function BillingTab({ session, subscriptionData, isPro }) {
           ].map(p => (
             <div key={p.id} onClick={() => setPlan(p.id)} style={{
               flex: 1, padding: '12px', borderRadius: 12, cursor: 'pointer', textAlign: 'center',
-              border: `2px solid ${plan === p.id ? 'var(--accent,#7BAAEE)' : 'rgba(255,255,255,.08)'}`,
+              border: `2px solid ${plan === p.id ? 'var(--accent,#7BAAEE)' : 'var(--border)'}`,
               background: plan === p.id ? 'rgba(123,170,238,.08)' : 'transparent',
             }}>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{p.price}<span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted)' }}>{p.per}</span></div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>{p.price}<span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-dim)' }}>{p.per}</span></div>
               {p.badge && <div style={{ fontSize: 11, color: '#3A9E7A', fontWeight: 600, marginTop: 2 }}>{p.badge}</div>}
             </div>
           ))}
@@ -131,7 +131,7 @@ export default function BillingTab({ session, subscriptionData, isPro }) {
         <button className="bp full" onClick={upgrade} disabled={loading} style={{ width: '100%', padding: 13, fontSize: 14 }}>
           {loading ? 'Opening checkout…' : 'Upgrade to Pro'}
         </button>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', margin: '12px 0 0' }}>Secure checkout with Stripe. Cancel anytime.</p>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', margin: '12px 0 0' }}>Secure checkout with Stripe. Cancel anytime.</p>
       </div>
     </div>
   );

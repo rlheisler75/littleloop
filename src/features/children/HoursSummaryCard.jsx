@@ -37,11 +37,11 @@ export function HoursSummaryCard({ familyId, children }) {
     <div className="card fade-up" style={{ padding: '14px 18px', marginBottom: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <span style={{ fontSize: 16 }}>⏱</span>
-        <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600 }}>Hours This Week</span>
-        <span style={{ marginLeft: 'auto', fontSize: 15, fontWeight: 700, color: '#7BAAEE' }}>{fmtHours(weekHours)}</span>
+        <span style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600 }}>Hours This Week</span>
+        <span style={{ marginLeft: 'auto', fontSize: 15, fontWeight: 700, color: 'var(--accent)' }}>{fmtHours(weekHours)}</span>
       </div>
       {needsReview.map(s => (
-        <div key={s.checkin_id} style={{ fontSize: 11, color: '#F5C098', marginBottom: 4, padding: '6px 10px', background: 'rgba(200,120,74,.08)', borderRadius: 8, border: '1px solid rgba(200,120,74,.2)' }}>
+        <div key={s.checkin_id} style={{ fontSize: 11, color: 'var(--pend-text)', marginBottom: 4, padding: '6px 10px', background: 'rgba(200,120,74,.08)', borderRadius: 8, border: '1px solid rgba(200,120,74,.2)' }}>
           ⚠️ {s.children?.name} — missing checkout from {fmtDateTime(s.checked_in_at)}
         </div>
       ))}
@@ -49,7 +49,7 @@ export function HoursSummaryCard({ familyId, children }) {
         <div key={s.checkin_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(58,158,122,.08)', borderRadius: 8, border: '1px solid rgba(58,158,122,.2)', marginBottom: 4 }}>
           <span style={{ fontSize: 16 }}>{s.children?.avatar || '🧒'}</span>
           <span style={{ fontSize: 12, flex: 1 }}>{s.children?.name} is checked in</span>
-          <span style={{ fontSize: 11, color: '#88D8B8', fontWeight: 600 }}>{fmtHours(s.hours)}</span>
+          <span style={{ fontSize: 11, color: 'var(--ok-text)', fontWeight: 600 }}>{fmtHours(s.hours)}</span>
         </div>
       ))}
     </div>
@@ -91,11 +91,11 @@ export function CheckinLog({ familyId }) {
   return (
     <div style={{ marginTop: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600 }}>Check-in Log</div>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600 }}>Check-in Log</div>
         <div style={{ display: 'flex', gap: 6 }}>
           {['today', 'week', 'all'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              style={{ padding: '4px 10px', borderRadius: 20, border: `1px solid ${filter === f ? 'var(--accent,#7BAAEE)' : 'var(--border)'}`, background: filter === f ? 'rgba(111,163,232,.15)' : 'transparent', color: filter === f ? 'var(--accent,#7BAAEE)' : 'var(--text-faint)', fontSize: 10, cursor: 'pointer', textTransform: 'capitalize' }}>
+              style={{ padding: '4px 10px', borderRadius: 20, border: `1px solid ${filter === f ? 'var(--accent,#7BAAEE)' : 'var(--border)'}`, background: filter === f ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'transparent', color: filter === f ? 'var(--accent,#7BAAEE)' : 'var(--text-dim)', fontSize: 10, cursor: 'pointer', textTransform: 'capitalize' }}>
               {f === 'all' ? 'All time' : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
@@ -117,7 +117,7 @@ export function CheckinLog({ familyId }) {
                       {entry.checked_by_name} · {new Date(entry.checked_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                     </div>
                   </div>
-                  <div style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: entry.status === 'in' ? 'rgba(58,158,122,.15)' : 'rgba(192,80,80,.15)', color: entry.status === 'in' ? '#88D8B8' : '#F5AAAA', border: `1px solid ${entry.status === 'in' ? 'rgba(58,158,122,.25)' : 'rgba(192,80,80,.25)'}` }}>
+                  <div style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: entry.status === 'in' ? 'rgba(58,158,122,.15)' : 'rgba(192,80,80,.15)', color: entry.status === 'in' ? 'var(--ok-text)' : 'var(--err-text)', border: `1px solid ${entry.status === 'in' ? 'rgba(58,158,122,.25)' : 'rgba(192,80,80,.25)'}` }}>
                     {entry.status === 'in' ? 'Checked In' : 'Checked Out'}
                   </div>
                 </div>

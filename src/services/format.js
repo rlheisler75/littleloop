@@ -60,7 +60,7 @@ export function timeAgo(ts) {
 
 export function getMoodIcon(mood) {
   const MOODS = {
-    happy:'😄', content:'😊', proud:'🥹', excited:'🤩',
+    happy:'😄', content:'😊', proud:'🥰', excited:'🤩',
     tired:'😴', fussy:'😣',  rested:'😌', curious:'🧐',
   };
   return MOODS[mood] || '';

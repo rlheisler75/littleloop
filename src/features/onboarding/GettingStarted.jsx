@@ -49,11 +49,11 @@ export default function GettingStarted({ sitterId, onGoTo }) {
   return (
     <div className="card" style={{ padding: 18, marginBottom: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 19, fontWeight: 600 }}>Get set up</div>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 19, fontWeight: 600 }}>Get set up</div>
         <button onClick={dismiss} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 12, cursor: 'pointer' }}>Hide</button>
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 10 }}>{completed} of {steps.length} done</div>
-      <div style={{ height: 4, borderRadius: 4, background: 'rgba(255,255,255,.08)', marginBottom: 14, overflow: 'hidden' }}>
+      <div style={{ height: 4, borderRadius: 4, background: 'var(--input-bg)', marginBottom: 14, overflow: 'hidden' }}>
         <div style={{ width: `${(completed / steps.length) * 100}%`, height: '100%', background: 'var(--accent,#7BAAEE)', transition: 'width .3s' }}/>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -63,7 +63,7 @@ export default function GettingStarted({ sitterId, onGoTo }) {
           return (
             <div key={s.key} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', opacity: isDone ? 0.55 : 1 }}>
               <div style={{ width: 20, height: 20, flex: '0 0 20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
-                background: isDone ? 'var(--accent,#7BAAEE)' : 'transparent', border: isDone ? 'none' : '1.5px solid rgba(255,255,255,.25)', color: '#fff' }}>
+                background: isDone ? 'var(--accent,#7BAAEE)' : 'transparent', border: isDone ? 'none' : '1.5px solid var(--border)', color: '#fff' }}>
                 {isDone ? '✓' : ''}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>

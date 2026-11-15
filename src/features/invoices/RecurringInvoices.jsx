@@ -66,7 +66,7 @@ export default function RecurringInvoices({ sitterId, families, familyChildren, 
     <div className="card" style={{ padding: '16px 18px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: rows.length || !isPro ? 12 : 0 }}>
         <div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 600 }}>🔁 Recurring invoices</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 600 }}>🔁 Recurring invoices</div>
           <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>Set it once and littleloop sends the invoice for you.</div>
         </div>
         {isPro && <button className="bp" style={{ padding: '7px 12px', fontSize: 12 }} onClick={() => setEditing({})}>+ Set up</button>}
@@ -171,7 +171,7 @@ function RecurringModal({ sitterId, row, families, familyChildren, onClose, onSa
 
   return (
     <Modal open onClose={onClose}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 4 }}>
         {row ? 'Edit recurring invoice' : 'Set up a recurring invoice'}
       </div>
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Invoices go out around 8am on the scheduled day.</p>
@@ -226,7 +226,7 @@ function RecurringModal({ sitterId, row, families, familyChildren, onClose, onSa
           <input className="fi" value={desc} onChange={e => setDesc(e.target.value)} maxLength={200} placeholder="Weekly childcare"/>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '4px 0 16px', cursor: 'pointer' }}>
-            <input type="checkbox" checked={autoSend} onChange={e => setAutoSend(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#7BAAEE' }}/>
+            <input type="checkbox" checked={autoSend} onChange={e => setAutoSend(e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }}/>
             Send it to the family automatically (otherwise it’s saved as a draft for you to review)
           </label>
 

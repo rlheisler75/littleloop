@@ -14,7 +14,7 @@ export default function StarRating({ value, onChange, size = 20 }) {
           style={{
             fontSize: size,
             cursor:   onChange ? 'pointer' : 'default',
-            color:    (hover || value) >= i ? '#F5C518' : 'rgba(255,255,255,.2)',
+            color:    (hover || value) >= i ? '#F5C518' : 'var(--text-faint)',
             lineHeight: 1,
           }}
         >

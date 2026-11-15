@@ -47,6 +47,21 @@
 
 import { getPalette } from '../styles/themes';
 
+// Status colors (alerts, badges, success/error text) that stay readable in either mode.
+function setModeVars(root, dark) {
+  root.dataset.mode = dark ? 'dark' : 'light';
+  const v = dark
+    ? { ok: '#88D8B8', err: '#F5AAAA', info: '#A8CCFF', warn: '#F5D08A', pend: '#F5C098', muted: '#B0B8C8', overlay: 'rgba(0,0,0,.7)' }
+    : { ok: '#17785A', err: '#B23A28', info: '#2B6FB0', warn: '#8A5F00', pend: '#A0521E', muted: '#5E6380', overlay: 'rgba(34,36,77,.38)' };
+  root.style.setProperty('--ok-text',   v.ok);
+  root.style.setProperty('--err-text',  v.err);
+  root.style.setProperty('--info-text', v.info);
+  root.style.setProperty('--warn-text', v.warn);
+  root.style.setProperty('--pend-text', v.pend);
+  root.style.setProperty('--muted-text', v.muted);
+  root.style.setProperty('--overlay',   v.overlay);
+}
+
 /**
  * Apply a palette to the document root.
  * @param {string|object} palette  palette id string, or a palette object directly
@@ -110,6 +125,7 @@ export function applyTheme(palette) {
         root.style.setProperty('--accent-success',      isDark ? '#4CD99A' : '#1E7A4A');
         root.style.setProperty('--accent-success-deep', isDark ? '#4CD99A' : '#1E7A4A');
         root.style.setProperty('--accent-danger',       isDark ? '#F08080' : '#A03820');
+        setModeVars(root, isDark);
         document.body.style.background = colors.body;
         document.body.style.color      = isDark ? '#E4EAF4' : '#14243A';
         return; // ← skip the normal palette lookup
@@ -171,7 +187,22 @@ export function applyTheme(palette) {
   // ── Loop 2026 extended accent palette ─────────────────────────────────────
   // These extra vars are only meaningful for loop2026 but safe to reference
   // in components on any theme (they'll just equal --accent on other themes)
-  if (p.id === 'loop2026') {
+  if (p.id === 'sunshine') {
+    root.style.setProperty('--text',                '#22244D');  // indigo ink
+    root.style.setProperty('--text-dim',            'rgba(34,36,77,.66)');
+    root.style.setProperty('--text-faint',          'rgba(34,36,77,.45)');
+    root.style.setProperty('--border',              '#EFE7DA');
+    root.style.setProperty('--input-bg',            '#FFFDF9');
+    root.style.setProperty('--input-border',        '#E6DDCF');
+    root.style.setProperty('--pill-bg',             '#FFF1DC');
+    root.style.setProperty('--shadow',              '0 8px 28px rgba(43,45,107,.08)');
+    root.style.setProperty('--accent-secondary',    '#2B6FB0');  // sky, darkened
+    root.style.setProperty('--accent-warm',         '#FFC23C');  // sunshine
+    root.style.setProperty('--accent-warm-deep',    '#8A5F00');
+    root.style.setProperty('--accent-success',      '#2FC79B');  // mint
+    root.style.setProperty('--accent-success-deep', '#17785A');
+    root.style.setProperty('--accent-danger',       '#B23A28');
+  } else if (p.id === 'loop2026') {
     root.style.setProperty('--accent-secondary',   '#8869F7');  // violet
     root.style.setProperty('--accent-warm',         '#FED56C');  // amber
     root.style.setProperty('--accent-warm-deep',    '#C38228');  // amber text on badges
@@ -188,6 +219,7 @@ export function applyTheme(palette) {
   }
 
   // ── Apply to body element ──────────────────────────────────────────────────
+  setModeVars(root, p.dark);
   document.body.style.background = p.body;
-  document.body.style.color      = p.dark ? '#E4EAF4' : '#14243A';
+  document.body.style.color      = p.id === 'sunshine' ? '#22244D' : p.dark ? '#E4EAF4' : '#14243A';
 }

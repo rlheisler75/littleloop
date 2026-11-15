@@ -7,7 +7,7 @@ const thisYear = new Date().getFullYear();
 // Default to last year until March (tax season), otherwise this year.
 const defaultYear = () => (new Date().getMonth() < 3 ? thisYear - 1 : thisYear);
 const yearOptions = [thisYear, thisYear - 1, thisYear - 2];
-const sectionTitle = { fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 600 };
+const sectionTitle = { fontFamily: "'Fredoka',sans-serif", fontSize: 18, fontWeight: 600 };
 
 // ─── Sitter side: earnings summary + tax ID ──────────────────────────────────
 export function SitterYearEnd({ sitterId, sitter, families, onOpenSettings }) {

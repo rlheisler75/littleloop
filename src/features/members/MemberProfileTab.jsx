@@ -4,6 +4,7 @@ import { applyTheme } from '../../lib/theme';
 import Field from '../../components/ui/Field';
 import Spinner from '../../components/ui/Spinner';
 import ThemePicker from '../../components/ui/ThemePicker';
+import { DEFAULT_THEME } from '../../styles/themes';
 import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 
 // ─── Version stamp ────────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ function ThemeSection({ currentTheme, onSelect }) {
   const [customName, setCustomName] = useState(() => localStorage.getItem('ll_custom_name') || 'My Theme');
 
   function defaultCustom() {
-    return { body: '#0D1B2A', card: '#1A2A3A', accent: '#7BAAEE', accent2: '#4A7FCC', nav: '#0A1520' };
+    return { body: '#0D1B2A', card: '#1A2A3A', accent: 'var(--accent)', accent2: '#4A7FCC', nav: '#0A1520' };
   }
 
   function hexToRgba(hex, alpha) {
@@ -107,7 +108,7 @@ function ThemeSection({ currentTheme, onSelect }) {
   ];
 
   const seeds = [
-    { label: 'Navy',    colors: { body:'#0D1B2A', card:'#1A2A3A', accent:'#7BAAEE', accent2:'#4A7FCC', nav:'#0A1520' }, dark: true  },
+    { label: 'Navy',    colors: { body:'#0D1B2A', card:'#1A2A3A', accent:'var(--accent)', accent2:'#4A7FCC', nav:'#0A1520' }, dark: true  },
     { label: 'Forest',  colors: { body:'#0D1F1A', card:'#1A2E22', accent:'#4CD99A', accent2:'#28A870', nav:'#0A1810' }, dark: true  },
     { label: 'Galaxy',  colors: { body:'#0A0814', card:'#180F28', accent:'#C8A0FF', accent2:'#FF70B8', nav:'#080610' }, dark: true  },
     { label: 'Sunrise', colors: { body:'#FFF8F0', card:'#FFFFFF', accent:'#C85020', accent2:'#A03010', nav:'#FFF0E8' }, dark: false },
@@ -117,7 +118,7 @@ function ThemeSection({ currentTheme, onSelect }) {
 
   return (
     <div className="card" style={{ padding: '20px 18px', marginBottom: 14 }}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🎨 App Theme</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🎨 App Theme</div>
       <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 14 }}>Choose a preset or build your own.</div>
 
       {/* Tabs */}
@@ -126,7 +127,7 @@ function ThemeSection({ currentTheme, onSelect }) {
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             padding: '7px 16px', border: 'none', cursor: 'pointer', background: 'transparent',
             fontSize: 13, fontWeight: tab === t.id ? 700 : 400,
-            color: tab === t.id ? 'var(--accent)' : 'var(--text-faint)',
+            color: tab === t.id ? 'var(--accent)' : 'var(--text-dim)',
             borderBottom: `2px solid ${tab === t.id ? 'var(--accent)' : 'transparent'}`,
             marginBottom: -1, transition: 'all .15s',
           }}>{t.label}</button>
@@ -237,7 +238,7 @@ export function FamilyNameEditor({ familyId, name, onSaved }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
       <input className="fi" value={value} onChange={e => setValue(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-        style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, marginBottom: 0, padding: '4px 8px' }}
+        style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600, marginBottom: 0, padding: '4px 8px' }}
         autoFocus/>
       <button className="bp" style={{ padding: '5px 10px', fontSize: 12, flexShrink: 0 }} onClick={save} disabled={saving}>
         {saving ? <Spinner size={10}/> : '✓'}
@@ -248,7 +249,7 @@ export function FamilyNameEditor({ familyId, name, onSaved }) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => setEditing(true)}>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600 }}>{name}</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600 }}>{name}</div>
       <span style={{ fontSize: 12, opacity: .35 }}>✏️</span>
     </div>
   );
@@ -257,7 +258,7 @@ export function FamilyNameEditor({ familyId, name, onSaved }) {
 // ─── Member profile / settings tab ───────────────────────────────────────────
 
 export function MemberProfileTab({ memberId, memberName, onNameChange }) {
-  const [theme,         setTheme]         = useState(localStorage.getItem('ll_theme') || 'midnight');
+  const [theme,         setTheme]         = useState(localStorage.getItem('ll_theme') || DEFAULT_THEME);
   const [name,          setName]          = useState('');
   const [email,         setEmail]         = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
@@ -339,10 +340,10 @@ export function MemberProfileTab({ memberId, memberName, onNameChange }) {
 
   return (
     <div>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, marginBottom: 20 }}>Profile & Settings</div>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600, marginBottom: 20 }}>Profile & Settings</div>
 
       <div className="card" style={{ padding: '20px 18px', marginBottom: 14 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>👤 Your Profile</div>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>👤 Your Profile</div>
         {profileAlert && <div className={`al al-${profileAlert.t}`}>{profileAlert.m}</div>}
         <form onSubmit={saveProfile}>
           <Field label="Display name" value={name} onChange={e => setName(e.target.value)} placeholder="Your name"/>
@@ -354,7 +355,7 @@ export function MemberProfileTab({ memberId, memberName, onNameChange }) {
       </div>
 
       <div className="card" style={{ padding: '20px 18px', marginBottom: 14 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>🔒 Change Password</div>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 16 }}>🔒 Change Password</div>
         {passAlert && <div className={`al al-${passAlert.t}`}>{passAlert.m}</div>}
         <form onSubmit={savePassword}>
           <Field label="Current password" type="password" value={curPassword} onChange={e => setCurPassword(e.target.value)} placeholder="Your current password"/>
