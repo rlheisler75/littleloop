@@ -63,7 +63,7 @@ serve(async (req) => {
 <body style="margin:0;padding:0;background:#F4F7FB;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
   <div style="max-width:520px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
     <div style="background:linear-gradient(135deg,#0C1420,#1A2E4A);padding:28px 36px">
-      <div style="font-size:30px;margin-bottom:4px">&#x27BF;</div>
+      <img src="https://littleloop.xyz/icons/mark-coral.png" width="56" height="28" alt="littleloop" style="display:block;margin-bottom:6px;border:0">
       <div style="font-size:20px;font-weight:700;color:#A8CCFF">littleloop</div>
     </div>
     <div style="padding:28px 36px">

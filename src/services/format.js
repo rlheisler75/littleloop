@@ -1,3 +1,4 @@
+import { loopMarkSvg } from '../lib/loopMark';
 import { PAYMENT_TYPES } from '../lib/constants';
 
 export function esc(v) {
@@ -147,7 +148,7 @@ export function printInvoice(invoice, items, sitter, family, adminMember) {
 <body>
 <div class="header">
   <div>
-    <div class="logo">➿ littleloop<span>Independent Childcare</span></div>
+    <div class="logo">${loopMarkSvg()}littleloop<span>Independent Childcare</span></div>
   </div>
   <div style="text-align:right">
     <div class="inv-num">${esc(invoice.invoice_number)}</div>

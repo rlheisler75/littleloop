@@ -1,3 +1,4 @@
+import { loopMarkSvg } from '../lib/loopMark';
 // Year-end statements: family childcare statement (for Form 2441 / dependent-care FSA)
 // and sitter earnings summary. Both open as a printable page, like invoices.
 import { fmt, fmtDate, esc } from './format';
@@ -80,7 +81,7 @@ export function printCareStatement(data) {
   const out = data.outstanding || {};
   open(`${year} Childcare Statement - ${data.family?.name || ''}`, `
 <div class="head">
-  <div class="logo">➿ littleloop<small>Childcare payment statement</small></div>
+  <div class="logo">${loopMarkSvg()}littleloop<small>Childcare payment statement</small></div>
   <h1>${year} Childcare Statement<small>Prepared ${today}</small></h1>
 </div>
 <div class="grid">
@@ -113,7 +114,7 @@ export function printEarningsSummary({ year, sitter, invoices, outstanding }) {
 
   open(`${year} Earnings Summary`, `
 <div class="head">
-  <div class="logo">➿ littleloop<small>Earnings summary</small></div>
+  <div class="logo">${loopMarkSvg()}littleloop<small>Earnings summary</small></div>
   <h1>${year} Earnings Summary<small>Prepared ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</small></h1>
 </div>
 <div class="grid">

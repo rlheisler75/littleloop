@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import LoopMark from '../../components/ui/LoopMark';
+import LoopMark, { AvatarGlyph } from '../../components/ui/LoopMark';
 import { supabase } from '../../lib/supabase';
 import { PAYMENT_TYPES, SITTER_AVATARS } from '../../lib/constants';
 import Field from '../../components/ui/Field';
@@ -26,7 +26,7 @@ export default function SitterOnboarding({ session, onComplete }) {
   const [methods,   setMethods]   = useState(PAYMENT_TYPES.map(pt => ({ type: pt.id, handle: '', enabled: false })));
 
   const STEPS = [
-    { title: 'Welcome to littleloop ➿', sub: "Let's set up your sitter profile" },
+    { title: 'Welcome to littleloop', sub: "Let's set up your sitter profile" },
     { title: 'Invoice details 🧾',       sub: 'Used on invoices — families need this for FSA reimbursement' },
     { title: 'How you get paid 💰',      sub: 'Families will see these options when paying an invoice' },
   ];
@@ -88,7 +88,7 @@ export default function SitterOnboarding({ session, onComplete }) {
                   {SITTER_AVATARS.map(a => (
                     <button key={a} onClick={() => setAvatar(a)}
                       style={{ width: 44, height: 44, borderRadius: 12, fontSize: 22, border: `2px solid ${avatar === a ? 'var(--accent,#7BAAEE)' : 'var(--border)'}`, background: avatar === a ? 'color-mix(in srgb,var(--accent) 12%,transparent)' : 'var(--input-bg)', cursor: 'pointer', transition: 'all .15s' }}>
-                      {a}
+                      <AvatarGlyph value={a} size={30}/>
                     </button>
                   ))}
                 </div>

@@ -20,7 +20,7 @@ messaging.onBackgroundMessage((payload) => {
   const { title, body } = payload.notification || {};
   const data = payload.data || {};
 
-  return self.registration.showNotification(title || '➿ littleloop', {
+  return self.registration.showNotification(title || 'littleloop', {
     body:     body || 'Tap to open littleloop.',
     icon:     '/icons/icon-192x192.png',
     badge:    '/icons/icon-96x96.png',
@@ -56,7 +56,7 @@ self.addEventListener('push', (e) => {
   console.log('[SW v5] Raw push received');
   // Firebase handles its own pushes via onBackgroundMessage
   // This catches any non-Firebase pushes
-  let data = { title: '➿ littleloop', body: 'You have a new update.' };
+  let data = { title: 'littleloop', body: 'You have a new update.' };
   if (e.data) {
     try { const p = e.data.json(); if (p.title) data = p; } catch {}
   }
