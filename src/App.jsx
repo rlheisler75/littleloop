@@ -3,7 +3,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { supabase } from './lib/supabase';
 import { applyTheme } from './lib/theme';
 import { CSS } from './styles/global';
-import { getPortal, getInviteToken, getSitterParam, getBrowseParam } from './lib/utils';
+import { getPortal, getInviteToken, getSitterParam, getBrowseParam, rememberRef } from './lib/utils';
 import Bg from './components/ui/Bg';
 import Spinner from './components/ui/Spinner';
 import AuthForm from './components/auth/AuthForm';
@@ -13,6 +13,8 @@ import { PublicSitterProfile, BrowseSitters } from './features/profile/index';
 import SitterDashboard from './SitterDashboard';
 import ParentDashboard from './ParentDashboard';
 import AdminApp from './admin/AdminApp';
+
+rememberRef(); // keep ?ref= from a referral link until signup
 import LandingPage from './LandingPage';
 
 export default function App() {
@@ -102,7 +104,7 @@ export default function App() {
 
   // ── Auth wall ────────────────────────────────────────────────────────────────
   if (!session && (authPortal || inviteData)) return (
-    <><Bg/><AuthForm portal={authPortal || (inviteData ? 'parent' : portal)} inviteData={inviteData} initialMode={authMode} onBack={() => setAuthPortal(null)}/><Analytics /></>
+    <><AuthForm portal={authPortal || (inviteData ? 'parent' : portal)} inviteData={inviteData} initialMode={authMode} onBack={() => setAuthPortal(null)}/><Analytics /></>
   );
 
   // ── Landing page ─────────────────────────────────────────────────────────────

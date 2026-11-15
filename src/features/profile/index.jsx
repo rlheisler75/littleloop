@@ -600,6 +600,8 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
 
   // Basics
   const [username,        setUsername]        = useState('');
+  const [refCode,         setRefCode]         = useState('');
+  const [refCopied,       setRefCopied]       = useState(false);
   const [tagline,         setTagline]         = useState('');
   const [bio,             setBio]             = useState('');
   const [city,            setCity]            = useState('');
@@ -642,6 +644,7 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
       if (d) {
         setPub(d.public_profile || false);
         setUsername(d.username || '');
+        setRefCode(d.referral_code || '');
         setTagline(d.tagline || '');
         setBio(d.bio || '');
         setCity(d.city || '');
@@ -807,6 +810,23 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
             className="bg" style={{ fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
             {copied ? '✓ Copied!' : '🔗 Copy link'}
           </button>
+        </div>
+      )}
+
+      {/* Referral link */}
+      {refCode && (
+        <div style={{ marginBottom: 16, padding: '12px 14px', background: 'var(--card-bg)', borderRadius: 10, border: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>Know another sitter?</div>
+          <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 8 }}>Share your link. Sitters who sign up with it are counted as your referrals.</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-faint)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              littleloop.xyz/?ref={refCode}
+            </span>
+            <button onClick={() => { navigator.clipboard.writeText(`https://littleloop.xyz/?ref=${refCode}`); setRefCopied(true); setTimeout(() => setRefCopied(false), 2000); }}
+              className="bg" style={{ fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
+              {refCopied ? '✓ Copied!' : '🔗 Copy link'}
+            </button>
+          </div>
         </div>
       )}
 

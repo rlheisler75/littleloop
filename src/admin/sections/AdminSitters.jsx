@@ -22,7 +22,7 @@ export default function AdminSitters({ adminRole }) {
     setLoading(true);
     const { data: sittersData } = await supabase
       .from('sitters')
-      .select('id,name,email,created_at,onboarded')
+      .select('id,name,email,created_at,onboarded,referred_by')
       .order('name');
 
     if (sittersData?.length) {
@@ -116,6 +116,7 @@ export default function AdminSitters({ adminRole }) {
             if (!fams.length) return <span style={{ color: 'rgba(255,255,255,.25)' }}>None</span>;
             return fams.map(f => f.name).join(', ');
           }},
+          { key: 'referred_by', label: 'Referred by', render: v => v ? (sitters.find(s => s.id === v)?.name || 'Unknown') : <span style={{ color: 'rgba(255,255,255,.25)' }}>—</span> },
           { key: 'created_at', label: 'Joined', render: v => new Date(v).toLocaleDateString() },
           { key: 'actions', label: '', render: (_, row) => (
             <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
