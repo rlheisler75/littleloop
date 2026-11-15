@@ -1,130 +1,129 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SUPABASE_URL       = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const VAPID_PUBLIC_KEY   = Deno.env.get("VAPID_PUBLIC_KEY")!;
-const VAPID_PRIVATE_KEY  = Deno.env.get("VAPID_PRIVATE_KEY")!;
-const VAPID_SUBJECT      = "mailto:hello@littleloop.xyz";
+const SUPABASE_URL         = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const FCM_PROJECT_ID       = 'littleloop-aa558';
+const FCM_CLIENT_EMAIL     = 'firebase-adminsdk-fbsvc@littleloop-aa558.iam.gserviceaccount.com';
+const FCM_PRIVATE_KEY      = Deno.env.get('FCM_PRIVATE_KEY')!;
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+const json = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
-function b64urlEncode(buf: Uint8Array): string {
-  return btoa(String.fromCharCode(...buf))
-    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+// ── Caller identity ───────────────────────────────────────────────────────────
+// Other edge functions call with the service-role key; the app calls with the user's JWT.
+async function getCaller(req: Request, sb: any): Promise<{ service: boolean; id?: string } | null> {
+  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token) return null;
+  if (token === SUPABASE_SERVICE_KEY) return { service: true };
+  const { data } = await sb.auth.getUser(token);
+  return data?.user ? { service: false, id: data.user.id } : null;
 }
 
-function b64urlDecode(str: string): Uint8Array {
-  const b64 = (str + "===".slice((str.length + 3) % 4))
-    .replace(/-/g, "+").replace(/_/g, "/");
-  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-}
-
-async function importVapidPrivateKey(): Promise<CryptoKey> {
-  const rawKey = b64urlDecode(VAPID_PRIVATE_KEY);
-  // Build PKCS8 DER wrapper for P-256 raw private key
-  const pkcs8Header = new Uint8Array([
-    0x30, 0x41,             // SEQUENCE
-    0x02, 0x01, 0x00,       // INTEGER 0 (version)
-    0x30, 0x13,             // SEQUENCE (algorithm)
-      0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, // OID ecPublicKey
-      0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, // OID P-256
-    0x04, 0x27,             // OCTET STRING
-      0x30, 0x25,           // SEQUENCE
-        0x02, 0x01, 0x01,   // INTEGER 1
-        0x04, 0x20,         // OCTET STRING (32 bytes = raw key)
-  ]);
-  const pkcs8 = new Uint8Array(pkcs8Header.length + rawKey.length);
-  pkcs8.set(pkcs8Header);
-  pkcs8.set(rawKey, pkcs8Header.length);
-
-  return crypto.subtle.importKey(
-    "pkcs8", pkcs8,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false, ["sign"]
-  );
-}
-
-async function makeVapidJwt(audience: string): Promise<string> {
-  const header  = b64urlEncode(new TextEncoder().encode(JSON.stringify({ typ: "JWT", alg: "ES256" })));
-  const payload = b64urlEncode(new TextEncoder().encode(JSON.stringify({
-    aud: audience,
-    exp: Math.floor(Date.now() / 1000) + 43200,
-    sub: VAPID_SUBJECT,
-  })));
-  const key = await importVapidPrivateKey();
-  const data = new TextEncoder().encode(`${header}.${payload}`);
-  const sig  = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, data);
-  return `${header}.${payload}.${b64urlEncode(new Uint8Array(sig))}`;
-}
-
-async function sendOnePush(sub: Record<string, unknown>, payload: object): Promise<boolean> {
-  const endpoint = sub.endpoint as string;
-  const origin   = new URL(endpoint).origin;
-  const jwt      = await makeVapidJwt(origin);
-
-  const res = await fetch(endpoint, {
-    method:  "POST",
-    headers: {
-      "Authorization": `vapid t=${jwt},k=${VAPID_PUBLIC_KEY}`,
-      "Content-Type":  "application/json",
-      "TTL":           "86400",
-    },
-    body: JSON.stringify(payload),
+// ── FCM OAuth2 access token via service account JWT ──────────────────────────
+async function getFcmAccessToken(): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const b64u = (s: string) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  const header  = b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const payload = b64u(JSON.stringify({
+    iss: FCM_CLIENT_EMAIL, scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600,
+  }));
+  const sigInput = `${header}.${payload}`;
+  const pemBody = FCM_PRIVATE_KEY.replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').replace(/\n/g, '');
+  const keyBytes = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey('pkcs8', keyBytes, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const sigBytes = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(sigInput));
+  const sig = btoa(String.fromCharCode(...new Uint8Array(sigBytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${sigInput}.${sig}`,
   });
-  console.log(`Push to ${origin}: ${res.status}`);
-  return res.ok || res.status === 201;
+  const data = await res.json();
+  if (!data.access_token) throw new Error(`OAuth failed: ${JSON.stringify(data)}`);
+  return data.access_token;
+}
+
+async function sendFcmPush(token: string, accessToken: string, p: { title: string; body: string; url: string; tag?: string }) {
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: {
+        token,
+        notification: { title: p.title, body: p.body },
+        webpush: {
+          notification: {
+            title: p.title, body: p.body,
+            icon: '/icons/icon-192x192.png', badge: '/icons/icon-96x96.png',
+            tag: p.tag || 'littleloop', renotify: true, vibrate: [200, 100, 200],
+          },
+          fcm_options: { link: p.url },
+        },
+      },
+    }),
+  });
+  return { ok: res.status === 200, status: res.status, body: await res.text() };
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
-    const { userIds, title, body, url, tag } = await req.json();
-    if (!userIds?.length) {
-      return new Response(JSON.stringify({ sent: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const { data: subs, error } = await supabase
-      .from("push_subscriptions")
-      .select("*")
-      .in("user_id", userIds);
+    const caller = await getCaller(req, supabase);
+    if (!caller) return json({ error: 'Unauthorized' }, 401);
 
-    if (error) throw new Error(error.message);
-    if (!subs?.length) {
-      return new Response(JSON.stringify({ sent: 0, note: "no subscriptions found" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const { userIds: rawIds, title: rawTitle, body: rawBody, url: rawUrl, tag } = await req.json();
+    let userIds: string[] = Array.isArray(rawIds) ? rawIds.filter((x: unknown) => typeof x === 'string') : [];
+    if (!userIds.length) return json({ sent: 0, note: 'no userIds' });
+
+    // A signed-in user may only push to people they share a family or conversation with.
+    if (!caller.service) {
+      const { data: rows } = await supabase.rpc('connected_user_ids', { p_user: caller.id });
+      const allowed = new Set((rows || []).map((r: any) => (typeof r === 'string' ? r : r.connected_user_ids)));
+      userIds = userIds.filter(id => allowed.has(id) && id !== caller.id);
+      if (!userIds.length) return json({ error: 'Forbidden' }, 403);
     }
 
-    const payload = { title, body, icon: "/icons/icon-192x192.png", url: url || "/", tag };
+    const title = String(rawTitle || 'littleloop').slice(0, 120);
+    const body  = String(rawBody || '').slice(0, 300);
+    // Only links back into littleloop: no pushes that open some other site.
+    const url = typeof rawUrl === 'string' && rawUrl.startsWith('/') && !rawUrl.startsWith('//') ? rawUrl : '/';
+
+    const { data: prefs } = await supabase.from('push_preferences').select('user_id,preferences').in('user_id', userIds);
+    const prefMap: Record<string, Record<string, boolean>> = {};
+    (prefs || []).forEach((p: any) => { prefMap[p.user_id] = p.preferences || {}; });
+    const eligibleIds = userIds.filter(id => !(tag && prefMap[id]?.[tag] === false));
+    if (!eligibleIds.length) return json({ sent: 0, note: 'opted out' });
+
+    const { data: subs, error } = await supabase.from('push_subscriptions').select('*').in('user_id', eligibleIds);
+    if (error) throw new Error(error.message);
+    if (!subs?.length) return json({ sent: 0, note: 'no subs' });
+
+    const accessToken = await getFcmAccessToken();
     let sent = 0;
     const stale: string[] = [];
-
     for (const sub of subs) {
+      const token = sub.fcm_token || sub.subscription?.fcm_token || sub.subscription?.endpoint;
+      if (!token) continue;
       try {
-        const ok = await sendOnePush(sub.subscription, payload);
-        if (ok) sent++;
-        else stale.push(sub.id);
+        const r = await sendFcmPush(token, accessToken, { title, body, url, tag });
+        if (r.ok) sent++;
+        else if (r.status === 404) stale.push(sub.id);
+        else console.error(`Failed sub ${sub.id}: ${r.status} ${r.body.slice(0, 200)}`);
       } catch (e) {
-        console.error("Push send error:", e);
-        stale.push(sub.id);
+        console.error(`Exception for sub ${sub.id}:`, e);
       }
     }
-
-    if (stale.length) {
-      await supabase.from("push_subscriptions").delete().in("id", stale);
-    }
-
-    return new Response(JSON.stringify({ sent, total: subs.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
+    if (stale.length) await supabase.from('push_subscriptions').delete().in('id', stale);
+    return json({ sent, total: subs.length });
   } catch (err) {
-    console.error("send-push error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
+    console.error('send-push fatal:', err);
+    return json({ error: 'Internal error' }, 500);
   }
 });
