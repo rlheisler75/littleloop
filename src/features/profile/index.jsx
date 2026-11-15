@@ -1163,14 +1163,9 @@ export function PublicSitterProfile({ username, session = null }) {
   async function requestConnection() {
     if (!familyId || !sitter) return;
     setRequesting(true);
-    const { data: existing } = await supabase.from('family_sitters').select('id,status')
-      .eq('family_id', familyId).eq('sitter_id', sitter.id).maybeSingle();
-    if (existing) {
-      await supabase.from('family_sitters').update({ status: 'requested' }).eq('id', existing.id);
-    } else {
-      await supabase.from('family_sitters').insert({ family_id: familyId, sitter_id: sitter.id, status: 'requested', initiated_by: 'family' });
-    }
-    setConnStatus('requested');
+    const { data: result, error } = await supabase.rpc('request_sitter_connection', { p_family_id: familyId, p_sitter_id: sitter.id });
+    if (error) console.error('request connection failed:', error);
+    else setConnStatus(result);
     setRequesting(false);
   }
 
@@ -1525,15 +1520,13 @@ export function BrowseSitters({ session = null, familyId = null, familyName = ''
     if (!familyId) return;
     setRequesting(r => ({ ...r, [sitter.id]: true }));
     const existing = connections[sitter.id];
-    if (existing && existing !== 'inactive') {
+    if (existing && existing !== 'inactive' && existing !== 'pending') {
       setRequesting(r => ({ ...r, [sitter.id]: false }));
       return;
     }
-    const { error } = existing
-      ? await supabase.from('family_sitters').update({ status: 'requested' }).eq('family_id', familyId).eq('sitter_id', sitter.id)
-      : await supabase.from('family_sitters').insert({ family_id: familyId, sitter_id: sitter.id, status: 'requested', initiated_by: 'family' });
+    const { data: result, error } = await supabase.rpc('request_sitter_connection', { p_family_id: familyId, p_sitter_id: sitter.id });
     if (!error) {
-      setConnections(c => ({ ...c, [sitter.id]: 'requested' }));
+      setConnections(c => ({ ...c, [sitter.id]: result }));
       onConnected?.();
     }
     setRequesting(r => ({ ...r, [sitter.id]: false }));

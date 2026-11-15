@@ -185,6 +185,13 @@ export default function ParentDashboard({ session, onSignOut }) {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (session?.user?.id) subscribeToPush(session.user.id); }, [session?.user?.id]);
 
+  // A sitter invited this (existing) family; the admin decides.
+  async function respondToInvite(sitterId, accept) {
+    const { error } = await supabase.rpc('respond_sitter_invite', { p_family_id: family.id, p_sitter_id: sitterId, p_accept: accept });
+    if (error) console.error('respond to sitter invite failed:', error);
+    load();
+  }
+
   useEffect(() => {
     if (!member || !family) return;
     const userId = session.user.id;
@@ -316,7 +323,12 @@ export default function ParentDashboard({ session, onSignOut }) {
                             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                               {s.connection_status === 'active'
                                 ? <button className="bg" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => setReviewTarget({ sitterId: s.id, sitterName: s.name })}>&#x2B50; Review</button>
-                                : <span className="sb sb-p" style={{ fontSize: 9 }}>Pending</span>
+                                : s.connection_status === 'pending' && isAdmin
+                                  ? <>
+                                      <button className="bp" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => respondToInvite(s.id, true)}>Accept</button>
+                                      <button className="bg" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => respondToInvite(s.id, false)}>Decline</button>
+                                    </>
+                                  : <span className="sb sb-p" style={{ fontSize: 9 }}>{s.connection_status === 'requested' ? 'Requested' : 'Pending'}</span>
                               }
                             </div>
                           </div>

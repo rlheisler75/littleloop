@@ -35,26 +35,24 @@ export default function FindSitterModal({ open, onClose, familyId, familyName, o
     const { data: existing } = await supabase.from('family_sitters')
       .select('id,status').eq('family_id', familyId).eq('sitter_id', sitter.id).maybeSingle();
 
-    if (existing && existing.status !== 'inactive') {
+    if (existing && existing.status !== 'inactive' && existing.status !== 'pending') {
       setSent(s => ({ ...s, [sitter.id]: existing.status === 'active' ? 'connected' : 'requested' }));
       return;
     }
 
-    const { error } = existing
-      ? await supabase.from('family_sitters').update({ status: 'requested' }).eq('id', existing.id)
-      : await supabase.from('family_sitters').insert({ family_id: familyId, sitter_id: sitter.id, status: 'requested', initiated_by: 'family' });
+    const { data: result, error } = await supabase.rpc('request_sitter_connection', { p_family_id: familyId, p_sitter_id: sitter.id });
+    if (error) { setAlert({ t: 'e', m: error.message }); return; }
+    if (result === 'active') { setSent(s => ({ ...s, [sitter.id]: 'connected' })); onRequested?.(); return; }
 
-    if (!error) {
-      setSent(s => ({ ...s, [sitter.id]: 'requested' }));
-      sendPushNotification(
-        [sitter.id],
-        `New connection request from ${familyName}`,
-        'Tap to view and accept.',
-        '/?portal=sitter',
-        'new_request'
-      );
-      onRequested?.();
-    }
+    setSent(s => ({ ...s, [sitter.id]: 'requested' }));
+    sendPushNotification(
+      [sitter.id],
+      `New connection request from ${familyName}`,
+      'Tap to view and accept.',
+      '/?portal=sitter',
+      'new_request'
+    );
+    onRequested?.();
   }
 
   return (
