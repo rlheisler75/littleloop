@@ -23,69 +23,28 @@ export default function InviteFamilyModal({ open, onClose, sitterId, sitterName,
     setAlert(null);
     setLoading(true);
     try {
-      const { data: { session: s } } = await supabase.auth.getSession();
+      // The server matches the email case-insensitively and reuses an existing family
+      // (it then asks that family to accept) instead of creating a duplicate.
+      const childNames = childrenStr.split(',').map(str => str.trim()).filter(Boolean);
+      const { data: result, error } = await supabase.rpc('invite_family', {
+        p_family_name: familyName, p_admin_email: adminEmail, p_child_names: childNames,
+      });
+      if (error) throw new Error(isFreeLimitError(error) ? FREE_LIMIT_MESSAGE : error.message);
 
-      // Check if family already exists by admin email
-      const { data: existing } = await supabase
-        .from('families')
-        .select('id,name,status')
-        .eq('admin_email', adminEmail)
-        .maybeSingle();
-
-      if (existing) {
-        // Family exists — check if this sitter is already connected
-        const { data: existingConn } = await supabase
-          .from('family_sitters')
-          .select('id,status')
-          .eq('family_id', existing.id)
-          .eq('sitter_id', sitterId)
-          .maybeSingle();
-
-        if (existingConn && existingConn.status !== 'inactive') {
-          setAlert({ t: 'i', m: "You're already connected to this family." });
-          setLoading(false);
-          return;
-        }
-
-        // Reconnect or create the family_sitters link
-        const { error: linkErr } = existingConn
-          ? await supabase.from('family_sitters').update({ status: 'pending' }).eq('id', existingConn.id)
-          : await supabase.from('family_sitters').insert({ family_id: existing.id, sitter_id: sitterId, status: 'pending' });
-        if (linkErr) throw new Error(isFreeLimitError(linkErr) ? FREE_LIMIT_MESSAGE : linkErr.message);
-
-        // Send invite email so family knows this sitter wants to connect
-        await supabase.functions.invoke('send-invite', {
-          body: { familyName: existing.name, parentEmail: adminEmail, sitterName, sitterId },
-        });
-
-        setAlert({ t: 's', m: `Invite sent to ${existing.name}!` });
-        setTimeout(() => { onInvited(); close(); }, 1800);
+      if (result.already) {
+        setAlert({ t: 'i', m: result.status === 'active' ? "You're already connected to this family." : "You've already invited this family. They just need to accept." });
         return;
       }
 
-      // New family — create via edge function (bypasses RLS)
-      const childNames = childrenStr.split(',').map(str => str.trim()).filter(Boolean);
-
-      const res = await fetch(
-        'https://ukcxammnzhirxjdlqelr.supabase.co/functions/v1/create-family',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${s.access_token}`,
-          },
-          body: JSON.stringify({ mode: 'sitter-invite', familyName, adminEmail, sitterId, childNames }),
-        }
-      );
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to create family');
-
-      // Send invite email
       await supabase.functions.invoke('send-invite', {
-        body: { familyName, parentEmail: adminEmail, sitterName, sitterId },
+        body: { familyName: familyName.trim() || 'your family', parentEmail: adminEmail.trim(), sitterName, sitterId },
       });
 
-      setAlert({ t: 's', m: `${familyName} invited! An email is on its way to ${adminEmail}.` });
+      setAlert({ t: 's', m: result.status === 'active'
+        ? "You're connected! This family had already asked for you."
+        : result.existing
+          ? `That family is already on littleloop. We've asked them to accept your invite.`
+          : `${familyName} invited! An email is on its way to ${adminEmail}.` });
       setTimeout(() => { onInvited(); close(); }, 1800);
 
     } catch (err) {
