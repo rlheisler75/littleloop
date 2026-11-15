@@ -19,12 +19,13 @@ function isValidUrl(val) {
 // Deterministic background colour from name — same name always same colour
 function nameToColor(name = '') {
   const colors = [
-    ['#0B3D3A', '#0BA5AD'],  // teal
-    ['#1A103A', '#8869F7'],  // violet
-    ['#1C1008', '#F5924A'],  // amber
-    ['#0A1E10', '#4CD99A'],  // green
-    ['#1A0F20', '#C084F5'],  // purple
-    ['#091520', '#2AA8D4'],  // sky
+    // [background, text]: a tint of the text color over the card, so it works in light and dark themes.
+    ['color-mix(in srgb,#0E8C93 16%,var(--card-bg,#fff))', '#0E8C93'],  // teal
+    ['color-mix(in srgb,#6B4FE0 16%,var(--card-bg,#fff))', '#6B4FE0'],  // violet
+    ['color-mix(in srgb,#D2691E 16%,var(--card-bg,#fff))', '#D2691E'],  // amber
+    ['color-mix(in srgb,#1E9E6A 16%,var(--card-bg,#fff))', '#1E9E6A'],  // green
+    ['color-mix(in srgb,#9B4FD6 16%,var(--card-bg,#fff))', '#9B4FD6'],  // purple
+    ['color-mix(in srgb,#1F86B8 16%,var(--card-bg,#fff))', '#1F86B8'],  // sky
   ];
   const idx = (name.charCodeAt(0) || 0) % colors.length;
   return colors[idx];
@@ -73,7 +74,7 @@ export default function SitterAvatar({ url, name = '', size = 40, radius = '50%'
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: "'Fredoka', sans-serif",
       fontWeight: 700,
       fontSize,
       color: fg,

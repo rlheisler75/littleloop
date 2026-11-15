@@ -1126,12 +1126,13 @@ export function PublicProfileEditor({ sitterId, sitterName }) {
 // Deterministic gradient fallback — no blank banners ever
 function nameToBannerGradient(name = '') {
   const g = [
-    'linear-gradient(135deg,#0D1F1E 0%,#0BA5AD 60%,#8869F7 100%)',
-    'linear-gradient(135deg,#0D1B2A 0%,#7BAAEE 60%,#4A7FCC 100%)',
-    'linear-gradient(135deg,#0D1F1A 0%,#4CD99A 60%,#28A870 100%)',
-    'linear-gradient(135deg,#1A0F20 0%,#C084F5 60%,#9050D0 100%)',
-    'linear-gradient(135deg,#1C1008 0%,#F5924A 60%,#C86020 100%)',
-    'linear-gradient(135deg,#091520 0%,#2AA8D4 60%,#1580A8 100%)',
+    // Soft landing-page palette: coral, sunshine, sky, mint, lavender, peach.
+    'linear-gradient(135deg,#FFB4A6 0%,#FF8A73 55%,#FFC23C 100%)',
+    'linear-gradient(135deg,#FFE29A 0%,#FFC23C 55%,#FF9F5A 100%)',
+    'linear-gradient(135deg,#B9E3FB 0%,#4CB5F5 55%,#7FD8C0 100%)',
+    'linear-gradient(135deg,#BFF0DE 0%,#2FC79B 55%,#4CB5F5 100%)',
+    'linear-gradient(135deg,#DCD3FF 0%,#A78BFA 55%,#FF9FB8 100%)',
+    'linear-gradient(135deg,#FFD9C2 0%,#FFAE85 55%,#FF8A73 100%)',
   ];
   return g[(name.charCodeAt(0) || 0) % g.length];
 }
@@ -1435,10 +1436,10 @@ export function PublicSitterProfile({ username, session = null }) {
         {/* Clip only the photo/gradient, not the avatar */}
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
           {sitter.headline_photo_url && <img src={sitter.headline_photo_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.55) 100%)' }}/>
+          {sitter.headline_photo_url && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom,transparent 50%,rgba(0,0,0,.35) 100%)' }}/>}
         </div>
         <div style={{ position: 'absolute', top: 12, left: 14, zIndex: 2 }}>
-          <button className="bg" onClick={() => window.history.back()} style={{ padding: '6px 12px', fontSize: 12, background: 'rgba(0,0,0,.4)', border: '1px solid var(--border)' }}>← Back</button>
+          <button className="bg" onClick={() => window.history.back()} style={{ padding: '6px 14px', fontSize: 12, background: 'rgba(255,251,243,.9)', border: 'none', color: '#22244D', boxShadow: '0 2px 10px rgba(34,36,77,.15)' }}>← Back</button>
         </div>
         {!session && (
           <div style={{ position: 'absolute', top: 12, right: 14, zIndex: 2 }}>
