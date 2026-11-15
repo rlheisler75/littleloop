@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Modal } from '../ui/Modal';
 import Field from '../ui/Field';
 import Spinner from '../ui/Spinner';
+import { isFreeLimitError, FREE_LIMIT_MESSAGE } from '../../lib/plan';
 
 export default function InviteFamilyModal({ open, onClose, sitterId, sitterName, onInvited }) {
   const [familyName,   setFamilyName]   = useState('');
@@ -47,11 +48,10 @@ export default function InviteFamilyModal({ open, onClose, sitterId, sitterName,
         }
 
         // Reconnect or create the family_sitters link
-        if (existingConn) {
-          await supabase.from('family_sitters').update({ status: 'pending' }).eq('id', existingConn.id);
-        } else {
-          await supabase.from('family_sitters').insert({ family_id: existing.id, sitter_id: sitterId, status: 'pending' });
-        }
+        const { error: linkErr } = existingConn
+          ? await supabase.from('family_sitters').update({ status: 'pending' }).eq('id', existingConn.id)
+          : await supabase.from('family_sitters').insert({ family_id: existing.id, sitter_id: sitterId, status: 'pending' });
+        if (linkErr) throw new Error(isFreeLimitError(linkErr) ? FREE_LIMIT_MESSAGE : linkErr.message);
 
         // Send invite email so family knows this sitter wants to connect
         await supabase.functions.invoke('send-invite', {

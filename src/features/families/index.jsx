@@ -10,7 +10,7 @@ import InviteFamilyModal from '../../components/modals/InviteFamilyModal';
 import { Confirm, Modal } from '../../components/ui/Modal';
 import SectionLabel from '../../components/ui/SectionLabel';
 import Spinner from '../../components/ui/Spinner';
-import { FREE_FAMILY_LIMIT, COUNTED_LINK_STATUSES } from '../../lib/plan';
+import { FREE_FAMILY_LIMIT, COUNTED_LINK_STATUSES, isFreeLimitError } from '../../lib/plan';
 
 // ─── Connection Requests (sitter side) ───────────────────────────────────────
 
@@ -31,7 +31,12 @@ export function ConnectionRequests({ sitterId, onUpdate, atLimit = false, onUpgr
 
   async function respond(id, familyId, accept) {
     if (accept) {
-      await supabase.from('family_sitters').update({ status: 'active' }).eq('id', id);
+      const { error } = await supabase.from('family_sitters').update({ status: 'active' }).eq('id', id);
+      if (error) {
+        if (isFreeLimitError(error)) onUpgrade?.();
+        else console.error('accept request failed:', error);
+        return;
+      }
       await supabase.from('families').update({ status: 'active' }).eq('id', familyId).eq('status', 'pending');
       // Notify family the request was accepted
       const req = requests.find(r => r.id === id);

@@ -19,7 +19,15 @@ export function isComplimentary(sub) {
 }
 
 // family_sitters rows that count against the free limit (invited or connected).
+// Enforced server-side by the enforce_free_family_limit() trigger and the create-family function.
 export const COUNTED_LINK_STATUSES = ['active', 'pending'];
+
+export const FREE_LIMIT_MESSAGE = `The free plan includes ${FREE_FAMILY_LIMIT} families. Upgrade to Pro for unlimited families.`;
+
+// True when a Supabase/edge error is the server rejecting a link over the free limit.
+export function isFreeLimitError(err) {
+  return !!err && /FREE_FAMILY_LIMIT|free plan includes/i.test(`${err.code || ''} ${err.message || err.error || ''}`);
+}
 
 // Starts Stripe checkout for Pro and redirects. Returns an error string on failure.
 export async function startProCheckout(session, plan = 'monthly') {
