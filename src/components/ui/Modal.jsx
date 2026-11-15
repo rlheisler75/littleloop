@@ -1,13 +1,17 @@
+import { createPortal } from 'react-dom';
 import Spinner from './Spinner';
 
+// Rendered into <body> so a parent with backdrop-filter/transform (e.g. .card) can't trap the
+// fixed overlay inside its own box and stacking layer.
 export function Modal({ open, onClose, children }) {
   if (!open) return null;
-  return (
+  return createPortal(
     <div className="mo" onClick={onClose}>
       <div className="mb" onClick={e => e.stopPropagation()}>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
