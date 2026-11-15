@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import Field from '../ui/Field';
 import Spinner from '../ui/Spinner';
+import AuthShell from './AuthShell';
 
 export default function ResetPasswordForm() {
   const [password, setPassword] = useState('');
@@ -25,47 +25,36 @@ export default function ResetPasswordForm() {
     setDone(true);
     setTimeout(async () => {
       await supabase.auth.signOut();
-      window.location.href = '/';
+      window.location.href = '/?portal=sitter';
     }, 2000);
   }
 
   return (
-    <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div className="mb" style={{ maxWidth: 420, width: '100%', padding: 32 }}>
+    <AuthShell>
+      <h1 className="ll-auth-title">Set a new password</h1>
+      <p className="ll-auth-sub">Choose something you'll remember. At least 8 characters.</p>
 
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div className="leaf" style={{ fontSize: 36, marginBottom: 8 }}>➿</div>
-          <div className="logo-text" style={{ fontSize: 26, marginBottom: 6 }}>littleloop</div>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Set your new password</p>
-        </div>
-
-        {done
-          ? <div className="al al-s">Password updated! Redirecting to login…</div>
-          : (
-            <form onSubmit={submit}>
-              {alert && <div className={`al al-${alert.t}`}>{alert.m}</div>}
-              <Field
-                label="New password"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
-              />
-              <Field
-                label="Confirm password"
-                type="password"
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                placeholder="Repeat password"
-              />
-              <button type="submit" className="bp full" disabled={loading} style={{ marginTop: 8 }}>
-                {loading ? <><Spinner/> Saving…</> : 'Set Password'}
-              </button>
-            </form>
-          )
-        }
-
-      </div>
-    </div>
+      {done
+        ? <div className="ll-auth-note s">Password updated! Taking you to sign in…</div>
+        : (
+          <form onSubmit={submit}>
+            {alert && <div className={`ll-auth-note ${alert.t}`}>{alert.m}</div>}
+            <div className="ll-auth-field">
+              <label className="ll-auth-label">New password</label>
+              <input className="ll-auth-input" type="password" required value={password}
+                onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password"/>
+            </div>
+            <div className="ll-auth-field">
+              <label className="ll-auth-label">Confirm password</label>
+              <input className="ll-auth-input" type="password" required value={confirm}
+                onChange={e => setConfirm(e.target.value)} placeholder="Repeat password" autoComplete="new-password"/>
+            </div>
+            <button type="submit" className="ll-auth-btn" disabled={loading}>
+              {loading ? <><Spinner/> Saving…</> : 'Save password'}
+            </button>
+          </form>
+        )
+      }
+    </AuthShell>
   );
 }

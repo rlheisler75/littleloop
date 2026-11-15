@@ -91,7 +91,7 @@ export default function App() {
   );
 
   // ── Password reset ───────────────────────────────────────────────────────────
-  if (userRole === '__reset__') return <><Bg/><ResetPasswordForm/><Analytics /></>;
+  if (userRole === '__reset__') return <><ResetPasswordForm/><Analytics /></>;
 
   // ── Public routes — show even when logged in ─────────────────────────────────
   if (sitterParam) return <><Bg/><PublicSitterProfile username={sitterParam} session={session}/><Analytics /></>;
@@ -99,7 +99,7 @@ export default function App() {
 
   // ── Invite welcome page ──────────────────────────────────────────────────────
   if (inviteToken && !inviteData && !session) return (
-    <><Bg/><InviteWelcome token={inviteToken} onContinue={inv => setInviteData(inv)}/><Analytics /></>
+    <><InviteWelcome token={inviteToken} onContinue={inv => setInviteData(inv)}/><Analytics /></>
   );
 
   // ── Auth wall ────────────────────────────────────────────────────────────────
