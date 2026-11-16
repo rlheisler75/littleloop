@@ -24,6 +24,8 @@ import MemberModal from './components/modals/MemberModal';
 import { BrowseSitters } from './features/profile/index';
 import SitterAvatar from './components/ui/SitterAvatar';
 import ParentFollowUs from './components/FieldTrip/ParentFollowUs';
+import { ParentAgreementsCard } from './features/agreements/FamilyAgreements';
+import { FamilyCareInfoCard } from './features/agreements/FamilyInfo';
 
 function NewFamilySetup({ session, onComplete, onSignOut }) {
   const [step,       setStep]       = useState(0);
@@ -277,6 +279,7 @@ export default function ParentDashboard({ session, onSignOut }) {
             {family ? (
               <>
                 {family.id && <div style={{ marginBottom: 20 }}><ParentFollowUs familyId={family.id}/></div>}
+                <ParentAgreementsCard familyId={family.id} sitters={family.sitters_list || []} userId={session.user.id} canSign={isAdmin || member?.role === 'member'}/>
                 <WeeklyScheduleCard familyId={family.id} sitterName={family.sitter_name || 'Sitter'}/>
                 <HoursSummaryCard familyId={family.id} children={children} onViewHistory={() => setShowCheckinHist(true)}/>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
@@ -306,6 +309,7 @@ export default function ParentDashboard({ session, onSignOut }) {
                       </div>
                   }
                 </div>
+                <FamilyCareInfoCard familyId={family.id} familyName={family.name} children={children} isAdmin={isAdmin}/>
                 {(isAdmin || member?.role === 'member') && <OnMyWayButton familyId={family.id} memberId={member?.id} memberName={name}/>}
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>

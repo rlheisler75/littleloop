@@ -5,6 +5,7 @@ import { FamilyNameEditor } from '../members/MemberProfileTab';
 import { CheckInButton, MultiCheckInButton } from '../children/CheckInButton';
 import SessionsList from '../children/SessionsList';
 import { ScheduleManager } from '../schedule/index';
+import { SitterAgreementPanel } from '../agreements/FamilyAgreements';
 import { ChildProfileModal } from '../../components/modals/ChildModal';
 import InviteFamilyModal from '../../components/modals/InviteFamilyModal';
 import { Confirm, Modal } from '../../components/ui/Modal';
@@ -205,6 +206,8 @@ export function SitterFamilyDetail({ family, children, sitterId, sitterName, onD
         }
         <div style={{ marginTop: 18 }}><SessionsList familyId={family.id} childrenMap={{}} showTitle={true}/></div>
       </div>
+
+      <SitterAgreementPanel family={family} children={children} sitterId={sitterId} sitterName={sitterName}/>
 
       <ScheduleManager sitterId={sitterId} familyId={family.id} familyName={family.name}/>
 

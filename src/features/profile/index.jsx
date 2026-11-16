@@ -10,6 +10,7 @@ import { AvailabilityPicker, AvailabilityDisplay } from '../../components/ui/Ava
 import { EmailPreferencesCard, PushPreferencesCard } from '../notifications/index';
 import SitterAvatar from '../../components/ui/SitterAvatar';
 import { DEFAULT_THEME } from '../../styles/themes';
+import CareAgreementEditor from '../agreements/AgreementEditor';
 
 // ─── Version stamp ────────────────────────────────────────────────────────────
 // Bump this string every time you deploy a new version of this file.
@@ -369,6 +370,7 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
       </div>
 
       <PublicProfileEditor sitterId={sitterId} sitterName={sitterName}/>
+      <CareAgreementEditor sitterId={sitterId}/>
       <EmailPreferencesCard userId={sitterId} isSitter={true}/>
       <PushPreferencesCard userId={sitterId} isSitter={true}/>
 

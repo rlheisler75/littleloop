@@ -70,7 +70,7 @@ export function ChildProfileModal({ open, onClose, child, sitterId, canEdit, isP
           {child.avatar || '🌟'}
         </div>
         <div>
-          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600 }}>{child.name}</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600 }}>{child.name}{child.preferred_name && child.preferred_name !== child.name && <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-faint)' }}> “{child.preferred_name}”</span>}</div>
           {age !== null && <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>Age {age} · Born {dob.toLocaleDateString()}</div>}
         </div>
       </div>
@@ -105,7 +105,12 @@ export function ChildProfileModal({ open, onClose, child, sitterId, canEdit, isP
               <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>{child.medical_notes}</p>
             </div>
           )}
-          {!child.allergies?.length && !child.dietary_restrictions && !child.medical_notes && (
+          {child.allergy_reaction && <InfoBlock label="Allergy symptoms & emergency steps" value={child.allergy_reaction}/>}
+          {child.medications && <InfoBlock label="Medications" value={child.medications}/>}
+          {(child.doctor_name || child.doctor_phone) && <InfoBlock label="Doctor" value={[child.doctor_name, child.doctor_phone].filter(Boolean).join(' · ')} href={child.doctor_phone ? `tel:${child.doctor_phone.replace(/[^\d+]/g, '')}` : null}/>}
+          {child.preferred_hospital && <InfoBlock label="Preferred hospital" value={child.preferred_hospital}/>}
+          {child.insurance_info && <InfoBlock label="Insurance" value={child.insurance_info}/>}
+          {!child.allergies?.length && !child.dietary_restrictions && !child.medical_notes && !child.medications && !child.doctor_name && (
             <p style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No medical info added yet.</p>
           )}
         </div>
@@ -159,7 +164,29 @@ export function ChildProfileModal({ open, onClose, child, sitterId, canEdit, isP
   );
 }
 
+function InfoBlock({ label, value, href }) {
+  return (
+    <div>
+      <SectionLabel>{label}</SectionLabel>
+      {href
+        ? <a href={href} style={{ fontSize: 13, color: 'var(--accent)' }}>{value}</a>
+        : <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{value}</p>}
+    </div>
+  );
+}
+
 // ─── Add / Edit Child ─────────────────────────────────────────────────────────
+
+// Emergency details from the care agreement form.
+export const EXTRA_FIELDS = [
+  ['preferred_name',     'Preferred name / nickname', ''],
+  ['allergy_reaction',   'Allergy symptoms & emergency steps', 'e.g. hives; give Benadryl, call parent. Swelling → EpiPen, call 911', true],
+  ['medications',        'Current medications (name, dose, schedule)', '', true],
+  ['doctor_name',        'Doctor', 'Dr. name / clinic'],
+  ['doctor_phone',       'Doctor phone', ''],
+  ['preferred_hospital', 'Preferred hospital', ''],
+  ['insurance_info',     'Health insurance (optional)', 'Provider and policy, if you want the sitter to have it'],
+];
 
 const COLORS = ['#8B78D4','#3A9E7A','#3A6FD4','#D4783A','#D43A6F','#7AC4D4','#D4C23A','#8BD48B'];
 
@@ -173,6 +200,7 @@ export function ChildModal({ open, onClose, familyId, child, onSaved }) {
   const [allergies, setAllergies] = useState(child?.allergies?.join(', ') || '');
   const [diet,      setDiet]      = useState(child?.dietary_restrictions || '');
   const [medical,   setMedical]   = useState(child?.medical_notes || '');
+  const [extra,     setExtra]     = useState({});
   const [loading,   setLoading]   = useState(false);
   const [alert,     setAlert]     = useState(null);
   const [confirmDel,setConfirmDel]= useState(false);
@@ -186,6 +214,7 @@ export function ChildModal({ open, onClose, familyId, child, onSaved }) {
       setAllergies(child?.allergies?.join(', ') || '');
       setDiet(child?.dietary_restrictions || '');
       setMedical(child?.medical_notes || '');
+      setExtra(Object.fromEntries(EXTRA_FIELDS.map(([k]) => [k, child?.[k] || ''])));
       setAlert(null);
     }
   }, [open, child]);
@@ -199,6 +228,7 @@ export function ChildModal({ open, onClose, familyId, child, onSaved }) {
       allergies: allergies.split(',').map(s => s.trim()).filter(Boolean),
       dietary_restrictions: diet || null,
       medical_notes: medical || null,
+      ...Object.fromEntries(EXTRA_FIELDS.map(([k]) => [k, extra[k]?.trim() || null])),
       family_id: familyId,
     };
     const { error } = isEdit
@@ -254,7 +284,11 @@ export function ChildModal({ open, onClose, familyId, child, onSaved }) {
 
           <Field label="Allergies (comma separated)" value={allergies} onChange={e => setAllergies(e.target.value)} placeholder="e.g. peanuts, dairy" required={false}/>
           <Field label="Dietary restrictions" as="textarea" rows={2} value={diet} onChange={e => setDiet(e.target.value)} placeholder="e.g. vegetarian, no gluten" required={false}/>
-          <Field label="Medical notes" as="textarea" rows={3} value={medical} onChange={e => setMedical(e.target.value)} placeholder="Medications, conditions, important notes…" required={false}/>
+          <Field label="Medical conditions or special needs" as="textarea" rows={3} value={medical} onChange={e => setMedical(e.target.value)} placeholder="Conditions, special needs, important notes…" required={false}/>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: 'var(--text-faint)', margin: '4px 0 10px' }}>🚑 Emergency details</div>
+          {EXTRA_FIELDS.map(([k, label, ph, area]) => (
+            <Field key={k} label={label} as={area ? 'textarea' : 'input'} rows={2} type={k === 'doctor_phone' ? 'tel' : 'text'} value={extra[k] || ''} onChange={e => setExtra(x => ({ ...x, [k]: e.target.value }))} placeholder={ph} required={false}/>
+          ))}
 
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <button type="submit" className="bp full" disabled={loading}>{loading ? <Spinner/> : isEdit ? 'Save Changes' : 'Add Child'}</button>
