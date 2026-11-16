@@ -372,10 +372,82 @@ export function MemberProfileTab({ memberId, memberName, onNameChange }) {
 
       <ThemeSection currentTheme={theme} onSelect={selectTheme}/>
 
+      <DeleteFamilyAccountCard/>
+
+      <div style={{ fontSize: 12, textAlign: 'center', margin: '4px 0 10px', display: 'flex', justifyContent: 'center', gap: 14 }}>
+        <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--text-dim)' }}>Privacy</a>
+        <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--text-dim)' }}>Terms</a>
+        <a href="mailto:hello@littleloop.xyz" style={{ color: 'var(--text-dim)' }}>Contact support</a>
+      </div>
       {/* Version stamp */}
       <div style={{ fontSize: 9, color: 'var(--text-faint)', textAlign: 'center', marginBottom: 8, opacity: .5, letterSpacing: '.5px' }}>
         {FILE_VERSION}
       </div>
+    </div>
+  );
+}
+
+// ─── Delete account (parents / family members) ───────────────────────────────
+
+async function invokeDelete(body) {
+  const { data, error } = await supabase.functions.invoke('delete-account', { body });
+  if (!error) return data;
+  let detail = null;
+  try { detail = await error.context?.json(); } catch { /* ignore */ }
+  throw new Error(detail?.message || detail?.error || error.message);
+}
+
+export function DeleteFamilyAccountCard() {
+  const [open,     setOpen]     = useState(false);
+  const [plan,     setPlan]     = useState(null);   // { blocked, closesFamily }
+  const [text,     setText]     = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [err,      setErr]      = useState(null);
+
+  async function start() {
+    setOpen(true); setErr(null); setPlan(null); setText('');
+    try { setPlan(await invokeDelete({ dryRun: true })); }
+    catch (e) { setErr(e.message); }
+  }
+
+  async function confirmDelete() {
+    setDeleting(true); setErr(null);
+    try {
+      await invokeDelete({});
+      Object.keys(localStorage).filter(k => k.startsWith('ll_')).forEach(k => localStorage.removeItem(k));
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    } catch (e) { setErr(e.message); setDeleting(false); }
+  }
+
+  return (
+    <div className="card" style={{ padding: '20px 18px', marginBottom: 14, border: '1px solid rgba(192,80,80,.2)', background: 'rgba(192,80,80,.04)' }}>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--err-text)' }}>⚠️ Delete Account</div>
+      <p style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.6, marginBottom: 14 }}>Permanently deletes your login. Cannot be undone.</p>
+      {!open
+        ? <button className="bd" onClick={start}>Delete my account</button>
+        : !plan && !err
+          ? <Spinner size={16}/>
+          : plan?.blocked
+            ? <>
+                <div className="al al-w">You're the only admin of your family. Make another member an admin first (Home → Family Members → ✏️), then come back to delete your account.</div>
+                <button className="bg" onClick={() => setOpen(false)}>OK</button>
+              </>
+            : <div>
+                <div className="al al-e" style={{ marginBottom: 12, lineHeight: 1.6 }}>
+                  {plan?.closesFamily
+                    ? <>You're the last member of your family, so this also <strong>deletes your family's data</strong>: children, photos, posts, messages, check-ins, emergency info and agreements. Your sitters are disconnected. Invoices are kept so your sitter has their payment records.</>
+                    : <>Your login and membership are deleted. Your family's information stays for the other members.</>}
+                  <br/>Type <strong>DELETE</strong> to confirm.
+                </div>
+                {err && <div className="al al-e">{err}</div>}
+                <input className="fi" value={text} onChange={e => setText(e.target.value)} placeholder="Type DELETE to confirm" style={{ marginBottom: 10 }}/>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="bd" disabled={text !== 'DELETE' || deleting || !plan} onClick={confirmDelete}>{deleting ? <><Spinner size={12}/> Deleting…</> : 'Permanently delete'}</button>
+                  <button className="bg" onClick={() => setOpen(false)}>Cancel</button>
+                </div>
+              </div>}
+      {open && !plan && err && <div className="al al-e" style={{ marginTop: 10 }}>{err}</div>}
     </div>
   );
 }

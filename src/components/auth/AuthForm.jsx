@@ -157,6 +157,11 @@ export default function AuthForm({ portal, inviteData, initialMode = 'login', on
                   ? `Create ${isParent ? 'parent' : 'sitter'} account`
                   : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
             </button>
+            {mode === 'signup' && (
+              <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center', margin: '12px 0 0', lineHeight: 1.5 }}>
+                By creating an account you agree to the <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--sky)', fontWeight: 700 }}>Terms</a> and <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--sky)', fontWeight: 700 }}>Privacy Policy</a>.
+              </p>
+            )}
           </form>
 
           <div className="ll-auth-foot">

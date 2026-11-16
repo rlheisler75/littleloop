@@ -18,6 +18,7 @@ import AdminApp from './admin/AdminApp';
 
 rememberRef(); // keep ?ref= from a referral link until signup
 import LandingPage from './LandingPage';
+import LegalPage, { legalPageFromPath } from './features/legal/LegalPage';
 
 export default function App() {
   // Admin console — own auth, own app
@@ -78,6 +79,10 @@ export default function App() {
     setAuthPortal(null);
     supabase.auth.signOut();
   };
+
+  // ── Privacy / Terms: public, no sign-in needed ──
+  const legalPage = legalPageFromPath();
+  if (legalPage) return <><LegalPage page={legalPage}/><Analytics /></>;
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (session === undefined) return (

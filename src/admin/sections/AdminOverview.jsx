@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { AdminHeader, AdminSpinner } from '../AdminUI';
+import GrowthFunnel from './GrowthFunnel';
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
@@ -203,6 +204,8 @@ export default function AdminOverview() {
           </div>
         )}
       </div>
+
+      <GrowthFunnel isMobile={isMobile}/>
 
       {/* Bottom — stacks on mobile, 2-col on desktop */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
