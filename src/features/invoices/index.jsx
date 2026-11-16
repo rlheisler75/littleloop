@@ -14,7 +14,9 @@ import { SitterYearEnd, FamilyYearEnd } from './YearEndStatements';
 
 export function PayButtons({ sitter, invoice }) {
   const [items,      setItems]      = useState(null);
-  const [payMethods, setPayMethods] = useState(sitter?.payment_methods || null);
+  // Only trust preloaded payment methods if they belong to the sitter who sent this invoice.
+  const own = sitter && sitter.id === invoice.sitter_id ? sitter : null;
+  const [payMethods, setPayMethods] = useState(own?.payment_methods || null);
 
   useEffect(() => {
     supabase.from('invoice_items').select('amount,hours,rate,rate_type').eq('invoice_id', invoice.id)
@@ -218,7 +220,7 @@ export function SitterInvoicesTab({ sitterId, sitterName, isPro = false, onUpgra
 
 export function FamilyInvoicesTab({ familyId, currentUserId }) {
   const [invoices, setInvoices] = useState([]);
-  const [sitter,   setSitter]   = useState(null);
+  const [sitters,  setSitters]  = useState({});
   const [family,   setFamily]   = useState(null);
   const [member,   setMember]   = useState(null);
   const [loading,  setLoading]  = useState(true);
@@ -230,11 +232,11 @@ export function FamilyInvoicesTab({ familyId, currentUserId }) {
         supabase.from('invoices').select('*').eq('family_id', familyId).in('status', ['sent', 'paid']).order('created_at', { ascending: false }),
         supabase.from('families').select('*').eq('id', familyId).single(),
         supabase.from('members').select('*').eq('family_id', familyId).eq('user_id', currentUserId).maybeSingle(),
-        supabase.from('family_sitters').select('sitters(*)').eq('family_id', familyId).eq('status', 'active').limit(1),
+        supabase.from('family_sitters').select('sitters(*)').eq('family_id', familyId).eq('status', 'active'),
       ]);
       setInvoices(invs || []);
       setFamily(fam);
-      setSitter(fsRows?.[0]?.sitters || null);
+      setSitters(Object.fromEntries((fsRows || []).map(r => r.sitters).filter(Boolean).map(s => [s.id, s])));
       setMember(mem);
       setLoading(false);
     }
@@ -246,7 +248,7 @@ export function FamilyInvoicesTab({ familyId, currentUserId }) {
       supabase.from('invoice_items').select('*').eq('invoice_id', inv.id).order('sort_order'),
       supabase.from('sitters').select('name,legal_name,address_line1,address_line2,city,state,zip').eq('id', inv.sitter_id).single(),
     ]);
-    printInvoice(inv, items || [], sit || sitter || {}, family || { name: '—' }, member);
+    printInvoice(inv, items || [], sit || sitters[inv.sitter_id] || {}, family || { name: '—' }, member);
   }
 
   const statusColors = { sent: 'var(--accent)', paid: 'var(--ok-text)' };
@@ -268,13 +270,14 @@ export function FamilyInvoicesTab({ familyId, currentUserId }) {
                       <span style={{ fontWeight: 700, fontSize: 15 }}>{inv.invoice_number}</span>
                       <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: `${statusColors[inv.status]}22`, color: statusColors[inv.status], textTransform: 'capitalize' }}>{inv.status}</span>
                     </div>
+                    {Object.keys(sitters).length > 1 && sitters[inv.sitter_id] && <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>From {sitters[inv.sitter_id].name}</div>}
                     <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Issued {fmtDate(inv.issued_date)}</div>
                     {inv.due_date  && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Due {fmtDate(inv.due_date)}</div>}
                     {inv.paid_date && <div style={{ fontSize: 11, color: 'var(--ok-text)' }}>Paid {fmtDate(inv.paid_date)}</div>}
                   </div>
                   <button className="bg" style={{ padding: '5px 10px', fontSize: 11 }} onClick={() => openPrint(inv)}>🖨️ PDF</button>
                 </div>
-                {inv.status === 'sent' && <PayButtons sitter={sitter} invoice={inv}/>}
+                {inv.status === 'sent' && <PayButtons key={inv.id} sitter={sitters[inv.sitter_id]} invoice={inv}/>}
                 {inv.status === 'paid' && (
                   <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(88,216,184,.1)', border: '1px solid rgba(88,216,184,.25)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 16 }}>✅</span>

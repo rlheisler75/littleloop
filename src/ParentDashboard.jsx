@@ -370,7 +370,7 @@ export default function ParentDashboard({ session, onSignOut }) {
             )}
           </div>
         )}
-        {tab === 'feed' && family && <FeedTab familyId={family.id} sitterId={null} memberId={member?.id} isSitter={false} children={children} unseenCount={0} onMarkSeen={null} sitterName={family.sitter_name || 'Sitter'} currentUserName={name} currentUserAvatar={member?.avatar || '&#x1F464;'}/>}
+        {tab === 'feed' && family && <FeedTab familyId={family.id} sitterId={null} memberId={member?.id} isSitter={false} children={children} unseenCount={0} onMarkSeen={null} sitterName={family.sitter_name || 'Sitter'} sitterNames={Object.fromEntries((family.sitters_list || []).map(s => [s.id, s.name]))} currentUserName={name} currentUserAvatar={member?.avatar || '&#x1F464;'}/>}
         {tab === 'feed' && !family && <div className="es"><div className="ic">&#x1F338;</div><h3>Not connected</h3><p>No family connected yet.</p></div>}
         {tab === 'messages' && <MessagesTabWrapper currentUserId={session.user.id} member={member} family={family} memberName={name} memberAvatar={member?.avatar || '&#x1F464;'}/>}
         {tab === 'invoices' && family && <FamilyInvoicesTab familyId={family.id} currentUserId={session.user.id}/>}
