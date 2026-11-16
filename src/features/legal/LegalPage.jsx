@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import LoopMark from '../../components/ui/LoopMark';
 
 export const LEGAL_UPDATED = 'November 15, 2026';
-export const SUPPORT_EMAIL = 'hello@littleloop.xyz';
+export const SUPPORT_EMAIL = 'littleloop@loopwaresolutions.com';
 const COMPANY = 'Loopware Solutions LLC';
 
 const STYLES = `

@@ -379,7 +379,7 @@ export function SitterProfileTab({ sitterId, sitterName, onNameChange }) {
       <div style={{ fontSize: 12, textAlign: 'center', margin: '4px 0 10px', display: 'flex', justifyContent: 'center', gap: 14 }}>
         <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--text-dim)' }}>Privacy</a>
         <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--text-dim)' }}>Terms</a>
-        <a href="mailto:hello@littleloop.xyz" style={{ color: 'var(--text-dim)' }}>Contact support</a>
+        <a href="mailto:littleloop@loopwaresolutions.com" style={{ color: 'var(--text-dim)' }}>Contact support</a>
       </div>
       {/* Version stamp — visible in UI until deployment is reliable */}
       <div style={{ fontSize: 9, color: 'var(--text-faint)', textAlign: 'center', marginBottom: 8, opacity: .5, letterSpacing: '.5px' }}>

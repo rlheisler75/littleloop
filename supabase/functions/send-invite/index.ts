@@ -62,7 +62,7 @@ serve(async (req) => {
       method: "POST",
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "littleloop <hello@littleloop.xyz>",
+        from: "littleloop <hello@littleloop.xyz>", reply_to: "littleloop@loopwaresolutions.com",
         to: parentEmail,
         subject: `${sitterName.replace(/[\r\n]+/g, " ")} invited you to littleloop`,
         html: `

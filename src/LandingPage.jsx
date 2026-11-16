@@ -614,7 +614,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
             <a onClick={onLogin}>Sign In</a>
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>
-            <a href="mailto:hello@littleloop.xyz">Contact</a>
+            <a href="mailto:littleloop@loopwaresolutions.com">Contact</a>
           </div>
           <div className="ll-footer-copy">© 2026 Loopware Solutions LLC. All rights reserved. · littleloop is a product of Loopware Solutions LLC</div>
         </footer>

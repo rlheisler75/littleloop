@@ -91,7 +91,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: "littleloop <hello@littleloop.xyz>", to, subject: subject.replace(/[\r\n]+/g, " ").slice(0, 150), html }),
+    body: JSON.stringify({ from: "littleloop <hello@littleloop.xyz>", reply_to: "littleloop@loopwaresolutions.com", to, subject: subject.replace(/[\r\n]+/g, " ").slice(0, 150), html }),
   });
   if (!res.ok) { const err = await res.json(); throw new Error(JSON.stringify(err)); }
 }
