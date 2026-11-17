@@ -6,7 +6,7 @@ import { CheckInButton, MultiCheckInButton } from '../children/CheckInButton';
 import SessionsList from '../children/SessionsList';
 import { ScheduleManager } from '../schedule/index';
 import { SitterAgreementPanel } from '../agreements/FamilyAgreements';
-import { ChildProfileModal } from '../../components/modals/ChildModal';
+import { ChildProfileModal, ChildModal } from '../../components/modals/ChildModal';
 import InviteFamilyModal from '../../components/modals/InviteFamilyModal';
 import { Confirm, Modal } from '../../components/ui/Modal';
 import SectionLabel from '../../components/ui/SectionLabel';
@@ -85,8 +85,9 @@ export function ConnectionRequests({ sitterId, onUpdate, atLimit = false, onUpgr
 
 // ─── Sitter family detail view ────────────────────────────────────────────────
 
-export function SitterFamilyDetail({ family, children, sitterId, sitterName, onDeactivate }) {
+export function SitterFamilyDetail({ family, children, sitterId, sitterName, onDeactivate, onChildrenChanged }) {
   const [selectedChild,  setSelectedChild]  = useState(null);
+  const [showAddChild,   setShowAddChild]   = useState(false);
   const [confirmRemove,  setConfirmRemove]  = useState(false);
   const [loading,        setLoading]        = useState(false);
   const [alert,          setAlert]          = useState(null);
@@ -186,10 +187,13 @@ export function SitterFamilyDetail({ family, children, sitterId, sitterName, onD
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <SectionLabel>Children</SectionLabel>
-          {children.length > 1 && <MultiCheckInButton children={children} familyId={family.id} currentUserId={sitterId} checkerName={sitterName || 'Sitter'} isSitter={true}/>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button className="bg" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => setShowAddChild(true)}>+ Add child</button>
+            {children.length > 1 && <MultiCheckInButton children={children} familyId={family.id} currentUserId={sitterId} checkerName={sitterName || 'Sitter'} isSitter={true}/>}
+          </div>
         </div>
         {children.length === 0
-          ? <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No children added yet</div>
+          ? <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No children added yet. Add them here, or the parents can add them.</div>
           : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {children.map(c => (
@@ -216,6 +220,7 @@ export function SitterFamilyDetail({ family, children, sitterId, sitterName, onD
       </div>
 
       <ChildProfileModal open={!!selectedChild} onClose={() => setSelectedChild(null)} child={selectedChild} sitterId={sitterId} canEdit={false} isParent={false}/>
+      <ChildModal open={showAddChild} onClose={() => setShowAddChild(false)} familyId={family.id} child={null} onSaved={() => onChildrenChanged?.()}/>
       <Confirm open={confirmRemove} title="Remove family?" message={`This will disconnect you from ${family.name}. Their data stays intact.`} danger onConfirm={deactivate} onCancel={() => setConfirmRemove(false)}/>
     </div>
   );
@@ -250,6 +255,11 @@ export function FamiliesTab({ sitterId, sitterName, isPro = null, onUpgrade }) {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (families.length && !selected) setSelected(families[0].id); }, [families]);
 
+  async function reloadKids(familyId) {
+    const { data } = await supabase.from('children').select('*').eq('family_id', familyId);
+    setKids(k => ({ ...k, [familyId]: data || [] }));
+  }
+
   const selFam = families.find(f => f.id === selected);
   const atLimit = isPro === false && linkCount >= FREE_FAMILY_LIMIT; // isPro null = still loading
   const openInvite = () => (atLimit ? setShowLimit(true) : setShowInvite(true));
@@ -279,7 +289,7 @@ export function FamiliesTab({ sitterId, sitterName, isPro = null, onUpgrade }) {
           ? <div>
               <button className="bg" style={{ marginBottom: 12, fontSize: 12, padding: '6px 12px' }} onClick={() => setSelected(null)}>← All Families</button>
               <div className="card" style={{ padding: 22 }}>
-                <SitterFamilyDetail family={selFam} children={kids[selected] || []} sitterId={sitterId} sitterName={sitterName} onDeactivate={() => { setSelected(null); load(); }}/>
+                <SitterFamilyDetail family={selFam} children={kids[selected] || []} sitterId={sitterId} sitterName={sitterName} onDeactivate={() => { setSelected(null); load(); }} onChildrenChanged={() => reloadKids(selFam.id)}/>
               </div>
             </div>
           : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
