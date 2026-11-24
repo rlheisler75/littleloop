@@ -33,6 +33,7 @@ serve(async (req) => {
     .from("checkins")
     .select("*, children(name,avatar), families(id,name,admin_email)")
     .eq("status", "in")
+    .is("facility_id", null)   // daycares see open check-ins on their own Today board
     .lt("checked_at", cutoff);
 
   if (!openCheckins?.length) {

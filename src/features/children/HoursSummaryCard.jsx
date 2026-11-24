@@ -69,6 +69,7 @@ export function CheckinLog({ familyId }) {
       let query = supabase.from('checkins')
         .select('*, children(name,avatar)')
         .eq('family_id', familyId)
+        .is('facility_id', null)   // the daycare keeps its own check-ins
         .order('checked_at', { ascending: false });
 
       if (filter === 'today') {

@@ -12,8 +12,9 @@ export function CheckInButton({ child, familyId, currentUserId, checkerName, isS
 
   useEffect(() => {
     async function loadStatus() {
+      // The family's / sitter's own check-ins only: a daycare's check-ins are its own
       const { data } = await supabase.from('checkins').select('*')
-        .eq('child_id', child.id)
+        .eq('child_id', child.id).is('facility_id', null)
         .order('checked_at', { ascending: false })
         .limit(1).maybeSingle();
       if (data) { setStatus(data.status); setLastEntry(data); }
@@ -77,7 +78,7 @@ export function MultiCheckInButton({ children, familyId, currentUserId, checkerN
 
     const statuses = await Promise.all(children.map(async c => {
       const { data } = await supabase.from('checkins').select('status')
-        .eq('child_id', c.id).order('checked_at', { ascending: false }).limit(1).maybeSingle();
+        .eq('child_id', c.id).is('facility_id', null).order('checked_at', { ascending: false }).limit(1).maybeSingle();
       return { child: c, lastStatus: data?.status || null };
     }));
 

@@ -135,6 +135,7 @@ export default function SitterDashboard({ session, onSignOut, switchTo = null })
           .from('checkins')
           .select('status, child_id')
           .eq('child_id', child.id)
+          .is('facility_id', null)   // not the daycare's check-ins
           .order('checked_at', { ascending: false })
           .limit(1)
           .maybeSingle();
