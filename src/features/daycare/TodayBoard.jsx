@@ -159,7 +159,7 @@ export default function TodayBoard({ facilityId, me, myName, manager, userId, on
                     const canEnd = manager || s.staff_id === myStaffId;
                     return (
                       <span key={s.id} className="chip" style={{ fontSize: 11, padding: '3px 8px' }}>
-                        🧑‍🏫 {person?.name || person?.email || 'Staff'}
+                        👤 {person?.name || person?.email || 'Staff'}
                         {canEnd && <button onClick={() => leaveRoom(s.id)} disabled={busy[s.id]} aria-label={`Take ${person?.name || 'staff'} out of ${room.name}`}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: 12, padding: 0, marginLeft: 2 }}>✕</button>}
                       </span>

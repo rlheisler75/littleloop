@@ -57,7 +57,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
     { id: 'feed',       icon: '🌸', label: 'Updates' },
     ...(manager ? [
       { id: 'classrooms', icon: '🧸', label: 'Rooms' },
-      { id: 'staff',      icon: '🧑‍🏫', label: 'Staff' },
+      { id: 'staff',      icon: '👥', label: 'Staff' },
     ] : []),
     { id: 'center',     icon: '⚙️', label: 'Center' },
   ];
