@@ -6,9 +6,10 @@ import AuthShell from './AuthShell';
 
 
 export default function AuthForm({ portal, inviteData, initialMode = 'login', onBack }) {
-  // Role only matters when creating an account; sign-in is the same for sitters and families.
-  const [role,     setRole]     = useState(inviteData || portal === 'parent' ? 'parent' : 'sitter');
-  const isParent = role === 'parent';
+  // Role only matters when creating an account; sign-in is the same for everyone.
+  const [role,     setRole]     = useState(inviteData || portal === 'parent' ? 'parent' : portal === 'daycare' ? 'daycare' : 'sitter');
+  const isParent  = role === 'parent';
+  const isDaycare = role === 'daycare';
 
   const [mode,     setMode]     = useState(inviteData ? 'signup' : initialMode);
   const [name,     setName]     = useState('');
@@ -47,7 +48,7 @@ export default function AuthForm({ portal, inviteData, initialMode = 'login', on
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { role: isParent ? 'parent' : 'sitter', name, ...(ref ? { ref } : {}) } },
+          options: { data: { role, name, ...(ref ? { ref } : {}) } },
         });
         if (error) throw error;
         setAlert({ t: 's', m: 'Account created! Check your email to confirm, then sign in.' });
@@ -83,7 +84,7 @@ export default function AuthForm({ portal, inviteData, initialMode = 'login', on
   );
 
   const heading = mode === 'login'
-    ? ['Welcome back!', 'Sitters and parents both sign in here.']
+    ? ['Welcome back!', 'Sitters, parents and daycare staff all sign in here.']
     : mode === 'forgot'
       ? ['Reset your password', "We'll email you a link to choose a new one."]
       : inviteData
@@ -105,8 +106,9 @@ export default function AuthForm({ portal, inviteData, initialMode = 'login', on
           {mode === 'signup' && !inviteData && (
             <div className="ll-auth-roles">
               {[
-                ['sitter', '🧸', "I'm a sitter", 'I care for kids'],
-                ['parent', '👨‍👩‍👧', "I'm a parent", 'My kids are cared for'],
+                ['sitter',  '🧸', 'Sitter',  'I care for kids'],
+                ['parent',  '👨‍👩‍👧', 'Parent',  'My kids are cared for'],
+                ['daycare', '🏫', 'Daycare', 'Directors and staff'],
               ].map(([value, icon, title, sub]) => (
                 <button key={value} type="button" aria-pressed={role === value}
                   className={`ll-auth-role ${role === value ? 'on' : ''}`} onClick={() => setRole(value)}>
@@ -122,7 +124,12 @@ export default function AuthForm({ portal, inviteData, initialMode = 'login', on
 
           {mode === 'signup' && isParent && !inviteData && (
             <div className="ll-auth-note i">
-              💡 Use the email your sitter invited, and you'll be connected to your family automatically.
+              💡 Use the email your sitter or daycare invited, and you'll be connected to your family automatically.
+            </div>
+          )}
+          {mode === 'signup' && isDaycare && (
+            <div className="ll-auth-note i">
+              💡 Directors: create your account, then set up your daycare. Staff: use the email your director invited.
             </div>
           )}
           {inviteData && (
@@ -134,7 +141,7 @@ export default function AuthForm({ portal, inviteData, initialMode = 'login', on
           <form onSubmit={submit}>
             {mode === 'signup' && input('Your name', {
               value: name, onChange: e => setName(e.target.value),
-              placeholder: isParent ? 'Sarah Chen' : 'Maya Rodriguez', autoComplete: 'name',
+              placeholder: isParent ? 'Sarah Chen' : isDaycare ? 'Jenny Park' : 'Maya Rodriguez', autoComplete: 'name',
             })}
             {input('Email address', {
               type: 'email', value: email, onChange: e => setEmail(e.target.value),
@@ -154,7 +161,7 @@ export default function AuthForm({ portal, inviteData, initialMode = 'login', on
               {loading
                 ? <><Spinner/> Please wait…</>
                 : mode === 'signup'
-                  ? `Create ${isParent ? 'parent' : 'sitter'} account`
+                  ? `Create ${isParent ? 'parent' : isDaycare ? 'daycare' : 'sitter'} account`
                   : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
             </button>
             {mode === 'signup' && (

@@ -11,9 +11,10 @@ import Spinner from '../../components/ui/Spinner';
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
 
-export function PostCard({ post, taggedChildren, currentUserId, memberId, isSitter, onDeleted, sitterName: fallbackName = 'Sitter', sitterNames = null, currentUserName = '', currentUserAvatar = '👤' }) {
-  // Families can have several sitters: label each post with the sitter who wrote it.
-  const sitterName = (sitterNames && sitterNames[post.author_id]) || fallbackName;
+export function PostCard({ post, taggedChildren, currentUserId, memberId, isSitter, onDeleted, sitterName: fallbackName = 'Sitter', sitterNames = null, facilityNames = null, currentUserName = '', currentUserAvatar = '👤' }) {
+  // Families can have several sitters (and a daycare): label each post with who wrote it.
+  const sitterName = post.author_name || (sitterNames && sitterNames[post.author_id]) || fallbackName;
+  const facilityName = post.facility_id ? (facilityNames?.[post.facility_id] || 'Daycare') : null;
   const [comments,     setComments]     = useState([]);
   const [likes,        setLikes]        = useState([]);
   const [showComments, setShowComments] = useState(false);
@@ -93,7 +94,7 @@ export function PostCard({ post, taggedChildren, currentUserId, memberId, isSitt
                 <span style={{ fontSize: 16 }}>{getTypeIcon(post.type)}</span>
                 {post.mood && <span style={{ fontSize: 16 }}>{getMoodIcon(post.mood)}</span>}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{timeAgo(post.created_at)}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{facilityName ? `🏫 ${facilityName} · ` : ''}{timeAgo(post.created_at)}</div>
             </div>
           </div>
           {isSitter && <button onClick={() => setConfirmDel(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, opacity: .4, padding: 4 }}>🗑️</button>}
@@ -155,7 +156,7 @@ export function PostCard({ post, taggedChildren, currentUserId, memberId, isSitt
 
 // ─── Feed Tab ─────────────────────────────────────────────────────────────────
 
-export function FeedTab({ familyId, sitterId, memberId, isSitter, children, unseenCount, onMarkSeen, sitterName = 'Sitter', sitterNames = null, currentUserName = '', currentUserAvatar = '👤', familyName = '' }) {
+export function FeedTab({ familyId, sitterId, memberId, isSitter, children, unseenCount, onMarkSeen, sitterName = 'Sitter', sitterNames = null, facilityNames = null, currentUserName = '', currentUserAvatar = '👤', familyName = '' }) {
   const [posts,     setPosts]     = useState([]);
   const [postKids,  setPostKids]  = useState({});
   const [loading,   setLoading]   = useState(true);
@@ -219,7 +220,7 @@ export function FeedTab({ familyId, sitterId, memberId, isSitter, children, unse
         ? <div style={{ textAlign: 'center', padding: '60px 0' }}><Spinner size={24}/></div>
         : filtered.length === 0
           ? <div className="es"><div className="ic">🌸</div><h3>No posts yet</h3><p>{isSitter ? 'Share your first update with this family.' : "Your sitter hasn't posted yet."}</p>{isSitter && <button className="bp" onClick={() => setShowNew(true)}>+ Post an update</button>}</div>
-          : <div>{filtered.map(p => <PostCard key={p.id} post={p} taggedChildren={(postKids[p.id] || []).map(id => childMap[id]).filter(Boolean)} currentUserId={sitterId || memberId} memberId={memberId} isSitter={isSitter} onDeleted={load} sitterName={sitterName} sitterNames={sitterNames} currentUserName={currentUserName} currentUserAvatar={currentUserAvatar}/>)}</div>
+          : <div>{filtered.map(p => <PostCard key={p.id} post={p} taggedChildren={(postKids[p.id] || []).map(id => childMap[id]).filter(Boolean)} currentUserId={sitterId || memberId} memberId={memberId} isSitter={isSitter} onDeleted={load} sitterName={sitterName} sitterNames={sitterNames} facilityNames={facilityNames} currentUserName={currentUserName} currentUserAvatar={currentUserAvatar}/>)}</div>
       }
 
       {isSitter && (

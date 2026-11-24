@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import LoopMark from './components/ui/LoopMark';
 
-export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin }) {
+export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin, onDaycareSignup }) {
   const [scrolled, setScrolled] = useState(false);
   const [visible, setVisible] = useState({});
   const observerRef = useRef(null);
@@ -597,6 +597,11 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
               <button className="ll-btn-white" onClick={onSitterSignup}>Start free as a Sitter</button>
               <button className="ll-btn-outline-white" onClick={onFamilySignup}>I'm a parent</button>
             </div>
+            {onDaycareSignup && (
+              <p className="ll-cta-band-desc" style={{ marginTop: 18 }}>
+                Run a daycare center? <a onClick={onDaycareSignup} style={{ color: 'inherit', fontWeight: 800, textDecoration: 'underline', cursor: 'pointer' }}>Set up your classrooms and staff →</a>
+              </p>
+            )}
           </div>
         </section>
 
@@ -611,6 +616,7 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin })
           <div className="ll-footer-links">
             <a onClick={onSitterSignup}>Sitter Sign Up</a>
             <a onClick={onFamilySignup}>Parent Sign Up</a>
+            {onDaycareSignup && <a onClick={onDaycareSignup}>Daycare Sign Up</a>}
             <a onClick={onLogin}>Sign In</a>
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>

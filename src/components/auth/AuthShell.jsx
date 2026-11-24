@@ -29,7 +29,7 @@ export const AUTH_STYLES = `
 .ll-auth-title { font: 600 24px 'Fredoka', sans-serif; color: var(--indigo); margin: 0 0 4px; }
 .ll-auth-sub { font-size: 14px; color: var(--muted); margin: 0 0 18px; line-height: 1.5; }
 .ll-auth-label { display: block; font-size: 13px; font-weight: 800; color: var(--indigo-light); margin-bottom: 6px; }
-.ll-auth-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+.ll-auth-roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
 .ll-auth-role { border-radius: 16px; padding: 14px 8px 12px; cursor: pointer; text-align: center; background: #fff; border: 2px solid #ECE6DC; transition: all .15s; font-family: 'Nunito', sans-serif; color: var(--ink); }
 .ll-auth-role:hover { border-color: var(--coral-pale); }
 .ll-auth-role.on { border-color: var(--coral); background: #FFF5F2; box-shadow: 0 4px 0 var(--coral-pale); }

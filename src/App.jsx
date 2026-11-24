@@ -15,6 +15,7 @@ import { PublicSitterProfile, BrowseSitters } from './features/profile/index';
 import SitterDashboard from './SitterDashboard';
 import ParentDashboard from './ParentDashboard';
 import AdminApp from './admin/AdminApp';
+import DaycareDashboard from './features/daycare/DaycareDashboard';
 
 rememberRef(); // keep ?ref= from a referral link until signup
 import LandingPage from './LandingPage';
@@ -30,9 +31,12 @@ export default function App() {
   // ?portal=parent|sitter (e.g. from an invite email) opens straight to sign-in.
   const [authPortal,   setAuthPortal]   = useState(() => {
     const p = new URLSearchParams(window.location.search).get('portal');
-    return p === 'parent' || p === 'sitter' ? p : null;
-  }); // 'sitter' | 'parent' | null
+    return p === 'parent' || p === 'sitter' || p === 'daycare' ? p : null;
+  }); // 'sitter' | 'parent' | 'daycare' | null
   const [authMode,     setAuthMode]     = useState('login'); // 'login' | 'signup'
+  // Parents and sitters who also work at a daycare switch between the two dashboards.
+  const [staffCount,   setStaffCount]   = useState(0);
+  const [view,         setView]         = useState('home');   // 'home' | 'daycare'
 
   const portal      = getPortal();
   const inviteToken = getInviteToken();
@@ -75,8 +79,22 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Accept any daycare staff invites for this email and learn whether to offer the switch.
+  const uid = session?.user?.id;
+  useEffect(() => {
+    if (!uid || !userRole || userRole === 'daycare' || userRole === '__reset__') { setStaffCount(0); return; }
+    supabase.rpc('claim_staff_invites').then(({ data }) => setStaffCount(data || 0));
+    try { setView(localStorage.getItem(`ll_view_${uid}`) === 'daycare' ? 'daycare' : 'home'); } catch {}
+  }, [uid, userRole]);
+
+  const switchView = v => {
+    setView(v);
+    try { localStorage.setItem(`ll_view_${uid}`, v); } catch {}
+  };
+
   const signOut = () => {
     setAuthPortal(null);
+    setStaffCount(0);
     supabase.auth.signOut();
   };
 
@@ -121,14 +139,23 @@ export default function App() {
       <LandingPage
         onSitterSignup={() => { setAuthMode('signup'); setAuthPortal('sitter'); }}
         onFamilySignup={() => { setAuthMode('signup'); setAuthPortal('parent'); }}
+        onDaycareSignup={() => { setAuthMode('signup'); setAuthPortal('daycare'); }}
         onLogin={() => { setAuthMode('login'); setAuthPortal('sitter'); }}
       />
       <Analytics />
     </>
   );
 
-  // ── Authenticated: families always pass through ──────────────────────────────
-  if (userRole === 'parent') return <><Bg/><ParentDashboard session={session} onSignOut={signOut}/><Analytics /></>;
+  // ── Authenticated ────────────────────────────────────────────────────────────
+  if (userRole === 'daycare') return <><DaycareDashboard session={session} onSignOut={signOut}/><Analytics /></>;
 
-  return <><Bg/><SitterDashboard session={session} onSignOut={signOut}/><Analytics /></>;
+  if (staffCount > 0 && view === 'daycare') return (
+    <><DaycareDashboard session={session} onSignOut={signOut}
+      switchTo={{ label: userRole === 'parent' ? '🏠 My family' : '🧸 Sitter', onClick: () => switchView('home') }}/><Analytics /></>
+  );
+  const toDaycare = staffCount > 0 ? { label: '🏫 Daycare', onClick: () => switchView('daycare') } : null;
+
+  if (userRole === 'parent') return <><Bg/><ParentDashboard session={session} onSignOut={signOut} switchTo={toDaycare}/><Analytics /></>;
+
+  return <><Bg/><SitterDashboard session={session} onSignOut={signOut} switchTo={toDaycare}/><Analytics /></>;
 }

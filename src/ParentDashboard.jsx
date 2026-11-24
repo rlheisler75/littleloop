@@ -26,6 +26,7 @@ import SitterAvatar from './components/ui/SitterAvatar';
 import ParentFollowUs from './components/FieldTrip/ParentFollowUs';
 import { ParentAgreementsCard } from './features/agreements/FamilyAgreements';
 import { FamilyCareInfoCard } from './features/agreements/FamilyInfo';
+import ParentDaycareCard from './features/daycare/ParentDaycareCard';
 
 function NewFamilySetup({ session, onComplete, onSignOut }) {
   const [step,       setStep]       = useState(0);
@@ -133,8 +134,9 @@ function NewFamilySetup({ session, onComplete, onSignOut }) {
   );
 }
 
-export default function ParentDashboard({ session, onSignOut }) {
+export default function ParentDashboard({ session, onSignOut, switchTo = null }) {
   const [member,   setMember]   = useState(null);
+  const [daycares, setDaycares] = useState([]);   // facility_families links with facilities
   const [family,   setFamily]   = useState(null);
   const [children, setChildren] = useState([]);
   const [members,  setMembers]  = useState([]);
@@ -158,12 +160,14 @@ export default function ParentDashboard({ session, onSignOut }) {
     const { data: mem } = await supabase.from('members').select('*').eq('user_id', session.user.id).maybeSingle();
     if (!mem) { setLoading(false); return; }
     setMember(mem);
-    const [{ data: fam }, { data: kids }, { data: mems }, { data: fsRows }] = await Promise.all([
+    const [{ data: fam }, { data: kids }, { data: mems }, { data: fsRows }, { data: dcRows }] = await Promise.all([
       supabase.from('families').select('*').eq('id', mem.family_id).single(),
       supabase.from('children').select('*').eq('family_id', mem.family_id),
       supabase.from('members').select('*').eq('family_id', mem.family_id),
       supabase.from('family_sitters').select('status,sitter_id,sitters(id,name,avatar_url)').eq('family_id', mem.family_id).neq('status', 'inactive'),
+      supabase.from('facility_families').select('facility_id,status,created_family,facilities(id,name,phone,city,state)').eq('family_id', mem.family_id).neq('status', 'inactive'),
     ]);
+    setDaycares((dcRows || []).filter(r => r.facilities));
     // A sitter the family has only *requested* isn't connected yet, so the full sitters row
     // isn't readable; fall back to their public profile for name and photo.
     const missing = (fsRows || []).filter(r => !r.sitters).map(r => r.sitter_id);
@@ -178,7 +182,7 @@ export default function ParentDashboard({ session, onSignOut }) {
     setFamily(famWithSitters);
     setChildren(kids || []);
     setMembers(mems || []);
-    if (famWithSitters && !(kids || []).length && !sittersList.length) {
+    if (famWithSitters && !(kids || []).length && !sittersList.length && !(dcRows || []).length) {
       const seen = localStorage.getItem(`ll_onboarded_family_${famWithSitters.id}`);
       if (!seen) setShowOnboarding(true);
     }
@@ -258,6 +262,7 @@ export default function ParentDashboard({ session, onSignOut }) {
           <div className="logo-text" style={{ fontSize: 20 }}>littleloop</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {switchTo && <button className="bg" style={{ padding: '6px 10px', fontSize: 12 }} onClick={switchTo.onClick}>{switchTo.label}</button>}
           <NotificationCenter userId={session.user.id}/>
           <button className="bg" style={{ padding: '6px 12px', fontSize: 12 }} onClick={onSignOut}>Sign out</button>
         </div>
@@ -279,6 +284,7 @@ export default function ParentDashboard({ session, onSignOut }) {
             {family ? (
               <>
                 {family.id && <div style={{ marginBottom: 20 }}><ParentFollowUs familyId={family.id}/></div>}
+                <ParentDaycareCard familyId={family.id} links={daycares} children={children} isAdmin={isAdmin} onChanged={load}/>
                 <ParentAgreementsCard familyId={family.id} sitters={family.sitters_list || []} userId={session.user.id} canSign={isAdmin || member?.role === 'member'}/>
                 <WeeklyScheduleCard familyId={family.id} sitterName={family.sitter_name || 'Sitter'}/>
                 <HoursSummaryCard familyId={family.id} children={children} onViewHistory={() => setShowCheckinHist(true)}/>
@@ -370,7 +376,7 @@ export default function ParentDashboard({ session, onSignOut }) {
             )}
           </div>
         )}
-        {tab === 'feed' && family && <FeedTab familyId={family.id} sitterId={null} memberId={member?.id} isSitter={false} children={children} unseenCount={0} onMarkSeen={null} sitterName={family.sitter_name || 'Sitter'} sitterNames={Object.fromEntries((family.sitters_list || []).map(s => [s.id, s.name]))} currentUserName={name} currentUserAvatar={member?.avatar || '&#x1F464;'}/>}
+        {tab === 'feed' && family && <FeedTab familyId={family.id} sitterId={null} memberId={member?.id} isSitter={false} children={children} unseenCount={0} onMarkSeen={null} sitterName={family.sitter_name || 'Sitter'} sitterNames={Object.fromEntries((family.sitters_list || []).map(s => [s.id, s.name]))} facilityNames={Object.fromEntries(daycares.map(d => [d.facility_id, d.facilities.name]))} currentUserName={name} currentUserAvatar={member?.avatar || '&#x1F464;'}/>}
         {tab === 'feed' && !family && <div className="es"><div className="ic">&#x1F338;</div><h3>Not connected</h3><p>No family connected yet.</p></div>}
         {tab === 'messages' && <MessagesTabWrapper currentUserId={session.user.id} member={member} family={family} memberName={name} memberAvatar={member?.avatar || '&#x1F464;'}/>}
         {tab === 'invoices' && family && <FamilyInvoicesTab familyId={family.id} currentUserId={session.user.id}/>}

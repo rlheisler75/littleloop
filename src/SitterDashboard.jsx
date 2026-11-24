@@ -17,7 +17,7 @@ import SitterFieldTripPanel from './components/FieldTrip/SitterFieldTripPanel';
 import SitterParentMap from './components/FieldTrip/SitterParentMap';
 import GettingStarted from './features/onboarding/GettingStarted';
 
-export default function SitterDashboard({ session, onSignOut }) {
+export default function SitterDashboard({ session, onSignOut, switchTo = null }) {
   const sitterId = session.user.id;
 
   const [name,          setName]          = useState(session.user.user_metadata?.name || session.user.email.split('@')[0]);
@@ -190,6 +190,7 @@ export default function SitterDashboard({ session, onSignOut }) {
               Free plan · Upgrade
             </button>
           )}
+          {switchTo && <button className="bg" style={{ padding: '6px 10px', fontSize: 12 }} onClick={switchTo.onClick}>{switchTo.label}</button>}
           <NotificationCenter userId={sitterId}/>
           <button className="bg" style={{ padding: '6px 12px', fontSize: 12 }} onClick={onSignOut}>Sign out</button>
         </div>
