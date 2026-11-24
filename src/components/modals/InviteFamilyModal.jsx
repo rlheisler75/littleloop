@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Modal } from '../ui/Modal';
 import Field from '../ui/Field';
 import Spinner from '../ui/Spinner';
-import { isFreeLimitError, FREE_LIMIT_MESSAGE } from '../../lib/plan';
+import { isPlanLimitError, planLimitMessage } from '../../lib/plan';
 
 export default function InviteFamilyModal({ open, onClose, sitterId, sitterName, onInvited }) {
   const [familyName,   setFamilyName]   = useState('');
@@ -29,7 +29,7 @@ export default function InviteFamilyModal({ open, onClose, sitterId, sitterName,
       const { data: result, error } = await supabase.rpc('invite_family', {
         p_family_name: familyName, p_admin_email: adminEmail, p_child_names: childNames,
       });
-      if (error) throw new Error(isFreeLimitError(error) ? FREE_LIMIT_MESSAGE : error.message);
+      if (error) throw new Error(isPlanLimitError(error) ? planLimitMessage(error) : error.message);
 
       if (result.already) {
         setAlert({ t: 'i', m: result.status === 'active' ? "You're already connected to this family." : "You've already invited this family. They just need to accept." });

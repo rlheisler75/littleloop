@@ -15,6 +15,8 @@ import RecordsTab from './RecordsTab';
 import DailyReportsTab from './DailyReportsTab';
 import IncidentsTab from './IncidentsTab';
 import ResourcesTab from './ResourcesTab';
+import DaycarePlanCard, { trialDaysLeft } from './DaycarePlanCard';
+import { loadFacilityPlan } from '../../lib/plan';
 import { isManagerRole, roleLabel } from './api';
 
 // Staff side of a daycare: one dashboard per daycare the user works at.
@@ -23,6 +25,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
   const [rows,     setRows]     = useState(null);   // my active facility_staff rows with facilities
   const [current,  setCurrent]  = useState(() => { try { return localStorage.getItem(`ll_facility_${userId}`); } catch { return null; } });
   const [tab,      setTab]      = useState('today');
+  const [plan,     setPlan]     = useState(null);   // facility_plan_summary() for the current daycare
 
   const load = useCallback(async () => {
     await supabase.rpc('claim_staff_invites');
@@ -40,6 +43,11 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
   useEffect(() => {
     if (me) { try { localStorage.setItem(`ll_facility_${userId}`, me.facility_id); } catch {} }
   }, [me?.facility_id, userId]);
+
+  const loadPlan = useCallback(async () => {
+    if (me?.facility_id) setPlan(await loadFacilityPlan(me.facility_id));
+  }, [me?.facility_id]);
+  useEffect(() => { setPlan(null); loadPlan(); }, [loadPlan]);
 
   if (rows === null) return (
     <><Bg/><div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spinner size={28}/></div></>
@@ -70,7 +78,10 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
     { id: 'center',     icon: '⚙️', label: 'Center' },
   ];
   const activeTab = NAV.some(n => n.id === tab) ? tab : 'today';
-  const props = { facility, facilityId: facility.id, me, myName, manager, director, userId, onFacilityChanged: load };
+  const props = { facility, facilityId: facility.id, me, myName, manager, director, userId, onFacilityChanged: load,
+                  session, plan, onPlanChanged: loadPlan };
+  const locked = plan && !plan.good_standing;          // trial over and no plan
+  const daysLeft = trialDaysLeft(plan);
 
   return (
     <>
@@ -110,6 +121,18 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
         </div>
 
         <div style={{ flex: 1, padding: '16px 14px', maxWidth: 960, width: '100%', margin: '0 auto' }}>
+          {!locked && manager && daysLeft != null && daysLeft <= 7 && activeTab !== 'center' && (
+            <div className="al al-w" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <span>Your free trial ends in {daysLeft} day{daysLeft === 1 ? '' : 's'}. Choose a plan so nothing stops.</span>
+              <button className="bp" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => setTab('center')}>See plans</button>
+            </div>
+          )}
+          {locked ? (
+            manager
+              ? <div style={{ maxWidth: 640, margin: '0 auto' }}><DaycarePlanCard session={session} facility={facility} plan={plan} onChanged={loadPlan}/></div>
+              : <div className="es"><div className="ic">🏫</div><h3>{facility.name}'s free trial has ended</h3>
+                  <p>Your director or office needs to choose a plan before the daycare tools open again. Everything is saved.</p></div>
+          ) : <>
           {activeTab === 'today'      && <TodayBoard {...props} onGoTo={setTab}/>}
           {activeTab === 'daily'      && <DailyReportsTab {...props}/>}
           {activeTab === 'incidents'  && <IncidentsTab {...props}/>}
@@ -120,6 +143,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
           {activeTab === 'classrooms' && <ClassroomsTab {...props}/>}
           {activeTab === 'staff'      && <StaffTab {...props}/>}
           {activeTab === 'center'     && <CenterTab {...props}/>}
+          </>}
         </div>
       </div>
     </>

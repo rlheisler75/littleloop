@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+import { SITTER_TIERS, DAYCARE_TIERS, FREE_CHILD_LIMIT, DAYCARE_TRIAL_DAYS } from './lib/plan';
 import LoopMark from './components/ui/LoopMark';
 
 export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin, onDaycareSignup }) {
   const [scrolled, setScrolled] = useState(false);
+  const [pricingFor, setPricingFor] = useState('sitter');   // 'sitter' | 'daycare'
+  const go = id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  const daycareSignup = onDaycareSignup || onSitterSignup;
   const [visible, setVisible] = useState({});
   const observerRef = useRef(null);
 
@@ -251,6 +255,26 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin, o
         .ll-plan-tag { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--mint); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 100px; white-space: nowrap; }
         .ll-pricing-note { font-size: 13px; color: var(--muted); text-align: center; margin-top: 12px; }
 
+        /* DAYCARE SECTION */
+        .ll-daycare { background: #E8F8F1; }
+        .ll-daycare .ll-section-label { background: #C9F0E0; color: #158A68; }
+        .ll-daycare .ll-section-title em { color: #158A68; }
+        .ll-daycare .ll-feature { box-shadow: 0 6px 20px rgba(47,199,155,.10); }
+        .ll-daycare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 48px; }
+        .ll-daycare-cta { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 32px; }
+        .ll-daycare-cta span { font-size: 14px; color: var(--muted); }
+
+        /* PRICING SECTION */
+        .ll-price { background: var(--cream); }
+        .ll-price-toggle { display: inline-flex; padding: 5px; border-radius: 100px; background: #fff; box-shadow: 0 6px 20px rgba(43,45,107,.08); margin: 28px 0 30px; }
+        .ll-price-toggle button { border: none; cursor: pointer; padding: 10px 22px; border-radius: 100px; font-family: 'Fredoka', sans-serif; font-size: 16px; font-weight: 600; background: transparent; color: var(--muted); }
+        .ll-price-toggle button.on { background: var(--bark); color: #fff; }
+        .ll-price .ll-pricing { max-width: 880px; margin: 0 auto; }
+        .ll-plans.wide { flex-wrap: wrap; }
+        .ll-plans.wide .ll-plan { min-width: 150px; }
+        .ll-price-perks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px; margin-top: 18px; font-size: 14px; color: var(--muted); }
+        .ll-how-sub { font-family: 'Fredoka', sans-serif; font-size: 20px; font-weight: 600; color: var(--bark); text-align: center; margin: 44px 0 0; }
+
         /* FAMILY SECTION */
         .ll-family { background: var(--cream-dark); }
         .ll-family .ll-section-label { background: #DDF0FD; color: #1C7DBF; }
@@ -332,6 +356,8 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin, o
           .ll-nav-sub { display: none; }
           .ll-sitter-grid, .ll-family-grid, .ll-how-grid, .ll-gps-grid { grid-template-columns: 1fr; gap: 36px; }
           .ll-family-cards { grid-template-columns: 1fr; }
+          .ll-daycare-grid { grid-template-columns: 1fr; }
+          .ll-plans.wide .ll-plan { min-width: calc(50% - 6px); }
           .ll-footer { flex-direction: column; padding: 32px 20px; text-align: center; }
           .ll-footer-links { flex-wrap: wrap; justify-content: center; }
           .ll-cta-band { padding: 64px 20px; }
@@ -350,6 +376,8 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin, o
           <div className="ll-nav-links">
             <a onClick={() => document.getElementById('gps-tracking')?.scrollIntoView({ behavior: 'smooth' })}>Field Trips</a>
             <a onClick={() => document.getElementById('for-sitters')?.scrollIntoView({ behavior: 'smooth' })}>For Sitters</a>
+            <a onClick={() => go('for-daycares')}>For Daycares</a>
+            <a onClick={() => go('pricing')}>Pricing</a>
             <a onClick={() => document.getElementById('for-families')?.scrollIntoView({ behavior: 'smooth' })}>For Parents</a>
             <a onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>How It Works</a>
             <a onClick={onLogin}>Sign in</a>
@@ -370,25 +398,28 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin, o
 
           <div>
             <div className="ll-hero-eyebrow">
-              <span></span> For independent sitters &amp; nannies
+              <span></span> For sitters, nannies &amp; daycares
             </div>
             <h1 className="ll-hero-title">
               Parents know they're safe.<br/><em>You look like a pro.</em>
             </h1>
             <p className="ll-hero-desc">
-              littleloop is the app independent sitters run their childcare on: check-ins, daily photo updates, <strong>live GPS field trips</strong> and invoices in one place. The families you care for get real peace of mind. Start free with up to 2 families.
+              littleloop is the app childcare runs on, from independent sitters to daycare centers: check-ins, daily updates, <strong>live GPS field trips</strong>, daily reports and invoices in one place. The families you care for get real peace of mind. Sitters start free; daycares try it free for {DAYCARE_TRIAL_DAYS} days.
             </p>
             <div className="ll-hero-actions">
               <button className="ll-btn-primary" onClick={onSitterSignup}>
                 Start free as a Sitter →
               </button>
-              <button className="ll-btn-secondary" onClick={onFamilySignup}>
-                I'm a parent
+              <button className="ll-btn-secondary" onClick={() => go('for-daycares')}>
+                I run a daycare
               </button>
+            </div>
+            <div style={{ marginTop: 14, fontSize: 15, color: 'var(--muted)' }}>
+              A parent? <a onClick={onFamilySignup} style={{ color: 'var(--sage)', fontWeight: 700, cursor: 'pointer' }}>Join free →</a>
             </div>
             <div className="ll-hero-chips">
               <span>✓ No card needed</span>
-              <span>📍 Live GPS field trips</span>
+              <span>🏫 Daycare plans from $29/mo</span>
               <span>💛 Always free for parents</span>
             </div>
           </div>
@@ -484,37 +515,118 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin, o
             <div data-id="pricing-card" className={reveal('pricing-card')}>
               <img className="ll-shot" src="/screenshots/sitter-dashboard-live.png" alt="littleloop sitter dashboard"/>
               <div className="ll-pricing">
-                <div className="ll-pricing-label">Simple pricing</div>
-                <div className="ll-plans">
-                  <div className="ll-plan free">
-                    <div className="ll-plan-tag">Start here</div>
-                    <div className="ll-plan-name">Free</div>
-                    <div className="ll-plan-price">$0</div>
-                    <div className="ll-plan-note">Up to 2 families<br/>Core features</div>
-                  </div>
-                  <div className="ll-plan">
-                    <div className="ll-plan-name">Pro</div>
-                    <div className="ll-plan-price">$5<span>/mo</span></div>
-                    <div className="ll-plan-note">Unlimited families<br/>+ auto-invoicing</div>
-                  </div>
+                <div className="ll-pricing-label">Free for up to {FREE_CHILD_LIMIT} children</div>
+                <div style={{ fontSize: 15, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 16 }}>
+                  Every feature, no card needed. Caring for more kids? Plans start at ${SITTER_TIERS[0].monthly} a month.
                 </div>
-                <button className="ll-btn-primary" style={{width:'100%', justifyContent:'center'}} onClick={onSitterSignup}>
-                  Start free
-                </button>
-                <div className="ll-pricing-note">No card needed. Upgrade only when you need more families.</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button className="ll-btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={onSitterSignup}>Start free</button>
+                  <button className="ll-btn-secondary" onClick={() => { setPricingFor('sitter'); go('pricing'); }}>See pricing</button>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <Wave from="var(--lilac)" to="var(--cream-dark)"/>
+        <Wave from="var(--lilac)" to="#E8F8F1"/>
+
+        {/* FOR DAYCARES */}
+        <section className="ll-section ll-daycare" id="for-daycares">
+          <div data-id="daycare-label" className={reveal('daycare-label')}>
+            <div className="ll-section-label">For Daycares</div>
+            <h2 className="ll-section-title">Your whole center,<br/><em>in one calm app.</em></h2>
+            <p className="ll-section-desc">Classrooms, staff and families together: teachers log the day from a tablet, parents watch it fill in, and the office has every form and record in one place.</p>
+          </div>
+          <div data-id="daycare-features" className={`ll-daycare-grid ${reveal('daycare-features')}`}>
+            {[
+              { icon: '🏫', title: 'Today board with live ratios', desc: "Every classroom at a glance: who's checked in, which staff are in the room, and whether each room is in ratio." },
+              { icon: '📒', title: 'Daily reports parents love', desc: "Log meals, bottles, naps, diapers and moods in a tap, for one child or the whole room. Parents see it live and get the day's report at pickup." },
+              { icon: '🩹', title: 'Incident reports, signed in the app', desc: 'Teachers write it up, the director reviews it, and parents read and sign on their phone. Nothing is lost or edited after the fact.' },
+              { icon: '📋', title: 'Online enrollment packet', desc: "Forms families sign, immunization records and doctor's notes they upload, with reminders before anything expires." },
+              { icon: '🍎', title: 'Allergies and diets up front', desc: 'Severe allergies flagged on every screen, diet sheets you can print for the kitchen, and photo consent respected automatically.' },
+              { icon: '📚', title: 'Resources for families', desc: 'Share childcare assistance, scholarships, development guides and your newsletter where every parent can find them.' },
+            ].map((f, i) => (
+              <div key={f.title} className="ll-feature">
+                <div className={`ll-tile ll-c${i % 4}`}>{f.icon}</div>
+                <div>
+                  <div className="ll-feature-title">{f.title}</div>
+                  <div className="ll-feature-desc">{f.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="ll-daycare-cta">
+            <button className="ll-btn-primary" onClick={daycareSignup}>Try it free for {DAYCARE_TRIAL_DAYS} days →</button>
+            <button className="ll-btn-secondary" onClick={() => { setPricingFor('daycare'); go('pricing'); }}>Daycare pricing</button>
+            <span>No card needed. Unlimited staff. Always free for parents.</span>
+          </div>
+        </section>
+
+        <Wave from="#E8F8F1" to="var(--cream)"/>
+
+        {/* PRICING */}
+        <section className="ll-section ll-price" id="pricing">
+          <div data-id="price-label" className={reveal('price-label')} style={{ textAlign: 'center' }}>
+            <div className="ll-section-label">Pricing</div>
+            <h2 className="ll-section-title" style={{ textAlign: 'center' }}>Simple prices, <em>out in the open.</em></h2>
+            <div className="ll-price-toggle" role="tablist" aria-label="Pricing for">
+              <button role="tab" aria-selected={pricingFor === 'sitter'} className={pricingFor === 'sitter' ? 'on' : ''} onClick={() => setPricingFor('sitter')}>Sitters &amp; nannies</button>
+              <button role="tab" aria-selected={pricingFor === 'daycare'} className={pricingFor === 'daycare' ? 'on' : ''} onClick={() => setPricingFor('daycare')}>Daycares</button>
+            </div>
+          </div>
+          <div className="ll-pricing">
+            {pricingFor === 'sitter' ? (
+              <>
+                <div className="ll-plans wide">
+                  <div className="ll-plan free">
+                    <div className="ll-plan-tag">Start here</div>
+                    <div className="ll-plan-name">Free</div>
+                    <div className="ll-plan-price">$0</div>
+                    <div className="ll-plan-note">Up to {FREE_CHILD_LIMIT} children<br/>Every core feature</div>
+                  </div>
+                  {SITTER_TIERS.map(t => (
+                    <div key={t.id} className="ll-plan">
+                      <div className="ll-plan-name">{t.label}</div>
+                      <div className="ll-plan-price">${t.monthly}<span>/mo</span></div>
+                      <div className="ll-plan-note">{t.children ? `Up to ${t.children} children` : 'Unlimited children'}<br/>+ recurring invoices</div>
+                    </div>
+                  ))}
+                </div>
+                <button className="ll-btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={onSitterSignup}>Start free as a sitter</button>
+                <div className="ll-price-perks">
+                  <span>✓ No card to start</span><span>📅 Yearly: 2 months free</span><span>🏫 Free if you also work at a littleloop daycare</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="ll-plans wide">
+                  {DAYCARE_TIERS.map((t, i) => (
+                    <div key={t.id} className={`ll-plan ${i === 1 ? 'free' : ''}`}>
+                      {i === 1 && <div className="ll-plan-tag">Most centers</div>}
+                      <div className="ll-plan-name">{t.label}</div>
+                      <div className="ll-plan-price">${t.monthly}<span>/mo</span></div>
+                      <div className="ll-plan-note">{t.children ? `Up to ${t.children} children` : 'Unlimited children'}<br/>Unlimited staff</div>
+                    </div>
+                  ))}
+                </div>
+                <button className="ll-btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={daycareSignup}>Start your {DAYCARE_TRIAL_DAYS}-day free trial</button>
+                <div className="ll-price-perks">
+                  <span>✓ No card for the trial</span><span>📅 Yearly: 2 months free</span><span>👩‍🏫 Staff get sitter mode free</span>
+                </div>
+              </>
+            )}
+            <div className="ll-pricing-note">Always free for parents. Children are counted per sitter or per daycare. Cancel anytime.</div>
+          </div>
+        </section>
+
+        <Wave from="var(--cream)" to="var(--cream-dark)"/>
 
         {/* FOR FAMILIES */}
         <section className="ll-section ll-family" id="for-families">
           <div data-id="family-label" className={reveal('family-label')}>
             <div className="ll-section-label">For Parents</div>
             <h2 className="ll-section-title">See their day,<br/><em>as it happens.</em></h2>
-            <p className="ll-section-desc">When your sitter uses littleloop, you get check-in alerts, photo updates, a live map on field trips, and simple invoices you can pay however you like. Always free for parents.</p>
+            <p className="ll-section-desc">When your sitter or daycare uses littleloop, you get check-in alerts, photo updates, daily reports, a live map on field trips, and simple invoices you can pay however you like. Always free for parents.</p>
           </div>
 
           <div className="ll-family-grid">
@@ -543,9 +655,9 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin, o
 
             <div data-id="family-desc" style={{transitionDelay:'.15s'}} className={reveal('family-desc')}>
               <img className="ll-shot" src="/screenshots/sitter-profile.png" alt="A verified sitter profile on littleloop" style={{marginBottom:30}}/>
-              <h3 style={{fontSize:28, fontWeight:600, color:'var(--bark)', marginBottom:22, lineHeight:1.2}}>Get your sitter on littleloop</h3>
+              <h3 style={{fontSize:28, fontWeight:600, color:'var(--bark)', marginBottom:22, lineHeight:1.2}}>Get your sitter or daycare on littleloop</h3>
               {[
-                { t:'Share littleloop with your sitter', d:'It’s free for them to start, and they’ll send you an invite.', c:'var(--sage)' },
+                { t:'Share littleloop with your sitter or daycare', d:'Sitters start free and daycares try it free, then they send you an invite.', c:'var(--sage)' },
                 { t:'Accept the invite', d:'Add your kids, allergies and emergency contacts in a couple of minutes. No payment info.', c:'var(--sky)' },
                 { t:'Stay in the loop', d:'Check-ins, updates, messages and invoices, all in one place.', c:'var(--mint)' },
               ].map((s, i) => (
@@ -574,11 +686,26 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin, o
           </div>
           <div className="ll-how-grid">
             {[
-              { n:'1', icon:'✍️', title:'Sign up free', desc:'Create your sitter account in a minute. No card needed, and every feature is included for up to 2 families.' },
+              { n:'1', icon:'✍️', title:'Sign up free', desc:`Create your sitter account in a minute. No card needed, and every feature is included for up to ${FREE_CHILD_LIMIT} children.` },
               { n:'2', icon:'💌', title:'Invite your families', desc:'Send each family an invite. They join free and add their kids, allergies and emergency contacts.' },
               { n:'3', icon:'🎈', title:'Run your day', desc:'Check kids in, post updates, share a live map on outings, and send invoices, all from your phone.' },
             ].map((s, i) => (
               <div key={s.n} className={`ll-step ${reveal('step-' + i)}`} data-id={`step-${i}`} style={{transitionDelay:`${i * .15}s`}}>
+                <div className="ll-step-num">{s.n}</div>
+                <div className="ll-step-icon">{s.icon}</div>
+                <div className="ll-step-title">{s.title}</div>
+                <div className="ll-step-desc">{s.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div className="ll-how-sub">Running a daycare?</div>
+          <div className="ll-how-grid" style={{ marginTop: 20 }}>
+            {[
+              { n:'1', icon:'🏫', title:'Set up your center', desc:`Name your daycare and add classrooms with their ages and ratios. ${DAYCARE_TRIAL_DAYS} days free, no card.` },
+              { n:'2', icon:'👩‍🏫', title:'Invite staff and families', desc:'Teachers get their own logins; families join free and fill in the enrollment packet online.' },
+              { n:'3', icon:'📒', title:'Run the day', desc:'Check kids in, keep rooms in ratio, log meals and naps, and send every family their daily report.' },
+            ].map((s, i) => (
+              <div key={s.n} className={`ll-step ${reveal('dstep-' + i)}`} data-id={`dstep-${i}`} style={{transitionDelay:`${i * .15}s`}}>
                 <div className="ll-step-num">{s.n}</div>
                 <div className="ll-step-icon">{s.icon}</div>
                 <div className="ll-step-title">{s.title}</div>
@@ -592,16 +719,14 @@ export default function LandingPage({ onSitterSignup, onFamilySignup, onLogin, o
         <section className="ll-cta-band">
           <div data-id="cta" className={reveal('cta')}>
             <h2 className="ll-cta-band-title">Happy kids. Calm parents.<br/>Easy days for you.</h2>
-            <p className="ll-cta-band-desc">Free for sitters with up to 2 families. Always free for parents.</p>
+            <p className="ll-cta-band-desc">Free for sitters with up to {FREE_CHILD_LIMIT} children. {DAYCARE_TRIAL_DAYS} days free for daycares. Always free for parents.</p>
             <div className="ll-cta-band-actions">
               <button className="ll-btn-white" onClick={onSitterSignup}>Start free as a Sitter</button>
-              <button className="ll-btn-outline-white" onClick={onFamilySignup}>I'm a parent</button>
+              <button className="ll-btn-outline-white" onClick={daycareSignup}>Try it for your daycare</button>
             </div>
-            {onDaycareSignup && (
-              <p className="ll-cta-band-desc" style={{ marginTop: 18 }}>
-                Run a daycare center? <a onClick={onDaycareSignup} style={{ color: 'inherit', fontWeight: 800, textDecoration: 'underline', cursor: 'pointer' }}>Set up your classrooms and staff →</a>
-              </p>
-            )}
+            <p className="ll-cta-band-desc" style={{ marginTop: 18 }}>
+              A parent? <a onClick={onFamilySignup} style={{ color: 'inherit', fontWeight: 800, textDecoration: 'underline', cursor: 'pointer' }}>Join free →</a>
+            </p>
           </div>
         </section>
 

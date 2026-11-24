@@ -11,7 +11,7 @@ import InviteFamilyModal from '../../components/modals/InviteFamilyModal';
 import { Confirm, Modal } from '../../components/ui/Modal';
 import SectionLabel from '../../components/ui/SectionLabel';
 import Spinner from '../../components/ui/Spinner';
-import { FREE_FAMILY_LIMIT, COUNTED_LINK_STATUSES, isFreeLimitError } from '../../lib/plan';
+import { FREE_CHILD_LIMIT, isPlanLimitError, loadSitterPlan } from '../../lib/plan';
 
 // ─── Connection Requests (sitter side) ───────────────────────────────────────
 
@@ -34,7 +34,7 @@ export function ConnectionRequests({ sitterId, onUpdate, atLimit = false, onUpgr
     if (accept) {
       const { error } = await supabase.from('family_sitters').update({ status: 'active' }).eq('id', id);
       if (error) {
-        if (isFreeLimitError(error)) onUpgrade?.();
+        if (isPlanLimitError(error)) onUpgrade?.();
         else console.error('accept request failed:', error);
         return;
       }
@@ -230,7 +230,7 @@ export function SitterFamilyDetail({ family, children, sitterId, sitterName, onD
 
 export function FamiliesTab({ sitterId, sitterName, isPro = null, onUpgrade }) {
   const [families,   setFamilies]   = useState([]);
-  const [linkCount,  setLinkCount]  = useState(0);
+  const [plan,       setPlan]       = useState(null);   // my_sitter_plan(): children vs. limit
   const [kids,       setKids]       = useState({});
   const [selected,   setSelected]   = useState(null);
   const [showInvite, setShowInvite] = useState(false);
@@ -242,7 +242,7 @@ export function FamiliesTab({ sitterId, sitterName, isPro = null, onUpgrade }) {
     const { data: fsRows } = await supabase.from('family_sitters').select('status,families(*)').eq('sitter_id', sitterId).neq('status', 'inactive').order('joined_at', { ascending: false });
     const fams = (fsRows || []).map(r => r.families).filter(Boolean);
     setFamilies(fams);
-    setLinkCount((fsRows || []).filter(r => COUNTED_LINK_STATUSES.includes(r.status)).length);
+    setPlan(await loadSitterPlan());
     if (fams.length) {
       const { data: kds } = await supabase.from('children').select('*').in('family_id', fams.map(f => f.id));
       const g = {};
@@ -261,7 +261,9 @@ export function FamiliesTab({ sitterId, sitterName, isPro = null, onUpgrade }) {
   }
 
   const selFam = families.find(f => f.id === selected);
-  const atLimit = isPro === false && linkCount >= FREE_FAMILY_LIMIT; // isPro null = still loading
+  // Children across connected families vs. the plan (null limit = unlimited)
+  const limit   = plan?.limit ?? null;
+  const atLimit = limit != null && (plan?.children || 0) >= limit;
   const openInvite = () => (atLimit ? setShowLimit(true) : setShowInvite(true));
   if (loading) return <div style={{ textAlign: 'center', padding: '60px 0' }}><Spinner size={24}/></div>;
 
@@ -269,10 +271,10 @@ export function FamiliesTab({ sitterId, sitterName, isPro = null, onUpgrade }) {
     <div>
       <ConnectionRequests sitterId={sitterId} onUpdate={load} atLimit={atLimit} onUpgrade={onUpgrade}/>
 
-      {isPro === false && (
-        <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 10 }}>
-          Free plan: {Math.min(linkCount, FREE_FAMILY_LIMIT)} of {FREE_FAMILY_LIMIT} families used
-          {atLimit && <> · <span style={{ color: 'var(--accent,#7BAAEE)', cursor: 'pointer' }} onClick={onUpgrade}>Upgrade for unlimited</span></>}
+      {limit != null && (
+        <div style={{ fontSize: 12, color: atLimit ? 'var(--warn-text)' : 'var(--text-faint)', marginBottom: 10 }}>
+          {plan?.tier ? 'Your plan' : 'Free plan'}: {plan?.children || 0} of {limit} children
+          {atLimit && <> · <span style={{ color: 'var(--accent,#7BAAEE)', cursor: 'pointer', fontWeight: 700 }} onClick={onUpgrade}>Upgrade to add more</span></>}
         </div>
       )}
 
@@ -309,11 +311,11 @@ export function FamiliesTab({ sitterId, sitterName, isPro = null, onUpgrade }) {
       <Modal open={showLimit} onClose={() => setShowLimit(false)}>
         <div style={{ textAlign: 'center', padding: '6px 4px' }}>
           <div style={{ fontSize: 34, marginBottom: 8 }}>🌱</div>
-          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 6 }}>You've outgrown the free plan</div>
+          <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 6 }}>{plan?.tier ? 'Your plan is full' : "You've outgrown the free plan"}</div>
           <p style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.6, margin: '0 0 18px' }}>
-            The free plan includes {FREE_FAMILY_LIMIT} families. Upgrade to Pro to invite unlimited families. Everything you've set up stays as it is.
+            {plan?.tier ? `Your plan covers ${limit} children.` : `The free plan covers up to ${FREE_CHILD_LIMIT} children.`} Move to a bigger plan to add another family: $7 for up to 10 children, $12 for up to 20, or $20 for unlimited. Everything you've set up stays as it is.
           </p>
-          <button className="bp" style={{ width: '100%', marginBottom: 8 }} onClick={() => { setShowLimit(false); onUpgrade?.(); }}>See Pro plan</button>
+          <button className="bp" style={{ width: '100%', marginBottom: 8 }} onClick={() => { setShowLimit(false); onUpgrade?.(); }}>See plans</button>
           <button className="bg" style={{ width: '100%' }} onClick={() => setShowLimit(false)}>Not now</button>
         </div>
       </Modal>

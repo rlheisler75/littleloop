@@ -54,7 +54,8 @@ export function errText(err, fallback = 'Something went wrong. Please try again.
   const m = err.message || String(err);
   if (/row-level security|permission denied/i.test(m)) return 'You don\'t have permission to do that.';
   if (/duplicate key.*facility_staff_email/i.test(m)) return 'That email is already on your staff list.';
-  return m || fallback;
+  // Plan limits from the database carry a code in front of the message
+  return m.replace(/^(PLAN_CHILD_LIMIT|TRIAL_ENDED|FREE_FAMILY_LIMIT):\s*/, '') || fallback;
 }
 
 // Email an invite (staff), a "your daycare is on littleloop" note (family), or an

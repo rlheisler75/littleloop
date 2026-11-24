@@ -4,6 +4,7 @@ import Spinner from '../../components/ui/Spinner';
 import SectionLabel from '../../components/ui/SectionLabel';
 import { roleLabel, errText } from './api';
 import EnrollmentSetup from './EnrollmentSetup';
+import DaycarePlanCard from './DaycarePlanCard';
 
 const FIELDS = [
   ['name', 'Daycare name', 120], ['phone', 'Phone', 40], ['email', 'Email', 200],
@@ -12,7 +13,7 @@ const FIELDS = [
 ];
 
 // The daycare's details. Directors edit; everyone else sees them.
-export default function CenterTab({ facility, me, director, manager, onFacilityChanged }) {
+export default function CenterTab({ facility, me, director, manager, onFacilityChanged, session, plan, onPlanChanged }) {
   const [form,   setForm]   = useState(() => Object.fromEntries(FIELDS.map(([k]) => [k, facility[k] || ''])));
   const [saving, setSaving] = useState(false);
   const [alert,  setAlert]  = useState(null);
@@ -32,7 +33,8 @@ export default function CenterTab({ facility, me, director, manager, onFacilityC
   }
 
   return (
-    <div style={{ maxWidth: 560 }}>
+    <div style={{ maxWidth: 640 }}>
+      {manager && <DaycarePlanCard session={session} facility={facility} plan={plan} onChanged={onPlanChanged}/>}
       <div className="card" style={{ padding: '18px 18px 8px', marginBottom: 16 }}>
         <SectionLabel>Your account here</SectionLabel>
         <div style={{ fontSize: 14, fontWeight: 700 }}>{me.name || 'You'}</div>

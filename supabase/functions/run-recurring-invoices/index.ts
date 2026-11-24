@@ -27,8 +27,15 @@ function step(s: string, freq: string, anchor: number) {
 }
 
 const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-const isPro = (s: any) =>
-  ["active", "trialing"].includes(s?.subscription_status) || ["free_founder", "grandfathered"].includes(s?.subscription_plan);
+// Recurring invoices are a paid feature: any paid sitter plan, a complimentary plan, or the
+// free sitter mode daycare staff get. sitter_is_pro() in the database decides (one place).
+async function isPro(sb: any, sitterId: string, cache: Map<string, boolean>) {
+  if (!cache.has(sitterId)) {
+    const { data } = await sb.rpc("sitter_is_pro", { p_sitter_id: sitterId });
+    cache.set(sitterId, data === true);
+  }
+  return cache.get(sitterId)!;
+}
 
 Deno.serve(async (req) => {
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -50,6 +57,7 @@ Deno.serve(async (req) => {
   if (error) return json({ error: error.message }, 500);
 
   const results: any[] = [];
+  const proCache = new Map<string, boolean>();
   for (const r of due || []) {
     try {
       // Still connected to this family?
@@ -60,7 +68,7 @@ Deno.serve(async (req) => {
         results.push({ id: r.id, skipped: "family no longer connected; paused" });
         continue;
       }
-      if (!isPro(r.sitters)) { results.push({ id: r.id, skipped: "not Pro" }); continue; }
+      if (!(await isPro(sb, r.sitter_id, proCache))) { results.push({ id: r.id, skipped: "not on a paid plan" }); continue; }
 
       // Next date strictly after today (missed periods produce one invoice, not several).
       const anchor = r.anchor_day || toDate(r.next_run_date).getUTCDate();

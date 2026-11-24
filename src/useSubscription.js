@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './lib/supabase';
-import { isProPlan } from './lib/plan';
+import { isProPlan, loadSitterPlan } from './lib/plan';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const FIELDS = 'subscription_status, subscription_plan, trial_ends_at, current_period_end, stripe_customer_id, stripe_subscription_id';
 
 export function useSubscription(session) {
   const [status,  setStatus]  = useState(null);
+  const [plan,    setPlan]    = useState(null);   // my_sitter_plan(): limit, children, staff perk
   const [loading, setLoading] = useState(true);
 
   const fetchStatus = useCallback(async () => {
@@ -14,6 +15,7 @@ export function useSubscription(session) {
     // Fast path: the sitter's own row.
     const { data: row } = await supabase.from('sitters').select(FIELDS).eq('id', session.user.id).maybeSingle();
     if (row) setStatus(row);
+    setPlan(await loadSitterPlan());
     setLoading(false);
 
     // Background sync with Stripe (the billing function also writes the row back).
@@ -30,7 +32,8 @@ export function useSubscription(session) {
 
   useEffect(() => { fetchStatus(); }, [fetchStatus]);
 
-  const isPro      = isProPlan(status);
+  // Paid features: a paid or complimentary plan, or free sitter mode as daycare staff
+  const isPro      = isProPlan(status) || !!plan?.staff_perk;
   const isTrialing = status?.subscription_status === 'trialing';
   const isPastDue  = status?.subscription_status === 'past_due';
 
@@ -38,5 +41,5 @@ export function useSubscription(session) {
     ? Math.max(0, Math.ceil((new Date(status.trial_ends_at) - Date.now()) / 86400000))
     : null;
 
-  return { status, loading, isPro, isTrialing, isPastDue, trialDaysLeft, refresh: fetchStatus };
+  return { status, plan, loading, isPro, isTrialing, isPastDue, trialDaysLeft, refresh: fetchStatus };
 }

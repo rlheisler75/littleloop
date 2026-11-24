@@ -74,8 +74,8 @@ export default function RecurringInvoices({ sitterId, families, familyChildren, 
 
       {!isPro && (
         <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(123,170,238,.08)', border: '1px solid rgba(123,170,238,.25)', fontSize: 13, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-          <span>Automatic weekly, every-other-week or monthly invoices are part of <strong>Pro</strong>.</span>
-          <button className="bp" style={{ padding: '6px 12px', fontSize: 12 }} onClick={onUpgrade}>See Pro</button>
+          <span>Automatic weekly, every-other-week or monthly invoices come with <strong>every paid plan</strong>, from $7 a month.</span>
+          <button className="bp" style={{ padding: '6px 12px', fontSize: 12 }} onClick={onUpgrade}>See plans</button>
         </div>
       )}
 
