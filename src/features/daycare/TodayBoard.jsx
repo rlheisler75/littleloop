@@ -3,8 +3,10 @@ import { supabase } from '../../lib/supabase';
 import Spinner from '../../components/ui/Spinner';
 import SectionLabel from '../../components/ui/SectionLabel';
 import ChildInfoModal from './ChildInfoModal';
+import CareLogModal from './CareLogModal';
+import { loadCareLogs, summarize, clock } from './care';
 import { ageText, ratioCheck, startOfToday, timeText, dayText, latestByChild, errText } from './api';
-import { loadPhotoConsent } from './enrollment';
+import { loadPhotoConsent, localDate } from './enrollment';
 
 // Today: each classroom's children (checked in or not), who's in the room, and whether
 // the room is within its staff ratio. Counts only this daycare's own check-ins.
@@ -19,6 +21,8 @@ export default function TodayBoard({ facilityId, me, myName, manager, userId, on
   const [alert,    setAlert]    = useState(null);
   const [info,     setInfo]     = useState(null);    // child for the info modal
   const [photoOk,  setPhotoOk]  = useState({});      // family_id -> 'yes' | 'no'
+  const [logs,     setLogs]     = useState({});      // child_id -> today's care log entries
+  const [logFor,   setLogFor]   = useState(null);    // { kids, editing, startKind } for the log modal
   const firstLoad = useRef(true);
 
   const load = useCallback(async () => {
@@ -32,13 +36,15 @@ export default function TodayBoard({ facilityId, me, myName, manager, userId, on
     ]);
     const ids = (en || []).map(e => e.child_id);
     const roomOf = Object.fromEntries((en || []).map(e => [e.child_id, e.classroom_id]));
-    const [{ data: ch }, { data: ci }, consent] = ids.length ? await Promise.all([
+    const [{ data: ch }, { data: ci }, consent, care] = ids.length ? await Promise.all([
       supabase.from('children').select('id, name, preferred_name, avatar, color, dob, allergies, allergy_severe, allergy_reaction, diet_types, dietary_restrictions, feeding_notes, family_id').in('id', ids).order('name'),
       supabase.from('checkins').select('id, child_id, status, checked_at, checked_by_name').eq('facility_id', facilityId)
         .in('child_id', ids).gte('checked_at', since).order('checked_at', { ascending: false }),
       loadPhotoConsent(facilityId),
-    ]) : [{ data: [] }, { data: [] }, {}];
+      loadCareLogs(facilityId, localDate(), ids),
+    ]) : [{ data: [] }, { data: [] }, {}, {}];
     setPhotoOk(consent || {});
+    setLogs(care || {});
     setRooms(rm || []);
     setKids((ch || []).map(c => ({ ...c, classroom_id: roomOf[c.id] || null })));
     setLatest(latestByChild(ci));
@@ -70,6 +76,14 @@ export default function TodayBoard({ facilityId, me, myName, manager, userId, on
     if (error) setAlert(errText(error));
     else setLatest(l => ({ ...l, [child.id]: data }));
     setBusy(b => ({ ...b, [child.id]: false }));
+  }
+
+  async function wake(log) {
+    setBusy(b => ({ ...b, [log.id]: true })); setAlert(null);
+    const { error } = await supabase.from('care_logs').update({ ended_at: new Date().toISOString() }).eq('id', log.id);
+    if (error) setAlert(errText(error));
+    await load();
+    setBusy(b => ({ ...b, [log.id]: false }));
   }
 
   async function enterRoom(roomId, staffId = null) {
@@ -187,12 +201,19 @@ export default function TodayBoard({ facilityId, me, myName, manager, userId, on
               <div style={{ padding: '6px 8px 10px' }}>
                 {roomKids.length === 0
                   ? <div style={{ fontSize: 12, color: 'var(--text-faint)', padding: '10px 6px', fontStyle: 'italic' }}>No children in this room.</div>
-                  : roomKids.map(c => <ChildRow key={c.id} child={c} noPhoto={photoOk[c.family_id] === 'no'} last={latest[c.id]} today={today} busy={busy[c.id]} onToggle={() => toggleChild(c)} onInfo={() => setInfo(c)}/>)}
+                  : roomKids.map(c => <ChildRow key={c.id} child={c} noPhoto={photoOk[c.family_id] === 'no'} last={latest[c.id]} today={today} busy={busy[c.id]} onToggle={() => toggleChild(c)} onInfo={() => setInfo(c)}
+                      logs={logs[c.id] || []} onLog={() => setLogFor({ kids: [c] })} onWake={wake} busyMap={busy}/>)}
                 {roomKids.length > 0 && (
-                  <button onClick={() => printDietSheet(room, roomKids, photoOk)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '6px 6px 0' }}>
-                    🖨 Allergy & diet sheet
-                  </button>
+                  <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', padding: '6px 6px 0' }}>
+                    <button onClick={() => setLogFor({ kids: roomKids.filter(isIn).length ? roomKids.filter(isIn) : roomKids })}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, fontWeight: 800, cursor: 'pointer', padding: 0 }}>
+                      📝 Log for the room
+                    </button>
+                    <button onClick={() => printDietSheet(room, roomKids, photoOk)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0 }}>
+                      🖨 Allergy & diet sheet
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -203,12 +224,15 @@ export default function TodayBoard({ facilityId, me, myName, manager, userId, on
       {unassigned.length > 0 && (
         <div className="card" style={{ padding: '14px 16px', marginTop: 16 }}>
           <SectionLabel>Not in a classroom yet</SectionLabel>
-          {unassigned.map(c => <ChildRow key={c.id} child={c} noPhoto={photoOk[c.family_id] === 'no'} last={latest[c.id]} today={today} busy={busy[c.id]} onToggle={() => toggleChild(c)} onInfo={() => setInfo(c)}/>)}
+          {unassigned.map(c => <ChildRow key={c.id} child={c} noPhoto={photoOk[c.family_id] === 'no'} last={latest[c.id]} today={today} busy={busy[c.id]} onToggle={() => toggleChild(c)} onInfo={() => setInfo(c)}
+            logs={logs[c.id] || []} onLog={() => setLogFor({ kids: [c] })} onWake={wake} busyMap={busy}/>)}
           {manager && <button className="bg" style={{ fontSize: 12, padding: '5px 12px', marginTop: 6 }} onClick={() => onGoTo('families')}>Place them in a classroom</button>}
         </div>
       )}
 
       <ChildInfoModal child={info} facilityId={facilityId} onClose={() => setInfo(null)}/>
+      <CareLogModal open={!!logFor} facilityId={facilityId} day={localDate()} kids={logFor?.kids || []} editing={logFor?.editing || null}
+        startKind={logFor?.startKind || null} onClose={() => setLogFor(null)} onSaved={load}/>
     </div>
   );
 }
@@ -268,8 +292,9 @@ function printDietSheet(room, kids, photoOk) {
   w.onload = () => w.print();
 }
 
-function ChildRow({ child, noPhoto, last, today, busy, onToggle, onInfo }) {
+function ChildRow({ child, noPhoto, last, today, busy, onToggle, onInfo, logs = [], onLog, onWake, busyMap = {} }) {
   const isIn  = last?.status === 'in';
+  const { chips, napping } = summarize(logs);
   const stale = isIn && new Date(last.checked_at) < today;
   const allergies = (child.allergies || []).filter(Boolean);
   const status = !last ? 'Not here yet'
@@ -290,8 +315,25 @@ function ChildRow({ child, noPhoto, last, today, busy, onToggle, onInfo }) {
             {(child.diet_types || []).length > 0 && <span> · 🍽 {child.diet_types.join(', ')}</span>}
             {noPhoto && <span title="Family said no to photos"> · 📵 no photos</span>}
           </span>
+          {(chips.length > 0 || napping) && (
+            <span style={{ display: 'block', fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>
+              {napping && <span style={{ fontWeight: 700 }}>😴 Asleep since {clock(napping.started_at)}{chips.length ? ' · ' : ''}</span>}
+              {chips.join('  ')}
+            </span>
+          )}
         </span>
       </button>
+      {napping ? (
+        <button onClick={() => onWake(napping)} disabled={busyMap[napping.id]} title="Mark awake" aria-label={`${child.preferred_name || child.name} woke up`}
+          style={{ flexShrink: 0, width: 32, height: 30, padding: 0, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', cursor: 'pointer', fontSize: 14, color: 'var(--text)' }}>
+          {busyMap[napping.id] ? <Spinner size={10}/> : '☀️'}
+        </button>
+      ) : (
+        <button onClick={onLog} title="Log a meal, nap, diaper…" aria-label={`Log for ${child.preferred_name || child.name}`}
+          style={{ flexShrink: 0, width: 32, height: 30, padding: 0, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', cursor: 'pointer', fontSize: 14, color: 'var(--text)' }}>
+          📝
+        </button>
+      )}
       <button onClick={onToggle} disabled={busy}
         style={{ flexShrink: 0, padding: '6px 11px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#fff', minWidth: 84,
           background: isIn ? 'linear-gradient(135deg,#E05A5A,#B03030)' : 'linear-gradient(135deg,#3A9E7A,#2A7A5A)', opacity: busy ? .6 : 1 }}>

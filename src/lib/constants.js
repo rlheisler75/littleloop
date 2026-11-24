@@ -117,6 +117,8 @@ export const PUSH_PREFS_PARENT = [
   { key:'new_invoice',      label:'New invoices',      icon:'💰' },
   { key:'invoice_reminder', label:'Invoice reminders', icon:'🔔' },
   { key:'new_post',         label:'Feed updates',      icon:'📝' },
+  { key:'daycare_report',   label:'Daycare daily reports', icon:'📒' },
+  { key:'daycare_incident', label:'Daycare incident reports', icon:'🩹' },
 ];
 
 export const PUSH_PREFS_SITTER_FULL = [

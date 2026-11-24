@@ -12,6 +12,9 @@ import ClassroomsTab from './ClassroomsTab';
 import StaffTab from './StaffTab';
 import CenterTab from './CenterTab';
 import RecordsTab from './RecordsTab';
+import DailyReportsTab from './DailyReportsTab';
+import IncidentsTab from './IncidentsTab';
+import ResourcesTab from './ResourcesTab';
 import { isManagerRole, roleLabel } from './api';
 
 // Staff side of a daycare: one dashboard per daycare the user works at.
@@ -54,8 +57,11 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
 
   const NAV = [
     { id: 'today',      icon: '🏫', label: 'Today' },
+    { id: 'daily',      icon: '📒', label: 'Daily' },
+    { id: 'incidents',  icon: '🩹', label: 'Incidents' },
     { id: 'families',   icon: '👨‍👩‍👧', label: 'Families' },
     { id: 'feed',       icon: '🌸', label: 'Updates' },
+    { id: 'resources',  icon: '📚', label: 'Resources' },
     ...(manager ? [
       { id: 'records',    icon: '📋', label: 'Records' },
       { id: 'classrooms', icon: '🧸', label: 'Rooms' },
@@ -105,6 +111,9 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
 
         <div style={{ flex: 1, padding: '16px 14px', maxWidth: 960, width: '100%', margin: '0 auto' }}>
           {activeTab === 'today'      && <TodayBoard {...props} onGoTo={setTab}/>}
+          {activeTab === 'daily'      && <DailyReportsTab {...props}/>}
+          {activeTab === 'incidents'  && <IncidentsTab {...props}/>}
+          {activeTab === 'resources'  && <ResourcesTab {...props}/>}
           {activeTab === 'families'   && <DaycareFamilies {...props}/>}
           {activeTab === 'feed'       && <DaycareFeed {...props}/>}
           {activeTab === 'records'    && <RecordsTab {...props}/>}

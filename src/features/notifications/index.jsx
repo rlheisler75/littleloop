@@ -61,6 +61,7 @@ export function NotificationCenter({ userId }) {
     invoice_paid: '✅', checkin: '🟢', checkout: '🔴',
     eta: '🚗', connection_request: '🤝', connection_accepted: '✅',
     invoice_reminder: '🔔', review: '⭐',
+    daycare_report: '📒', daycare_incident: '🩹',
   };
 
   return (

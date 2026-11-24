@@ -4,6 +4,7 @@ import { Confirm } from '../../components/ui/Modal';
 import SectionLabel from '../../components/ui/SectionLabel';
 import Spinner from '../../components/ui/Spinner';
 import EnrollmentPacket from './EnrollmentPacket';
+import ParentDaycareExtras from './ParentDaycareExtras';
 import { loadEnrollment, packetItems, loadContactCounts } from './enrollment';
 
 // Parent Home: the family's daycare(s). A daycare's request to connect is accepted here by
@@ -115,6 +116,8 @@ export default function ParentDaycareCard({ familyId, links, children, isAdmin, 
                   </button>
                 );
               })()}
+              <ParentDaycareExtras facility={{ id: link.facility_id, name: f.name }} memberRole={memberRole}
+                kids={children.filter(c => rooms[`${link.facility_id}:${c.id}`])}/>
             </div>
           );
         })}
