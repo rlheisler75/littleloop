@@ -4,6 +4,7 @@ import Spinner from '../../components/ui/Spinner';
 import SectionLabel from '../../components/ui/SectionLabel';
 import ChildInfoModal from './ChildInfoModal';
 import { ageText, ratioCheck, startOfToday, timeText, dayText, latestByChild, errText } from './api';
+import { loadPhotoConsent } from './enrollment';
 
 // Today: each classroom's children (checked in or not), who's in the room, and whether
 // the room is within its staff ratio. Counts only this daycare's own check-ins.
@@ -17,6 +18,7 @@ export default function TodayBoard({ facilityId, me, myName, manager, userId, on
   const [busy,     setBusy]     = useState({});      // child_id / shift key -> true
   const [alert,    setAlert]    = useState(null);
   const [info,     setInfo]     = useState(null);    // child for the info modal
+  const [photoOk,  setPhotoOk]  = useState({});      // family_id -> 'yes' | 'no'
   const firstLoad = useRef(true);
 
   const load = useCallback(async () => {
@@ -30,11 +32,13 @@ export default function TodayBoard({ facilityId, me, myName, manager, userId, on
     ]);
     const ids = (en || []).map(e => e.child_id);
     const roomOf = Object.fromEntries((en || []).map(e => [e.child_id, e.classroom_id]));
-    const [{ data: ch }, { data: ci }] = ids.length ? await Promise.all([
-      supabase.from('children').select('id, name, preferred_name, avatar, color, dob, allergies, family_id').in('id', ids).order('name'),
+    const [{ data: ch }, { data: ci }, consent] = ids.length ? await Promise.all([
+      supabase.from('children').select('id, name, preferred_name, avatar, color, dob, allergies, allergy_severe, allergy_reaction, diet_types, dietary_restrictions, feeding_notes, family_id').in('id', ids).order('name'),
       supabase.from('checkins').select('id, child_id, status, checked_at, checked_by_name').eq('facility_id', facilityId)
         .in('child_id', ids).gte('checked_at', since).order('checked_at', { ascending: false }),
-    ]) : [{ data: [] }, { data: [] }];
+      loadPhotoConsent(facilityId),
+    ]) : [{ data: [] }, { data: [] }, {}];
+    setPhotoOk(consent || {});
     setRooms(rm || []);
     setKids((ch || []).map(c => ({ ...c, classroom_id: roomOf[c.id] || null })));
     setLatest(latestByChild(ci));
@@ -183,7 +187,13 @@ export default function TodayBoard({ facilityId, me, myName, manager, userId, on
               <div style={{ padding: '6px 8px 10px' }}>
                 {roomKids.length === 0
                   ? <div style={{ fontSize: 12, color: 'var(--text-faint)', padding: '10px 6px', fontStyle: 'italic' }}>No children in this room.</div>
-                  : roomKids.map(c => <ChildRow key={c.id} child={c} last={latest[c.id]} today={today} busy={busy[c.id]} onToggle={() => toggleChild(c)} onInfo={() => setInfo(c)}/>)}
+                  : roomKids.map(c => <ChildRow key={c.id} child={c} noPhoto={photoOk[c.family_id] === 'no'} last={latest[c.id]} today={today} busy={busy[c.id]} onToggle={() => toggleChild(c)} onInfo={() => setInfo(c)}/>)}
+                {roomKids.length > 0 && (
+                  <button onClick={() => printDietSheet(room, roomKids, photoOk)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '6px 6px 0' }}>
+                    🖨 Allergy & diet sheet
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -193,12 +203,12 @@ export default function TodayBoard({ facilityId, me, myName, manager, userId, on
       {unassigned.length > 0 && (
         <div className="card" style={{ padding: '14px 16px', marginTop: 16 }}>
           <SectionLabel>Not in a classroom yet</SectionLabel>
-          {unassigned.map(c => <ChildRow key={c.id} child={c} last={latest[c.id]} today={today} busy={busy[c.id]} onToggle={() => toggleChild(c)} onInfo={() => setInfo(c)}/>)}
+          {unassigned.map(c => <ChildRow key={c.id} child={c} noPhoto={photoOk[c.family_id] === 'no'} last={latest[c.id]} today={today} busy={busy[c.id]} onToggle={() => toggleChild(c)} onInfo={() => setInfo(c)}/>)}
           {manager && <button className="bg" style={{ fontSize: 12, padding: '5px 12px', marginTop: 6 }} onClick={() => onGoTo('families')}>Place them in a classroom</button>}
         </div>
       )}
 
-      <ChildInfoModal child={info} onClose={() => setInfo(null)}/>
+      <ChildInfoModal child={info} facilityId={facilityId} onClose={() => setInfo(null)}/>
     </div>
   );
 }
@@ -229,7 +239,36 @@ function RatioPill({ tone, inCount, staffCount, short }) {
   );
 }
 
-function ChildRow({ child, last, today, busy, onToggle, onInfo }) {
+// Printable sheet to post in the room or kitchen: allergies (severe first), diet, feeding.
+function printDietSheet(room, kids, photoOk) {
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const rows = [...kids].sort((a, b) => (b.allergy_severe - a.allergy_severe) || ((b.allergies || []).length - (a.allergies || []).length) || a.name.localeCompare(b.name));
+  const body = rows.map(c => {
+    const allergies = (c.allergies || []).filter(Boolean);
+    const diet = [...(c.diet_types || []), c.dietary_restrictions].filter(Boolean).join('; ');
+    return `<tr class="${c.allergy_severe ? 'sev' : ''}">
+      <td><b>${esc(c.preferred_name || c.name)}</b>${photoOk[c.family_id] === 'no' ? '<div class="np">No photos</div>' : ''}</td>
+      <td>${allergies.length ? `${c.allergy_severe ? '<span class="tag">SEVERE</span> ' : ''}${esc(allergies.join(', '))}${c.allergy_reaction ? `<div class="sm">${esc(c.allergy_reaction)}</div>` : ''}` : '<span class="none">None</span>'}</td>
+      <td>${diet ? esc(diet) : '<span class="none">None</span>'}</td>
+      <td>${c.feeding_notes ? esc(c.feeding_notes) : ''}</td></tr>`;
+  }).join('');
+  const w = window.open('', '_blank');
+  if (!w) return;
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(room.name)} allergy & diet sheet</title><style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#1e293b;margin:28px}
+    h1{font-size:22px;margin:0 0 2px}.sub{color:#64748b;font-size:12px;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;background:#f1f5f9;padding:8px;font-size:11px;text-transform:uppercase;color:#475569}
+    td{padding:8px;border-bottom:1px solid #e2e8f0;vertical-align:top}tr.sev td{background:#fef2f2}
+    .tag{background:#dc2626;color:#fff;font-size:10px;font-weight:bold;padding:1px 6px;border-radius:4px}
+    .sm{font-size:11px;color:#7f1d1d;margin-top:3px}.none{color:#94a3b8}.np{font-size:10px;color:#b45309;margin-top:2px}
+  </style></head><body><h1>${esc(room.name)}: allergies & diets</h1>
+  <div class="sub">Printed ${esc(new Date().toLocaleDateString())}. Check littleloop for changes.</div>
+  <table><thead><tr><th>Child</th><th>Allergies</th><th>Diet</th><th>Feeding</th></tr></thead><tbody>${body}</tbody></table></body></html>`);
+  w.document.close();
+  w.onload = () => w.print();
+}
+
+function ChildRow({ child, noPhoto, last, today, busy, onToggle, onInfo }) {
   const isIn  = last?.status === 'in';
   const stale = isIn && new Date(last.checked_at) < today;
   const allergies = (child.allergies || []).filter(Boolean);
@@ -247,7 +286,9 @@ function ChildRow({ child, last, today, busy, onToggle, onInfo }) {
           </span>
           <span style={{ display: 'block', fontSize: 11, color: stale ? 'var(--warn-text)' : 'var(--text-faint)' }}>
             {status}{stale && ' · not checked out'}
-            {allergies.length > 0 && <span style={{ color: 'var(--err-text)', fontWeight: 700 }}> · ⚠️ {allergies.join(', ')}</span>}
+            {allergies.length > 0 && <span style={{ color: 'var(--err-text)', fontWeight: child.allergy_severe ? 800 : 700 }}> · {child.allergy_severe ? '🚨 SEVERE ' : '⚠️ '}{allergies.join(', ')}</span>}
+            {(child.diet_types || []).length > 0 && <span> · 🍽 {child.diet_types.join(', ')}</span>}
+            {noPhoto && <span title="Family said no to photos"> · 📵 no photos</span>}
           </span>
         </span>
       </button>

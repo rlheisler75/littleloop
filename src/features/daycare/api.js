@@ -57,7 +57,8 @@ export function errText(err, fallback = 'Something went wrong. Please try again.
   return m || fallback;
 }
 
-// Email an invite (staff) or a "your daycare is on littleloop" note (family).
+// Email an invite (staff), a "your daycare is on littleloop" note (family), or an
+// enrollment-packet reminder (reminder).
 export async function sendFacilityInvite(body) {
   const { data, error } = await supabase.functions.invoke('send-facility-invite', { body });
   if (error) {

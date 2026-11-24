@@ -284,7 +284,7 @@ export default function ParentDashboard({ session, onSignOut, switchTo = null })
             {family ? (
               <>
                 {family.id && <div style={{ marginBottom: 20 }}><ParentFollowUs familyId={family.id}/></div>}
-                <ParentDaycareCard familyId={family.id} links={daycares} children={children} isAdmin={isAdmin} onChanged={load}/>
+                <ParentDaycareCard familyId={family.id} links={daycares} children={children} isAdmin={isAdmin} memberRole={member?.role} onChanged={load}/>
                 <ParentAgreementsCard familyId={family.id} sitters={family.sitters_list || []} userId={session.user.id} canSign={isAdmin || member?.role === 'member'}/>
                 <WeeklyScheduleCard familyId={family.id} sitterName={family.sitter_name || 'Sitter'}/>
                 <HoursSummaryCard familyId={family.id} children={children} onViewHistory={() => setShowCheckinHist(true)}/>

@@ -4,6 +4,7 @@ import { Modal } from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import SectionLabel from '../../components/ui/SectionLabel';
 import { ageText } from './api';
+import { fmtDate, openDocument } from './enrollment';
 
 const CONTACT_KINDS = [
   { id: 'guardian',  label: 'Parents / guardians' },
@@ -13,28 +14,41 @@ const CONTACT_KINDS = [
 const ROLE = { admin: 'Parent', member: 'Parent', pickup: 'Pickup', feed_only: 'Family' };
 
 // What a teacher needs at a glance: allergies, health notes, who may pick up, who to call.
-export default function ChildInfoModal({ child, onClose }) {
+export default function ChildInfoModal({ child, facilityId, onClose }) {
   const [data, setData] = useState(null);
+  const [docError, setDocError] = useState(null);
 
   useEffect(() => {
     if (!child) { setData(null); return; }
     let live = true;
+    setDocError(null);
     (async () => {
-      const [{ data: full }, { data: members }, { data: contacts }] = await Promise.all([
+      const [{ data: full }, { data: members }, { data: contacts }, { data: docs }, { data: consents }] = await Promise.all([
         supabase.from('children').select('*').eq('id', child.id).maybeSingle(),
         supabase.from('members').select('id, name, email, role, status').eq('family_id', child.family_id).neq('status', 'removed'),
         supabase.from('family_contacts').select('*').eq('family_id', child.family_id).order('sort'),
+        // Only returns documents this person may open (director/office, home-room teachers).
+        facilityId ? supabase.from('child_documents').select('id, doc_type_id, label, file_path, file_name, expires_on, created_at, facility_doc_types(name)')
+          .eq('facility_id', facilityId).eq('child_id', child.id).order('created_at', { ascending: false }) : { data: [] },
+        facilityId ? supabase.from('facility_form_responses').select('form_id, answer, signed_at, facility_forms(title, consent_question, active)')
+          .eq('facility_id', facilityId).eq('family_id', child.family_id).not('answer', 'is', null).order('signed_at', { ascending: false }) : { data: [] },
       ]);
-      if (live) setData({ full: full || child, members: members || [], contacts: contacts || [] });
+      // Latest answer per consent form; newest document per type.
+      const seen = new Set();
+      const latestConsents = (consents || []).filter(r => r.facility_forms?.active && !seen.has(r.form_id) && seen.add(r.form_id));
+      const seenDoc = new Set();
+      const latestDocs = (docs || []).filter(d => !d.doc_type_id || (!seenDoc.has(d.doc_type_id) && seenDoc.add(d.doc_type_id)));
+      if (live) setData({ full: full || child, members: members || [], contacts: contacts || [], docs: latestDocs, consents: latestConsents });
     })();
     return () => { live = false; };
-  }, [child?.id]);
+  }, [child?.id, facilityId]);
 
   if (!child) return null;
   const c = data?.full || child;
   const allergies = (c.allergies || []).filter(Boolean);
   const health = [
-    ['Allergy reaction', c.allergy_reaction], ['Diet', c.dietary_restrictions], ['Medications', c.medications],
+    ['Allergy reaction', c.allergy_reaction], ['Diet', [...(c.diet_types || []), c.dietary_restrictions].filter(Boolean).join(' · ')],
+    ['Feeding', c.feeding_notes], ['Medications', c.medications],
     ['Medical notes', c.medical_notes], ['Behavior notes', c.behavioral_notes],
     ['Doctor', [c.doctor_name, c.doctor_phone].filter(Boolean).join(' · ')], ['Hospital', c.preferred_hospital],
   ].filter(([, v]) => v);
@@ -54,7 +68,7 @@ export default function ChildInfoModal({ child, onClose }) {
       {!data ? <div style={{ textAlign: 'center', padding: 20 }}><Spinner/></div> : (
         <>
           <div className={allergies.length ? 'al al-e' : 'al al-s'} style={{ marginBottom: 14 }}>
-            {allergies.length ? <><strong>Allergies:</strong> {allergies.join(', ')}</> : 'No allergies on file.'}
+            {allergies.length ? <>{c.allergy_severe && <strong>🚨 SEVERE · </strong>}<strong>Allergies:</strong> {allergies.join(', ')}</> : 'No allergies on file.'}
           </div>
 
           {health.length > 0 && (
@@ -95,6 +109,34 @@ export default function ChildInfoModal({ child, onClose }) {
             );
           })}
           {!data.contacts.length && <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 14 }}>The family hasn't added emergency contacts or approved pickups yet.</div>}
+
+          {data.consents.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <SectionLabel>Permissions</SectionLabel>
+              {data.consents.map(r => (
+                <div key={r.form_id} style={{ fontSize: 13, marginBottom: 4 }}>
+                  {r.answer === 'yes' ? '✅' : '🚫'} {r.facility_forms.title}
+                  <span style={{ color: 'var(--text-faint)', fontSize: 11 }}> · {r.answer === 'yes' ? 'Yes' : 'No'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {data.docs.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <SectionLabel>Documents</SectionLabel>
+              {docError && <div className="al al-e">{docError}</div>}
+              {data.docs.map(d => (
+                <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 6 }}>
+                  <span style={{ flex: 1 }}>
+                    {d.facility_doc_types?.name || d.label || d.file_name}
+                    {d.expires_on && <span style={{ fontSize: 11, color: d.expires_on < new Date().toISOString().slice(0, 10) ? 'var(--err-text)' : 'var(--text-faint)' }}> · expires {fmtDate(d.expires_on)}</span>}
+                  </span>
+                  <button className="bg" style={{ fontSize: 11, padding: '4px 10px' }} onClick={async () => setDocError(await openDocument(d.file_path))}>View</button>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
       <button className="bg" onClick={onClose} style={{ marginTop: 4 }}>Close</button>

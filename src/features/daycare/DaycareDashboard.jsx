@@ -11,6 +11,7 @@ import DaycareFeed from './DaycareFeed';
 import ClassroomsTab from './ClassroomsTab';
 import StaffTab from './StaffTab';
 import CenterTab from './CenterTab';
+import RecordsTab from './RecordsTab';
 import { isManagerRole, roleLabel } from './api';
 
 // Staff side of a daycare: one dashboard per daycare the user works at.
@@ -56,6 +57,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
     { id: 'families',   icon: '👨‍👩‍👧', label: 'Families' },
     { id: 'feed',       icon: '🌸', label: 'Updates' },
     ...(manager ? [
+      { id: 'records',    icon: '📋', label: 'Records' },
       { id: 'classrooms', icon: '🧸', label: 'Rooms' },
       { id: 'staff',      icon: '👥', label: 'Staff' },
     ] : []),
@@ -105,6 +107,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
           {activeTab === 'today'      && <TodayBoard {...props} onGoTo={setTab}/>}
           {activeTab === 'families'   && <DaycareFamilies {...props}/>}
           {activeTab === 'feed'       && <DaycareFeed {...props}/>}
+          {activeTab === 'records'    && <RecordsTab {...props}/>}
           {activeTab === 'classrooms' && <ClassroomsTab {...props}/>}
           {activeTab === 'staff'      && <StaffTab {...props}/>}
           {activeTab === 'center'     && <CenterTab {...props}/>}

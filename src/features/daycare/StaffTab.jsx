@@ -14,9 +14,15 @@ export default function StaffTab({ facilityId, me, director }) {
   const [removing, setRemoving] = useState(null);
   const [busy,     setBusy]     = useState({});
 
+  const [rooms,    setRooms]    = useState([]);
+
   const load = useCallback(async () => {
-    const { data } = await supabase.from('facility_staff').select('*').eq('facility_id', facilityId).order('status').order('name');
+    const [{ data }, { data: rm }] = await Promise.all([
+      supabase.from('facility_staff').select('*').eq('facility_id', facilityId).order('status').order('name'),
+      supabase.from('classrooms').select('id, name').eq('facility_id', facilityId).eq('active', true).order('sort').order('name'),
+    ]);
     setStaff(data || []);
+    setRooms(rm || []);
     setLoading(false);
   }, [facilityId]);
 
@@ -72,6 +78,14 @@ export default function StaffTab({ facilityId, me, director }) {
               <div style={{ fontSize: 12, color: 'var(--text-faint)', wordBreak: 'break-all' }}>{s.email}</div>
             </div>
             {s.status === 'invited' && <span className="sb sb-p">Invited</span>}
+            {(director || s.role !== 'director') && rooms.length > 0 && (
+              <select className="fi" value={s.classroom_id || ''} disabled={busy[s.id]} onChange={e => update(s, { classroom_id: e.target.value || null })}
+                aria-label={`Home room for ${s.name || s.email}`} title="Home room: teachers can open the documents of children in this room"
+                style={{ width: 'auto', marginBottom: 0, padding: '6px 10px', fontSize: 12 }}>
+                <option value="">No home room</option>
+                {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            )}
             {canManage(s) ? (
               <select className="fi" value={s.role} disabled={busy[s.id]} onChange={e => update(s, { role: e.target.value })} aria-label={`Role for ${s.name || s.email}`}
                 style={{ width: 'auto', marginBottom: 0, padding: '6px 10px', fontSize: 12 }}>

@@ -1,24 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Confirm } from '../../components/ui/Modal';
 import SectionLabel from '../../components/ui/SectionLabel';
 import Spinner from '../../components/ui/Spinner';
+import EnrollmentPacket from './EnrollmentPacket';
+import { loadEnrollment, packetItems, loadContactCounts } from './enrollment';
 
 // Parent Home: the family's daycare(s). A daycare's request to connect is accepted here by
-// the family admin; once connected, each child's classroom shows.
-export default function ParentDaycareCard({ familyId, links, children, isAdmin, onChanged }) {
-  const [rooms,   setRooms]   = useState({});    // child_id -> classroom
+// the family admin; once connected, each child's classroom shows, with the enrollment packet.
+export default function ParentDaycareCard({ familyId, links, children, isAdmin, memberRole, onChanged }) {
+  const [rooms,   setRooms]   = useState({});    // `${facility}:${child}` -> classroom
+  const [packets, setPackets] = useState({});    // facility_id -> { done, total }
+  const [packetFor, setPacketFor] = useState(null);
   const [busy,    setBusy]    = useState(null);
   const [leaving, setLeaving] = useState(null);
   const [error,   setError]   = useState(null);
 
   const kidIds = children.map(c => c.id).join(',');
-  useEffect(() => {
-    if (!links.some(l => l.status === 'active') || !kidIds) { setRooms({}); return; }
-    supabase.from('facility_enrollments').select('child_id, facility_id, status, classrooms(name, color)')
-      .in('child_id', kidIds.split(',')).eq('status', 'active')
-      .then(({ data }) => setRooms(Object.fromEntries((data || []).map(e => [`${e.facility_id}:${e.child_id}`, e.classrooms || { name: 'Enrolled' }]))));
-  }, [kidIds, links]);
+  const loadPackets = useCallback(async () => {
+    const active = links.filter(l => l.status === 'active');
+    if (!active.length || !kidIds) { setRooms({}); setPackets({}); return; }
+    const [{ data }, { data: fresh }] = await Promise.all([
+      supabase.from('facility_enrollments').select('child_id, facility_id, status, classrooms(name, color)')
+        .in('child_id', kidIds.split(',')).eq('status', 'active'),
+      supabase.from('children').select('*').eq('family_id', familyId),   // current health_confirmed_at
+    ]);
+    const enrolled = data || [];
+    setRooms(Object.fromEntries(enrolled.map(e => [`${e.facility_id}:${e.child_id}`, e.classrooms || { name: 'Enrolled' }])));
+    const counts = (await loadContactCounts([familyId]))[familyId] || { emergency: 0, pickup: 0 };
+    const out = {};
+    for (const l of active) {
+      const enr = await loadEnrollment(l.facility_id, [familyId]);
+      const kids = (fresh || []).filter(c => enrolled.some(e => e.facility_id === l.facility_id && e.child_id === c.id));
+      const items = packetItems({ ...enr, familyId, children: kids, contacts: counts });
+      out[l.facility_id] = { done: items.filter(i => i.done).length, total: items.length };
+    }
+    setPackets(out);
+  }, [kidIds, links, familyId]);
+
+  useEffect(() => { loadPackets(); }, [loadPackets]);
 
   async function respond(link, accept) {
     setBusy(link.facility_id); setError(null);
@@ -76,10 +96,33 @@ export default function ParentDaycareCard({ familyId, links, children, isAdmin, 
                   );
                 })}
               </div>
+              {packets[link.facility_id] && (() => {
+                const p = packets[link.facility_id];
+                const complete = p.done === p.total;
+                return (
+                  <button onClick={() => setPacketFor(link)}
+                    style={{ marginTop: 12, width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+                      border: `1px solid ${complete ? 'rgba(58,158,122,.3)' : 'color-mix(in srgb,var(--accent) 40%,transparent)'}`,
+                      background: complete ? 'rgba(58,158,122,.08)' : 'color-mix(in srgb,var(--accent) 8%,transparent)', color: 'var(--text)' }}>
+                    <span style={{ fontSize: 20 }}>{complete ? '✅' : '📋'}</span>
+                    <span style={{ flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Enrollment packet</span>
+                      <span style={{ display: 'block', fontSize: 11, color: 'var(--text-faint)' }}>
+                        {complete ? 'Everything is done' : `${p.done} of ${p.total} done · forms, documents and health details`}
+                      </span>
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{complete ? 'View' : 'Finish'} →</span>
+                  </button>
+                );
+              })()}
             </div>
           );
         })}
       </div>
+      {packetFor && (
+        <EnrollmentPacket open={!!packetFor} onClose={() => setPacketFor(null)} facility={{ id: packetFor.facility_id, ...packetFor.facilities }}
+          familyId={familyId} memberRole={memberRole} onChanged={loadPackets}/>
+      )}
       <Confirm open={!!leaving} danger title={`Disconnect from ${leaving?.facilities?.name || 'this daycare'}?`}
         message="Their staff will no longer see your family or post to your feed. Past check-ins and updates stay in your history."
         onConfirm={() => { const l = leaving; setLeaving(null); respond(l, false); }} onCancel={() => setLeaving(null)}/>

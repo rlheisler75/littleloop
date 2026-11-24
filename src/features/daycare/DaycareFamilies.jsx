@@ -188,7 +188,7 @@ export default function DaycareFamilies({ facilityId, manager }) {
 
       <EnrollFamilyModal open={showEnroll} onClose={() => setShowEnroll(false)} facilityId={facilityId} rooms={activeRooms} onDone={load}/>
       <AddChildModal link={addChildTo} onClose={() => setAddChildTo(null)} facilityId={facilityId} rooms={activeRooms} onDone={load}/>
-      <ChildInfoModal child={info} onClose={() => setInfo(null)}/>
+      <ChildInfoModal child={info} facilityId={facilityId} onClose={() => setInfo(null)}/>
       <Confirm open={!!removing} danger
         title={removing?.status === 'pending' && !removing?.created_family ? 'Cancel this request?' : `Remove ${removing?.families?.name || 'this family'}?`}
         message="Their children leave your classroom board and your staff lose access to the family's information. Past check-ins and updates are kept."

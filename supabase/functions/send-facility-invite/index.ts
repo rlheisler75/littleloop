@@ -1,6 +1,8 @@
 // Daycare invite emails.
 //   { kind: "staff",  staffId }             -> the invited staff member, link to create their login
 //   { kind: "family", facilityId, familyId } -> the family's parent, link to sign up or sign in
+//   { kind: "reminder", facilityId, familyId } -> nudge to finish the enrollment packet (no details
+//                                               of what's missing, just a link)
 // The caller must be a director or office manager of that daycare. Emails go only to the
 // address stored on the staff row / family, never to an address from the request.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -50,11 +52,12 @@ serve(async (req) => {
       const { data } = await sb.from("facility_staff").select("id,facility_id,email,name,role,status").eq("id", body.staffId).maybeSingle();
       if (!data || data.status !== "invited") return reply({ error: "Invite not found" }, 404);
       staffRow = data; facilityId = data.facility_id; to = data.email;
-    } else if (kind === "family") {
+    } else if (kind === "family" || kind === "reminder") {
       const { data: link } = await sb.from("facility_families").select("status,families(id,name,admin_email)")
         .eq("facility_id", body.facilityId).eq("family_id", body.familyId).maybeSingle();
       const fam = (link as any)?.families;
       if (!link || link.status === "inactive" || !fam?.admin_email) return reply({ error: "Family not found" }, 404);
+      if (kind === "reminder" && link.status !== "active") return reply({ error: "The parent hasn't joined yet. Resend their invite instead." }, 409);
       familyRow = fam; facilityId = String(body.facilityId); to = fam.admin_email;
     } else {
       return reply({ error: "Unknown invite" }, 400);
@@ -70,7 +73,15 @@ serve(async (req) => {
     const { data: hasAccount } = await sb.rpc("email_has_account", { p_email: to });
 
     let subject: string, html: string;
-    if (kind === "staff") {
+    if (kind === "reminder") {
+      subject = `${facility?.name || "Your daycare"}: please finish your enrollment packet`;
+      html = emailHtml(
+        `A few things left for ${D}`,
+        `<strong>${D}</strong> is still waiting on part of <strong>${esc(familyRow.name)}</strong>'s enrollment packet: forms to sign, documents to upload, or details to confirm. Open littleloop and tap <strong>Enrollment packet</strong> on your Home screen.`,
+        "Open littleloop", `${SITE}/?portal=parent`,
+        `Sign in with <strong>${esc(to)}</strong>.`,
+      );
+    } else if (kind === "staff") {
       const url = hasAccount ? `${SITE}/?portal=daycare` : `${SITE}/?portal=daycare&email=${encodeURIComponent(to)}`;
       subject = `${facility?.name || "Your daycare"} invited you to littleloop`;
       html = emailHtml(

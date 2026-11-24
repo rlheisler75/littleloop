@@ -124,3 +124,9 @@ export const PUSH_PREFS_SITTER_FULL = [
   { key:'new_post',    label:'Family feed activity',  icon:'📝' },
   { key:'eta',         label:'On My Way / ETA alerts', icon:'🚗' },
 ];
+
+// Diet options on a child's profile (children.diet_types). Free text goes in dietary_restrictions.
+export const DIET_TYPES = [
+  'Vegetarian', 'Vegan', 'Dairy-free', 'Gluten-free', 'Nut-free', 'Egg-free',
+  'No pork', 'No beef', 'Halal', 'Kosher',
+];

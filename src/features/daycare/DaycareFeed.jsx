@@ -8,6 +8,7 @@ import Spinner from '../../components/ui/Spinner';
 import SectionLabel from '../../components/ui/SectionLabel';
 import PhotoLightbox from '../children/PhotoLightbox';
 import { errText } from './api';
+import { loadPhotoConsent } from './enrollment';
 
 // Classroom updates: one post to a room (or a few children) lands in each family's feed,
 // tagged with only that family's children.
@@ -18,14 +19,17 @@ export default function DaycareFeed({ facility, facilityId, myName }) {
   const [loading,  setLoading]  = useState(true);
   const [deleting, setDeleting] = useState(null);
   const [lightbox, setLightbox] = useState(null);
+  const [photoOk,  setPhotoOk]  = useState({});     // family_id -> 'yes' | 'no'
 
   const load = useCallback(async () => {
-    const [{ data: rm }, { data: en }, { data: ps }] = await Promise.all([
+    const [{ data: rm }, { data: en }, { data: ps }, consent] = await Promise.all([
       supabase.from('classrooms').select('id, name, color').eq('facility_id', facilityId).eq('active', true).order('sort').order('name'),
       supabase.from('facility_enrollments').select('child_id, classroom_id').eq('facility_id', facilityId).eq('status', 'active'),
       supabase.from('posts').select('id, family_id, author_id, author_name, type, mood, text, photo_url, created_at')
         .eq('facility_id', facilityId).order('created_at', { ascending: false }).limit(150),
+      loadPhotoConsent(facilityId),
     ]);
+    setPhotoOk(consent || {});
     const ids = (en || []).map(e => e.child_id);
     const roomOf = Object.fromEntries((en || []).map(e => [e.child_id, e.classroom_id]));
     const postIds = (ps || []).map(p => p.id);
@@ -65,7 +69,7 @@ export default function DaycareFeed({ facility, facilityId, myName }) {
 
   return (
     <div>
-      <Composer facility={facility} facilityId={facilityId} myName={myName} rooms={rooms} kids={kids} onPosted={load}/>
+      <Composer facility={facility} facilityId={facilityId} myName={myName} rooms={rooms} kids={kids} photoOk={photoOk} onPosted={load}/>
 
       <SectionLabel>Recent updates</SectionLabel>
       {posts.length === 0
@@ -97,7 +101,7 @@ export default function DaycareFeed({ facility, facilityId, myName }) {
   );
 }
 
-function Composer({ facility, facilityId, myName, rooms, kids, onPosted }) {
+function Composer({ facility, facilityId, myName, rooms, kids, photoOk, onPosted }) {
   const [room,    setRoom]    = useState(rooms[0]?.id || 'all');
   const [picked,  setPicked]  = useState([]);
   const [type,    setType]    = useState('activity');
@@ -111,15 +115,23 @@ function Composer({ facility, facilityId, myName, rooms, kids, onPosted }) {
 
   const roomKids = room === 'all' ? kids : kids.filter(k => k.classroom_id === room);
   // Switching rooms selects the whole room.
-  useEffect(() => { setPicked(roomKids.map(k => k.id)); }, [room, kids.length]);
+  useEffect(() => { setPicked(roomKids.filter(k => !(photo && noPhoto(k))).map(k => k.id)); }, [room, kids.length]);
 
-  const toggle = id => setPicked(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  // Families who said no to photos: their children can't be in a post with a photo.
+  const noPhoto = k => photoOk[k.family_id] === 'no';
+  const blocked = id => !!photo && noPhoto(kids.find(k => k.id === id) || {});
+  const toggle = id => { if (blocked(id)) return; setPicked(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]); };
 
   function choosePhoto(e) {
     const f = e.target.files?.[0];
     if (!f) return;
     if (f.size > 10 * 1024 * 1024) { setAlert({ t: 'e', m: 'Photo must be under 10MB.' }); return; }
     setPhoto(f); setPreview(URL.createObjectURL(f));
+    const removed = kids.filter(k => picked.includes(k.id) && noPhoto(k));
+    if (removed.length) {
+      setPicked(p => p.filter(id => !removed.some(k => k.id === id)));
+      setAlert({ t: 'w', m: `Took ${removed.map(k => k.preferred_name || k.name).join(', ')} off this post: their family said no to photos. Post a text-only update for them.` });
+    }
   }
 
   async function post() {
@@ -174,18 +186,20 @@ function Composer({ facility, facilityId, myName, rooms, kids, onPosted }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{picked.length} of {roomKids.length} children · {new Set(kids.filter(k => picked.includes(k.id)).map(k => k.family_id)).size} families</span>
         <span style={{ display: 'flex', gap: 8 }}>
-          <button type="button" onClick={() => setPicked(roomKids.map(k => k.id))} style={linkBtn}>All</button>
+          <button type="button" onClick={() => setPicked(roomKids.filter(k => !blocked(k.id)).map(k => k.id))} style={linkBtn}>All</button>
           <button type="button" onClick={() => setPicked([])} style={linkBtn}>None</button>
         </span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14, maxHeight: 150, overflowY: 'auto' }}>
         {roomKids.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No children in this room.</span>}
         {roomKids.map(k => (
-          <button key={k.id} type="button" onClick={() => toggle(k.id)}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 20, fontSize: 12, cursor: 'pointer',
+          <button key={k.id} type="button" onClick={() => toggle(k.id)} disabled={blocked(k.id)}
+            title={noPhoto(k) ? 'Family said no to photos' : undefined}
+            aria-label={`${k.preferred_name || k.name}${noPhoto(k) ? ' (family said no to photos)' : ''}`}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 20, fontSize: 12, cursor: blocked(k.id) ? 'not-allowed' : 'pointer',
               border: `1px solid ${picked.includes(k.id) ? (k.color || 'var(--accent)') : 'var(--border)'}`,
               background: picked.includes(k.id) ? `${k.color || '#8B78D4'}22` : 'var(--input-bg)', color: 'var(--text-dim)', opacity: picked.includes(k.id) ? 1 : .6 }}>
-            {k.avatar || '🌟'} {k.preferred_name || k.name}
+            {k.avatar || '🌟'} {k.preferred_name || k.name}{noPhoto(k) && ' 📵'}
           </button>
         ))}
       </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { CHILD_AVATARS } from '../../lib/constants';
+import { CHILD_AVATARS, DIET_TYPES } from '../../lib/constants';
 import { Modal } from '../ui/Modal';
 import { Confirm } from '../ui/Modal';
 import Field from '../ui/Field';
@@ -190,8 +190,13 @@ export const EXTRA_FIELDS = [
 
 const COLORS = ['#8B78D4','#3A9E7A','#3A6FD4','#D4783A','#D43A6F','#7AC4D4','#D4C23A','#8BD48B'];
 
-export function ChildModal({ open, onClose, familyId, child, onSaved }) {
+// markHealthConfirmed: saving also records that a parent reviewed the health & diet
+// details (children.health_confirmed_at), for a daycare's enrollment packet.
+export function ChildModal({ open, onClose, familyId, child, onSaved, markHealthConfirmed = false }) {
   const isEdit = !!child;
+  const [dietTypes, setDietTypes] = useState(child?.diet_types || []);
+  const [severe,    setSevere]    = useState(!!child?.allergy_severe);
+  const [feeding,   setFeeding]   = useState(child?.feeding_notes || '');
 
   const [name,      setName]      = useState(child?.name || '');
   const [dob,       setDob]       = useState(child?.dob || '');
@@ -214,6 +219,9 @@ export function ChildModal({ open, onClose, familyId, child, onSaved }) {
       setAllergies(child?.allergies?.join(', ') || '');
       setDiet(child?.dietary_restrictions || '');
       setMedical(child?.medical_notes || '');
+      setDietTypes(child?.diet_types || []);
+      setSevere(!!child?.allergy_severe);
+      setFeeding(child?.feeding_notes || '');
       setExtra(Object.fromEntries(EXTRA_FIELDS.map(([k]) => [k, child?.[k] || ''])));
       setAlert(null);
     }
@@ -228,7 +236,11 @@ export function ChildModal({ open, onClose, familyId, child, onSaved }) {
       allergies: allergies.split(',').map(s => s.trim()).filter(Boolean),
       dietary_restrictions: diet || null,
       medical_notes: medical || null,
+      diet_types: dietTypes,
+      allergy_severe: severe,
+      feeding_notes: feeding.trim() || null,
       ...Object.fromEntries(EXTRA_FIELDS.map(([k]) => [k, extra[k]?.trim() || null])),
+      ...(markHealthConfirmed ? { health_confirmed_at: new Date().toISOString() } : {}),
       family_id: familyId,
     };
     const { error } = isEdit
@@ -282,8 +294,33 @@ export function ChildModal({ open, onClose, familyId, child, onSaved }) {
             </div>
           </div>
 
+          {markHealthConfirmed && (
+            <div className="al al-i">Please check each section below, update anything that changed, and press Save to confirm.</div>
+          )}
           <Field label="Allergies (comma separated)" value={allergies} onChange={e => setAllergies(e.target.value)} placeholder="e.g. peanuts, dairy" required={false}/>
-          <Field label="Dietary restrictions" as="textarea" rows={2} value={diet} onChange={e => setDiet(e.target.value)} placeholder="e.g. vegetarian, no gluten" required={false}/>
+          {allergies.trim() && (
+            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, marginTop: -6, marginBottom: 14, cursor: 'pointer' }}>
+              <input type="checkbox" checked={severe} onChange={e => setSevere(e.target.checked)} style={{ marginTop: 3 }}/>
+              <span><strong>Severe allergy</strong><span style={{ display: 'block', fontSize: 11, color: 'var(--text-faint)' }}>Can cause a life-threatening reaction (EpiPen, call 911). Shown in red to caregivers.</span></span>
+            </label>
+          )}
+          <div style={{ marginBottom: 14 }}>
+            <SectionLabel>Diet</SectionLabel>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {DIET_TYPES.map(d => {
+                const on = dietTypes.includes(d);
+                return (
+                  <button key={d} type="button" aria-pressed={on} onClick={() => setDietTypes(t => on ? t.filter(x => x !== d) : [...t, d])}
+                    style={{ padding: '5px 11px', borderRadius: 20, fontSize: 12, cursor: 'pointer', border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
+                      background: on ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--input-bg)', color: on ? 'var(--accent)' : 'var(--text-dim)' }}>
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <Field label="Other dietary needs" as="textarea" rows={2} value={diet} onChange={e => setDiet(e.target.value)} placeholder="e.g. no juice, small pieces only" required={false}/>
+          <Field label="Feeding notes (bottles, formula, schedule)" as="textarea" rows={2} value={feeding} onChange={e => setFeeding(e.target.value)} placeholder="e.g. 6 oz formula at 9 and 1; breast milk in the fridge" required={false}/>
           <Field label="Medical conditions or special needs" as="textarea" rows={3} value={medical} onChange={e => setMedical(e.target.value)} placeholder="Conditions, special needs, important notes…" required={false}/>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: 'var(--text-faint)', margin: '4px 0 10px' }}>🚑 Emergency details</div>
           {EXTRA_FIELDS.map(([k, label, ph, area]) => (

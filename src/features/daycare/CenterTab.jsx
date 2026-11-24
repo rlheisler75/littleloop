@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import Spinner from '../../components/ui/Spinner';
 import SectionLabel from '../../components/ui/SectionLabel';
 import { roleLabel, errText } from './api';
+import EnrollmentSetup from './EnrollmentSetup';
 
 const FIELDS = [
   ['name', 'Daycare name', 120], ['phone', 'Phone', 40], ['email', 'Email', 200],
@@ -11,7 +12,7 @@ const FIELDS = [
 ];
 
 // The daycare's details. Directors edit; everyone else sees them.
-export default function CenterTab({ facility, me, director, onFacilityChanged }) {
+export default function CenterTab({ facility, me, director, manager, onFacilityChanged }) {
   const [form,   setForm]   = useState(() => Object.fromEntries(FIELDS.map(([k]) => [k, facility[k] || ''])));
   const [saving, setSaving] = useState(false);
   const [alert,  setAlert]  = useState(null);
@@ -61,6 +62,8 @@ export default function CenterTab({ facility, me, director, onFacilityChanged })
           </div>
         )}
       </div>
+
+      {manager && <EnrollmentSetup facilityId={facility.id}/>}
     </div>
   );
 }
