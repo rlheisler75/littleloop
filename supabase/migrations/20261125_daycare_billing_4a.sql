@@ -22,6 +22,11 @@ returns boolean language sql stable security definer set search_path to 'public'
                   and status = 'active' and role in ('admin', 'member'))
 $$;
 
+-- Billing dates are the daycare's calendar day (US Central, like recurring invoices), not UTC:
+-- after 6 PM Central, UTC is already tomorrow.
+create or replace function public.daycare_today()
+returns date language sql stable as $ select (now() at time zone 'America/Chicago')::date $;
+
 -- ── Settings ─────────────────────────────────────────────────────────────────
 create table public.daycare_billing_settings (
   facility_id          uuid primary key references public.facilities(id) on delete cascade,
@@ -44,8 +49,8 @@ begin
   -- The next period moves only when billing runs (or the cycle changes)
   if tg_op = 'UPDATE' and not v_rpc then new.next_period_start := old.next_period_start; end if;
   if tg_op = 'INSERT' or new.cycle is distinct from old.cycle or new.next_period_start is null then
-    new.next_period_start := case when new.cycle = 'weekly' then date_trunc('week', current_date)::date + 7
-                                  else (date_trunc('month', current_date) + interval '1 month')::date end;
+    new.next_period_start := case when new.cycle = 'weekly' then date_trunc('week', daycare_today())::date + 7
+                                  else (date_trunc('month', daycare_today()) + interval '1 month')::date end;
   end if;
   new.updated_at := now();
   return new;
@@ -116,7 +121,7 @@ create table public.daycare_statements (
   facility_id      uuid not null references public.facilities(id) on delete cascade,
   family_id        uuid not null references public.families(id) on delete cascade,
   number           integer not null,
-  statement_date   date not null default current_date,
+  statement_date   date not null default daycare_today(),
   due_date         date not null,
   period_start     date,
   period_end       date,
@@ -144,7 +149,7 @@ create table public.daycare_ledger (
                   check (category in ('tuition','registration','late_pickup','late_fee','supplies','activity','other','payment','credit')),
   description     text check (char_length(description) <= 200),
   amount          numeric(10,2) not null check (amount > 0),
-  entry_date      date not null default current_date,
+  entry_date      date not null default daycare_today(),
   period_start    date,
   period_end      date,
   method          text check (method in ('cash','check','card','ach','money_order','other')),
@@ -185,7 +190,7 @@ begin
       new.method := null;
     end if;
     if new.payer = 'family' then new.agency := null; end if;
-    if new.entry_date > current_date + 31 then raise exception 'That date is too far ahead.' using errcode = '22023'; end if;
+    if new.entry_date > daycare_today() + 31 then raise exception 'That date is too far ahead.' using errcode = '22023'; end if;
     new.amount := round(new.amount, 2);
     new.created_by := auth.uid();
     new.created_by_name := coalesce(facility_staff_name(new.facility_id), case when auth.uid() is null then 'Automatic billing' end);
@@ -251,7 +256,7 @@ begin
   if s.cycle = 'weekly' and extract(isodow from p_period_start) <> 1 then
     raise exception 'Weekly billing periods start on a Monday.' using errcode = '22023';
   end if;
-  if p_period_start > current_date + 62 or p_period_start < current_date - 62 then
+  if p_period_start > daycare_today() + 62 or p_period_start < daycare_today() - 62 then
     raise exception 'Pick a period within two months of today.' using errcode = '22023';
   end if;
   v_end := case when s.cycle = 'weekly' then p_period_start + 6
@@ -293,11 +298,11 @@ begin
         if p_commit then
           if v_family > 0 then
             insert into daycare_ledger (facility_id, family_id, child_id, payer, kind, category, description, amount, entry_date, period_start, period_end)
-            values (p_facility, fam.id, c.child_id, 'family', 'charge', 'tuition', 'Tuition: ' || c.child_name, v_family, current_date, p_period_start, v_end);
+            values (p_facility, fam.id, c.child_id, 'family', 'charge', 'tuition', 'Tuition: ' || c.child_name, v_family, daycare_today(), p_period_start, v_end);
           end if;
           if v_agency > 0 then
             insert into daycare_ledger (facility_id, family_id, child_id, payer, agency, kind, category, description, amount, entry_date, period_start, period_end)
-            values (p_facility, fam.id, c.child_id, 'agency', c.subsidy_agency, 'charge', 'tuition', 'Tuition (subsidy): ' || c.child_name, v_agency, current_date, p_period_start, v_end);
+            values (p_facility, fam.id, c.child_id, 'agency', c.subsidy_agency, 'charge', 'tuition', 'Tuition (subsidy): ' || c.child_name, v_agency, daycare_today(), p_period_start, v_end);
           end if;
         end if;
       end if;
@@ -322,14 +327,14 @@ begin
       select coalesce(max(number), 0) + 1 into v_num from daycare_statements where facility_id = p_facility;
       insert into daycare_statements (facility_id, family_id, number, statement_date, due_date, period_start, period_end,
                                       previous_balance, new_charges, payments_credits, balance_due, created_by_name)
-      values (p_facility, fam.id, v_num, current_date, current_date + s.due_days, p_period_start, v_end,
+      values (p_facility, fam.id, v_num, daycare_today(), daycare_today() + s.due_days, p_period_start, v_end,
               v_prev, v_tuition + v_other, v_pay, v_bal, v_staff)
       returning id into v_stmt;
       update daycare_ledger l set statement_id = v_stmt
        where l.facility_id = p_facility and l.family_id = fam.id and l.payer = 'family' and l.voided_at is null and l.statement_id is null;
       insert into notifications (user_id, type, title, body, read, data)
       select distinct m.user_id, 'daycare_statement', 'Statement from ' || coalesce(v_fac, 'your daycare'),
-             case when v_bal > 0 then 'Balance due ' || to_char(v_bal, 'FM$999,999,990.00') || ' by ' || to_char(current_date + s.due_days, 'Mon FMDD')
+             case when v_bal > 0 then 'Balance due ' || to_char(v_bal, 'FM$999,999,990.00') || ' by ' || to_char(daycare_today() + s.due_days, 'Mon FMDD')
                   else 'Your account is paid up. Thank you!' end,
              false, jsonb_build_object('facility_id', p_facility, 'statement_id', v_stmt)
         from members m where m.family_id = fam.id and m.status = 'active' and m.role in ('admin', 'member') and m.user_id is not null;
@@ -361,7 +366,7 @@ begin
   for r in
     select bs.facility_id, bs.next_period_start from daycare_billing_settings bs
      where bs.auto_send and bs.next_period_start is not null
-       and bs.next_period_start - bs.bill_days_before <= current_date
+       and bs.next_period_start - bs.bill_days_before <= daycare_today()
        and facility_in_good_standing(bs.facility_id)
   loop
     begin
@@ -429,7 +434,7 @@ begin
   )
   select fams.fid, fams.fname, fams.conn,
          round(coalesce(t.charged, 0) - coalesce(t.paid, 0), 2),
-         round(coalesce((select sum(o.open_amt) from open_ch o where o.fid = fams.fid and o.entry_date + v_due < current_date), 0), 2),
+         round(coalesce((select sum(o.open_amt) from open_ch o where o.fid = fams.fid and o.entry_date + v_due < daycare_today()), 0), 2),
          (select min(o.entry_date) from open_ch o where o.fid = fams.fid and o.open_amt > 0),
          lp.entry_date, lp.amount,
          (select count(*)::int from daycare_statements st where st.facility_id = p_facility and st.family_id = fams.fid)

@@ -504,7 +504,11 @@ function PlanRow({ facilityId, child, plan, roomRate, onSaved, onError }) {
   const [f, setF] = useState(init);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const dirty = JSON.stringify(f) !== JSON.stringify(init());
+  useEffect(() => { setF(init()); }, [plan]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // Compare as numbers: the database sends "280.00" for a typed "280"
+  const norm = x => [x.amount === '' ? '' : Number(x.amount), Number(x.discount_pct) || 0, !!x.sibling_discount,
+                     Number(x.subsidy_amount) || 0, (x.subsidy_agency || '').trim(), !!x.active].join('|');
+  const dirty = norm(f) !== norm(init());
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
 
   async function save() {
