@@ -119,6 +119,7 @@ export const PUSH_PREFS_PARENT = [
   { key:'new_post',         label:'Feed updates',      icon:'📝' },
   { key:'daycare_report',   label:'Daycare daily reports', icon:'📒' },
   { key:'daycare_incident', label:'Daycare incident reports', icon:'🩹' },
+  { key:'daycare_report_card', label:'Daycare report cards', icon:'🎓' },
 ];
 
 export const PUSH_PREFS_SITTER_FULL = [

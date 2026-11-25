@@ -15,6 +15,7 @@ import RecordsTab from './RecordsTab';
 import DailyReportsTab from './DailyReportsTab';
 import IncidentsTab from './IncidentsTab';
 import ResourcesTab from './ResourcesTab';
+import LearningTab from './LearningTab';
 import DaycarePlanCard, { trialDaysLeft } from './DaycarePlanCard';
 import { loadFacilityPlan } from '../../lib/plan';
 import { isManagerRole, roleLabel } from './api';
@@ -30,7 +31,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
   const load = useCallback(async () => {
     await supabase.rpc('claim_staff_invites');
     const { data, error } = await supabase.from('facility_staff')
-      .select('id, role, name, facility_id, facilities(*)')
+      .select('id, role, name, facility_id, classroom_id, facilities(*)')
       .eq('user_id', userId).eq('status', 'active')
       .order('created_at');
     if (error) console.error('load daycares failed:', error);
@@ -67,6 +68,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
     { id: 'today',      icon: '🏫', label: 'Today' },
     { id: 'daily',      icon: '📒', label: 'Daily' },
     { id: 'incidents',  icon: '🩹', label: 'Incidents' },
+    { id: 'learning',   icon: '🌱', label: 'Learning' },
     { id: 'families',   icon: '👨‍👩‍👧', label: 'Families' },
     { id: 'feed',       icon: '🌸', label: 'Updates' },
     { id: 'resources',  icon: '📚', label: 'Resources' },
@@ -136,6 +138,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
           {activeTab === 'today'      && <TodayBoard {...props} onGoTo={setTab}/>}
           {activeTab === 'daily'      && <DailyReportsTab {...props}/>}
           {activeTab === 'incidents'  && <IncidentsTab {...props}/>}
+          {activeTab === 'learning'   && <LearningTab {...props}/>}
           {activeTab === 'resources'  && <ResourcesTab {...props}/>}
           {activeTab === 'families'   && <DaycareFamilies {...props}/>}
           {activeTab === 'feed'       && <DaycareFeed {...props}/>}

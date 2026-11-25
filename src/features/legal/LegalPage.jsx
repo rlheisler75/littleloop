@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import LoopMark from '../../components/ui/LoopMark';
+import { FREE_CHILD_LIMIT, SITTER_TIERS, DAYCARE_TIERS, DAYCARE_TRIAL_DAYS } from '../../lib/plan';
 
-export const LEGAL_UPDATED = 'November 15, 2026';
+export const LEGAL_UPDATED = 'November 24, 2026';
 export const SUPPORT_EMAIL = 'littleloop@loopwaresolutions.com';
 const COMPANY = 'Loopware Solutions LLC';
 
@@ -29,32 +30,38 @@ const STYLES = `
 
 const Mail = () => <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>;
 
+// e.g. "$7/month (up to 10 children)", from the same price list the app uses (src/lib/plan.js)
+const tierText = t => `$${t.monthly}/month (${t.children ? `up to ${t.children} children` : 'unlimited children'})`;
+
 function Privacy() {
   return (
     <>
       <h1>Privacy Policy</h1>
       <div className="upd">Last updated {LEGAL_UPDATED}</div>
-      <div className="sum"><p><strong>The short version:</strong> littleloop exists so a family and their sitter can share their children's day privately. Your information is shared only with the people in your loop: your family and the sitters you connect with. We don't sell your data, we don't show ads, and we don't use your children's information for marketing.</p></div>
+      <div className="sum"><p><strong>The short version:</strong> littleloop exists so families and the people who care for their children, independent sitters and daycare centers, can share each child's day privately. Your information is shared only with the people in your loop: your family, the sitters you connect with, and the daycare your family connects to. We don't sell your data, we don't show ads, and we don't use your children's information for marketing.</p></div>
 
       <h2>Who we are</h2>
       <p>littleloop is operated by {COMPANY} ("we", "us"). Questions about this policy: <Mail/>.</p>
 
       <h2>What we collect</h2>
       <ul>
-        <li><strong>Account details:</strong> name, email address, password (stored encrypted by our authentication provider) and the role you sign up as (sitter or parent).</li>
+        <li><strong>Account details:</strong> name, email address, password (stored encrypted by our authentication provider) and how you use littleloop (as a sitter, a parent, or a daycare's staff).</li>
         <li><strong>Children's information, entered by a parent or guardian:</strong> name, date of birth, photo, allergies, dietary needs, medical notes, medications, doctor and hospital details and, optionally, insurance details.</li>
         <li><strong>Family contacts:</strong> parents/guardians, emergency contacts and approved pickup people, with their phone numbers and, optionally, email addresses, plus a home address if you add one.</li>
         <li><strong>Care activity:</strong> check-in and check-out times, schedules, photo and activity posts, comments, messages, notes and invoices.</li>
+        <li><strong>Daycare records,</strong> if your family connects to a daycare that uses littleloop: your child's classroom and enrollment details; forms you sign and documents you upload for the enrollment packet (such as immunization records and doctor's notes); photo consent; what staff log during the day (meals, bottles, naps, diapers, moods, activities and medicine given) and the daily report; incident reports and your signature on them; the classroom's lesson plans; and your child's skills progress and report cards.</li>
+        <li><strong>Daycare staff details:</strong> a staff member's name, email, role (director, office or teacher), home classroom, and when they join or leave a classroom during the day, so the daycare can keep its child-to-staff ratios.</li>
         <li><strong>Location:</strong> only when a sitter starts a Field Trip, the sitter's device location is shared with the connected families until the trip ends, and the route is saved so families can see where the group went. When a parent taps "On My Way", their estimated arrival is shared with their sitter. We don't track location at any other time.</li>
         <li><strong>Agreements:</strong> care agreements, typed-name signatures with the date and the signer's account, and any signed paper copies a sitter uploads.</li>
         <li><strong>Sitter details:</strong> public profile information a sitter chooses to publish, verification documents a sitter uploads (such as a background check or CPR card), payment handles (such as a Venmo username) and, for year-end tax statements, a sitter's legal name, address and taxpayer ID.</li>
-        <li><strong>Billing:</strong> if a sitter subscribes to Pro, payment is handled by Stripe. We never see or store full card numbers.</li>
+        <li><strong>Billing:</strong> when a sitter or a daycare subscribes to a paid plan, payment is handled by Stripe. We never see or store full card numbers.</li>
         <li><strong>Usage data:</strong> basic, cookie-free page analytics (pages visited, referring site, device type and country) to understand how people find and use littleloop.</li>
       </ul>
 
       <h2>How we use it</h2>
       <ul>
-        <li>To run littleloop: showing your family's information to your connected sitters and family members, and sending check-in, message, invoice and reminder notifications.</li>
+        <li>To run littleloop: showing your family's information to your connected sitters, your daycare and your family members, and sending check-in, report, message, invoice and reminder notifications.</li>
+        <li>To let a daycare run its classrooms: check-ins and ratios, daily and incident reports, enrollment records, lesson plans and report cards.</li>
         <li>To keep accounts secure, prevent abuse and fix problems.</li>
         <li>To review sitter verification documents when a sitter asks to be verified.</li>
         <li>To email you about your account. You can turn off optional emails and push notifications in your settings.</li>
@@ -63,8 +70,9 @@ function Privacy() {
 
       <h2>Who can see what</h2>
       <ul>
-        <li><strong>Your family's members</strong> can see your family's children, contacts, posts, check-ins, agreements and invoices.</li>
+        <li><strong>Your family's members</strong> can see your family's children, contacts, posts, check-ins, agreements and invoices. Parents also see their children's daily reports, incident reports and report cards from a daycare, and everyone in the family can see the shared lesson plans for their child's classroom.</li>
         <li><strong>Sitters you're connected with</strong> can see your children's profiles and emergency information, family contacts, and the posts, messages, invoices and agreements between you and that sitter. When a family and a sitter disconnect, the sitter loses access to the family's information.</li>
+        <li><strong>A daycare your family connects to:</strong> its staff can see your children's profiles, allergies and health details, your family members, and your emergency and pickup contacts, and they record your children's day. Enrollment documents and incident reports are limited to the director, the office and your child's own classroom teachers, and so are report cards. A daycare never sees your posts, messages or invoices with a sitter. If your family disconnects, the daycare's staff lose access to your family's information, but the daycare keeps the records it made while caring for your child, such as incident reports and report cards.</li>
         <li><strong>The public</strong> can only see a sitter's profile, and only if that sitter turns their public profile on.</li>
         <li><strong>littleloop staff</strong> can access data only when needed to support you, review a verification document, or keep the service secure.</li>
       </ul>
@@ -76,20 +84,20 @@ function Privacy() {
         <li>Vercel (website hosting and cookie-free analytics)</li>
         <li>Resend (email delivery)</li>
         <li>Google Firebase Cloud Messaging (push notifications)</li>
-        <li>Stripe (Pro subscription payments)</li>
+        <li>Stripe (subscription payments for sitters and daycares)</li>
         <li>OpenStreetMap (map images on Field Trip maps; your device requests map tiles directly)</li>
       </ul>
       <p>Payments between families and sitters (such as Venmo, Cash App or PayPal) happen in those apps, under their own privacy policies. littleloop only opens the app with the amount filled in.</p>
       <p>We may disclose information if required by law, or to protect the safety of a child or another person.</p>
 
       <h2>Children's privacy</h2>
-      <p>littleloop is used by adults: parents, guardians and childcare providers. It is not directed to children, and children should not create accounts. Children's information is entered by their parent or guardian, or by their sitter at the parent's direction, so that the people caring for the child have what they need. A parent or guardian can review, correct or delete their child's information at any time from the app, or by emailing <Mail/>.</p>
+      <p>littleloop is used by adults: parents, guardians, sitters and daycare staff. It is not directed to children, and children should not create accounts. Children's information is entered by their parent or guardian, or recorded by their sitter or daycare while caring for them, so that the people caring for the child have what they need. A parent or guardian can review, correct or delete the information they entered at any time from the app, and can ask their daycare, or us at <Mail/>, about the daycare's records.</p>
 
       <h2>Keeping it safe</h2>
-      <p>Data is encrypted in transit and stored with access rules that limit each record to the family and sitters it belongs to. Signed paper copies and verification documents are kept in private storage. No system is perfectly secure, so please use a strong, unique password.</p>
+      <p>Data is encrypted in transit and stored with access rules that limit each record to the family, sitters and daycare it belongs to. Health documents, signed paper copies and verification documents are kept in private storage. Incident reports and sent report cards can't be changed or deleted by staff, only corrected with notes the family can see. No system is perfectly secure, so please use a strong, unique password.</p>
 
       <h2>How long we keep it</h2>
-      <p>We keep your information while your account is active. Anyone can delete their account from Profile → Delete Account. When the last member of a family deletes their account, the family's children, photos, posts, messages, check-ins, emergency information and agreements are deleted too, and connected sitters lose access. Invoices are kept so the sitter has their payment records. Parents can also remove children and contacts at any time. Deleted data is removed from our systems within 30 days, except records we must keep by law (such as payment records) and routine backups, which expire on their own schedule.</p>
+      <p>We keep your information while your account is active. Anyone can delete their account from Profile → Delete Account. When the last member of a family deletes their account, the family's children, photos, posts, messages, check-ins, emergency information and agreements are deleted too, and connected sitters and daycares lose access. Invoices are kept so the sitter has their payment records. Parents can also remove children and contacts at any time. Records a daycare made while caring for a child, such as incident reports and report cards, are kept with the daycare's account as its own records. Deleted data is removed from our systems within 30 days, except records we must keep by law (such as payment records) and routine backups, which expire on their own schedule.</p>
 
       <h2>Your choices and rights</h2>
       <p>You can view and edit most of your information in the app. You can also email <Mail/> to request a copy of your data, a correction, or deletion. We'll respond within 30 days.</p>
@@ -105,26 +113,27 @@ function Terms() {
     <>
       <h1>Terms of Service</h1>
       <div className="upd">Last updated {LEGAL_UPDATED}</div>
-      <div className="sum"><p><strong>The short version:</strong> littleloop is a tool that helps independent sitters and families stay organized. We are not a childcare agency. Sitters and families make their own arrangements with each other, and each is responsible for their own choices.</p></div>
+      <div className="sum"><p><strong>The short version:</strong> littleloop is software that helps independent sitters, daycare centers and families stay organized. We are not a childcare agency and we don't run any daycare. Sitters, daycares and families make their own arrangements with each other, and each is responsible for their own choices.</p></div>
 
       <h2>Agreeing to these terms</h2>
-      <p>These terms are an agreement between you and {COMPANY}. By creating an account or using littleloop you agree to them and to our <a href="/privacy">Privacy Policy</a>. You must be at least 18 to use littleloop.</p>
+      <p>These terms are an agreement between you and {COMPANY}. By creating an account or using littleloop you agree to them and to our <a href="/privacy">Privacy Policy</a>. You must be at least 18 to use littleloop. If you set up littleloop for a daycare, you confirm you're allowed to agree to these terms for that daycare.</p>
 
       <h2>What littleloop is, and isn't</h2>
       <ul>
-        <li>littleloop provides software for check-ins, updates, messaging, scheduling, invoices, care agreements and Field Trip location sharing.</li>
-        <li><strong>We do not provide childcare, and we do not employ, recommend, supervise or guarantee any sitter.</strong> Sitters are independent. Families are responsible for choosing a sitter and checking references, licensing and background.</li>
+        <li>littleloop provides software for check-ins, updates, messaging, scheduling, invoices, care agreements and Field Trip location sharing and, for daycares, classroom ratios, daily and incident reports, enrollment packets, lesson plans, skills progress and report cards.</li>
+        <li><strong>We do not provide childcare, and we do not employ, recommend, supervise or guarantee any sitter or daycare.</strong> Sitters and daycares are independent. Families are responsible for choosing care and checking references, licensing and background.</li>
         <li>A "verified" badge means a sitter uploaded a document that we looked at. It is not a guarantee of identity, qualifications or conduct.</li>
-        <li>Childcare licensing rules vary by state. Sitters are responsible for following the laws that apply to them.</li>
+        <li>Childcare licensing rules vary by state. Sitters and daycares are responsible for following the laws that apply to them, including ratio, record-keeping and reporting rules. littleloop's ratio counts, reports and records are tools to help, not a guarantee of compliance.</li>
       </ul>
 
       <h2>Your account</h2>
       <p>Keep your login details private and give accurate information. You're responsible for activity on your account. Tell us at <Mail/> if you think someone else has accessed it.</p>
 
-      <h2>Families and sitters</h2>
+      <h2>Families, sitters and daycares</h2>
       <ul>
         <li><strong>Payments:</strong> invoices in littleloop are records between a family and a sitter. Payments are made directly between them (for example by cash, Venmo or Cash App). littleloop is not a party to those payments and does not handle refunds or disputes about them.</li>
-        <li><strong>Care agreements:</strong> the agreement template is a general starting point, not legal advice. Sitters are responsible for the content of their own agreements. When you type your name and confirm, that counts as your electronic signature on that agreement.</li>
+        <li><strong>Care agreements and signatures:</strong> the agreement template is a general starting point, not legal advice. Sitters and daycares are responsible for the content of their own agreements and forms. When you type your name and confirm, that counts as your electronic signature on that agreement, form or report.</li>
+        <li><strong>Daycares:</strong> a daycare's director decides who joins as staff and what each person can do, and can remove a staff member's access at any time. Daily reports, incident reports, lesson plans and report cards are written by the daycare's staff, and the daycare is responsible for what they say.</li>
         <li><strong>Emergency information:</strong> parents are responsible for keeping children's medical details, contacts and pickup permissions accurate and up to date. littleloop is not an emergency service. In an emergency, call 911.</li>
         <li><strong>Location:</strong> Field Trip and arrival-time locations depend on the device and network, and may be delayed or inaccurate. Don't rely on them as the only way to know where a child is.</li>
       </ul>
@@ -135,10 +144,13 @@ function Terms() {
       <h2>Your content</h2>
       <p>You own the photos, posts, messages and other content you add. You give us permission to store, display and send that content to the people you share it with, as needed to run littleloop. You're responsible for having permission to share any photo you post.</p>
 
-      <h2>Pro subscriptions</h2>
+      <h2>Plans and payment</h2>
       <ul>
-        <li>Sitters can use littleloop free with up to 2 families. Pro (currently $5/month or $50/year) adds unlimited families and extra features. Families always use littleloop free.</li>
-        <li>Pro renews automatically until you cancel. You can cancel at any time from the Plan tab, and Pro stays active until the end of the period you paid for. We don't give refunds for partial periods unless the law requires it.</li>
+        <li><strong>Families</strong> always use littleloop free.</li>
+        <li><strong>Sitters</strong> can use littleloop free for up to {FREE_CHILD_LIMIT} children. Paid sitter plans are {SITTER_TIERS.map(tierText).join(', ')}, or ten times the monthly price for a year. A first paid plan may start with a free trial, shown at checkout.</li>
+        <li><strong>Daycares</strong> get a {DAYCARE_TRIAL_DAYS}-day free trial with no card. Daycare plans are {DAYCARE_TIERS.map(t => `${t.label} ${tierText(t)}`).join(', ')}, or ten times the monthly price for a year, with unlimited staff. If the trial ends without a plan, the daycare's tools pause until one is chosen; nothing is deleted.</li>
+        <li>Staff of a daycare that's on a plan or in its trial can use littleloop's sitter tools free while they work there.</li>
+        <li>Plans renew automatically until you cancel. You can cancel at any time from the Plan tab (sitters) or Center → Plan &amp; billing (daycares), and the plan stays active until the end of the period you paid for. Switching plans is prorated. We don't give refunds for partial periods unless the law requires it.</li>
         <li>We'll give at least 30 days' notice before changing the price of an existing subscription.</li>
       </ul>
 
@@ -149,7 +161,7 @@ function Terms() {
       <p>littleloop is provided "as is". We work hard to keep it running and accurate, but we don't promise it will always be available, error-free or secure, and we don't guarantee the conduct of any user.</p>
 
       <h2>Limitation of liability</h2>
-      <p>To the fullest extent the law allows, {COMPANY} is not liable for indirect or consequential damages, or for anything arising from the care arrangements, conduct or payments between families and sitters. Our total liability for any claim relating to littleloop is limited to the greater of the amount you paid us in the 12 months before the claim, or $50. Some places don't allow these limits, so they may not apply to you.</p>
+      <p>To the fullest extent the law allows, {COMPANY} is not liable for indirect or consequential damages, or for anything arising from the care arrangements, conduct or payments between families, sitters and daycares. Our total liability for any claim relating to littleloop is limited to the greater of the amount you paid us in the 12 months before the claim, or $50. Some places don't allow these limits, so they may not apply to you.</p>
 
       <h2>Governing law</h2>
       <p>These terms are governed by the laws of the State of Missouri. Any dispute will be handled in the state or federal courts located in Greene County, Missouri, unless the law where you live requires otherwise.</p>

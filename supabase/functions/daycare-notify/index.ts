@@ -5,6 +5,8 @@
 //   { kind: "incident", incidentId }   -> an incident report is ready to read and sign.
 //                                         Caller: the daycare's director or office; the report
 //                                         must have status "sent".
+//   { kind: "report_card", reportCardId } -> a report card was sent. Caller: the director or
+//                                         office; sent in the last 15 minutes.
 // Recipients are always the child's parents (members with role admin/member), looked up
 // here, never taken from the request. Messages carry no health details, only that
 // something is waiting in the app.
@@ -36,6 +38,7 @@ serve(async (req) => {
 
     let facilityId = "", childId = "", type = "", tag = "", itemId = "";
     let managersOnly = false;
+    let period = "";
 
     if (kind === "daily_report") {
       const { data: r } = await sb.from("daily_reports").select("id, facility_id, child_id, sent_at").eq("id", body.reportId).maybeSingle();
@@ -49,6 +52,12 @@ serve(async (req) => {
       if (r.status !== "sent") return reply({ error: "This report isn't waiting for a signature." }, 409);
       facilityId = r.facility_id; childId = r.child_id; itemId = r.id;
       type = "daycare_incident"; tag = "daycare_incident"; managersOnly = true;
+    } else if (kind === "report_card") {
+      const { data: r } = await sb.from("report_cards").select("id, facility_id, child_id, status, sent_at, period").eq("id", body.reportCardId).maybeSingle();
+      if (!r || r.status !== "sent" || !r.sent_at) return reply({ error: "Report card not found" }, 404);
+      if (Date.now() - new Date(r.sent_at).getTime() > 15 * 60 * 1000) return reply({ error: "This report card was sent a while ago." }, 409);
+      facilityId = r.facility_id; childId = r.child_id; itemId = r.id; period = r.period || "";
+      type = "daycare_report_card"; tag = "daycare_report_card"; managersOnly = true;
     } else {
       return reply({ error: "Unknown kind" }, 400);
     }
@@ -70,10 +79,12 @@ serve(async (req) => {
 
     const first = (child.preferred_name || child.name || "Your child").split(" ")[0];
     const daycare = fac?.name || "Daycare";
-    const title = kind === "daily_report" ? `${first}'s day at ${daycare}` : `Incident report from ${daycare}`;
-    const text  = kind === "daily_report"
-      ? `${first}'s daily report is ready: meals, naps and more.`
-      : `Please read and sign the report about ${first}.`;
+    const title = kind === "daily_report" ? `${first}'s day at ${daycare}`
+      : kind === "incident" ? `Incident report from ${daycare}`
+      : `Report card from ${daycare}`;
+    const text  = kind === "daily_report" ? `${first}'s daily report is ready: meals, naps and more.`
+      : kind === "incident" ? `Please read and sign the report about ${first}.`
+      : `${first}'s ${period ? period + " " : ""}report card is ready to read.`;
 
     const { error: nErr } = await sb.from("notifications").insert(userIds.map((uid) => ({
       user_id: uid, type, title, body: text, read: false,
