@@ -14,6 +14,7 @@ import RangePicker from './RangePicker';
 
 const OPEN_LIMIT_MS = 16 * 3600 * 1000;    // a clock-in older than this was a forgotten clock-out
 const ft = m => Math.round(m * 3.28084);
+const ftRound = m => Math.round(m * 3.28084 / 10) * 10;   // radius in feet, to the nearest 10 (500 ft is stored as 152 m)
 const time = ts => ts ? new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
 const weekday = iso => new Date(iso + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 const pad = n => String(n).padStart(2, '0');
@@ -135,7 +136,7 @@ function MyClock({ facility, facilityId, me, manager, settings, onSetup }) {
   else if (!gps) where = 'Finding your location…';
   else if (gps.error) where = gps.error;
   else where = inside ? `📍 At ${facility?.name || 'the daycare'} (about ${ft(dist)} ft away)`
-                      : `📍 About ${ft(dist).toLocaleString()} ft from ${facility?.name || 'the daycare'}.${required ? ` Clock in or out within ${ft(settings.radius_m)} ft.` : ''}`;
+                      : `📍 About ${ft(dist).toLocaleString()} ft from ${facility?.name || 'the daycare'}.${required ? ` Clock in or out within ${ftRound(settings.radius_m).toLocaleString()} ft.` : ''}`;
 
   return (
     <div>
@@ -203,7 +204,7 @@ function Team({ facilityId }) {
     const [{ data, error }, { data: recent }, { data: st }] = await Promise.all([
       supabase.rpc('daycare_timeclock_hours', { p_facility: facilityId, p_from: range[0], p_to: range[1] }),
       supabase.rpc('daycare_timeclock_hours', { p_facility: facilityId, p_from: localDate(y), p_to: localDate() }),
-      supabase.from('facility_staff').select('id, name, email, role, status').eq('facility_id', facilityId).eq('status', 'active').order('name'),
+      supabase.from('facility_staff').select('id, name, email, role, status').eq('facility_id', facilityId).in('status', ['active', 'invited']).order('name'),
     ]);
     if (error) setMsg({ err: errText(error) });
     setRows(data || []);
@@ -382,7 +383,7 @@ function AddShiftModal({ facilityId, staff, onClose, onSaved }) {
         <label className="fl">Staff member</label>
         <select className="fi" value={f.staff_id} onChange={e => set('staff_id', e.target.value)}>
           <option value="">Choose…</option>
-          {staff.map(s => <option key={s.id} value={s.id}>{s.name || s.email} · {roleLabel(s.role)}</option>)}
+          {staff.map(s => <option key={s.id} value={s.id}>{s.name || s.email} · {roleLabel(s.role)}{s.status === 'invited' ? ' (hasn\'t signed in yet)' : ''}</option>)}
         </select>
         <label className="fl">Date</label>
         <input className="fi" type="date" value={f.day} onChange={e => set('day', e.target.value)}/>
