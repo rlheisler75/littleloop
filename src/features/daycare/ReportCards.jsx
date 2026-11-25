@@ -256,7 +256,7 @@ function CardEditor({ card, child, facility, roomName, manager, userId, onClose,
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div>
           <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 20, fontWeight: 600 }}>{child?.avatar || '🎓'} {childName(child)}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>{[roomName, bandOf(card.band).label, `${assessed} of ${f.skills.length} skills assessed`].filter(Boolean).join(' · ')}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>{[roomName, bandOf(card.band).label !== roomName && `${bandOf(card.band).label} skills`, `${assessed} of ${f.skills.length} skills assessed`].filter(Boolean).join(' · ')}</div>
         </div>
         <CardStatus card={card}/>
       </div>
