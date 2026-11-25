@@ -18,6 +18,7 @@ import ResourcesTab from './ResourcesTab';
 import LearningTab from './LearningTab';
 import DaycareBillingTab from './DaycareBillingTab';
 import OfficeTab from './OfficeTab';
+import TimeClockTab from './TimeClockTab';
 import DaycarePlanCard, { trialDaysLeft } from './DaycarePlanCard';
 import { loadFacilityPlan } from '../../lib/plan';
 import { isManagerRole, roleLabel } from './api';
@@ -69,6 +70,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
 
   const NAV = [
     { id: 'today',      icon: '🏫', label: 'Today' },
+    { id: 'clock',      icon: '⏱️', label: 'Clock' },
     { id: 'daily',      icon: '📒', label: 'Daily' },
     { id: 'incidents',  icon: '🩹', label: 'Incidents' },
     { id: 'learning',   icon: '🌱', label: 'Learning' },
@@ -142,6 +144,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
                   <p>Your director or office needs to choose a plan before the daycare tools open again. Everything is saved.</p></div>
           ) : <>
           {activeTab === 'today'      && <TodayBoard {...props} onGoTo={setTab}/>}
+          {activeTab === 'clock'      && <TimeClockTab {...props}/>}
           {activeTab === 'daily'      && <DailyReportsTab {...props}/>}
           {activeTab === 'incidents'  && <IncidentsTab {...props}/>}
           {activeTab === 'learning'   && <LearningTab {...props}/>}

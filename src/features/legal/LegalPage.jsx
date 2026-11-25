@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import LoopMark from '../../components/ui/LoopMark';
 import { FREE_CHILD_LIMIT, SITTER_TIERS, DAYCARE_TIERS, DAYCARE_TRIAL_DAYS } from '../../lib/plan';
 
-export const LEGAL_UPDATED = 'November 24, 2026';
+export const LEGAL_UPDATED = 'November 25, 2026';
 export const SUPPORT_EMAIL = 'littleloop@loopwaresolutions.com';
 const COMPANY = 'Loopware Solutions LLC';
 
@@ -51,7 +51,7 @@ function Privacy() {
         <li><strong>Care activity:</strong> check-in and check-out times, schedules, photo and activity posts, comments, messages, notes and invoices.</li>
         <li><strong>Daycare records,</strong> if your family connects to a daycare that uses littleloop: your child's classroom and enrollment details; forms you sign and documents you upload for the enrollment packet (such as immunization records and doctor's notes); photo consent; what staff log during the day (meals, bottles, naps, diapers, moods, activities and medicine given) and the daily report; incident reports and your signature on them; the classroom's lesson plans; and your child's skills progress and report cards.</li>
         <li><strong>Daycare staff details:</strong> a staff member's name, email, role (director, office or teacher), home classroom, and when they join or leave a classroom during the day, so the daycare can keep its child-to-staff ratios.</li>
-        <li><strong>Location:</strong> only when a sitter starts a Field Trip, the sitter's device location is shared with the connected families until the trip ends, and the route is saved so families can see where the group went. When a parent taps "On My Way", their estimated arrival is shared with their sitter. We don't track location at any other time.</li>
+        <li><strong>Location:</strong> only when a sitter starts a Field Trip, the sitter's device location is shared with the connected families until the trip ends, and the route is saved so families can see where the group went. When a parent taps "On My Way", their estimated arrival is shared with their sitter. When daycare staff clock in or out with the time clock, the phone's location at that moment is saved with the punch so the daycare can confirm it was made on site; the director and office can see it. We don't track location at any other time.</li>
         <li><strong>Agreements:</strong> care agreements, typed-name signatures with the date and the signer's account, and any signed paper copies a sitter uploads.</li>
         <li><strong>Sitter details:</strong> public profile information a sitter chooses to publish, verification documents a sitter uploads (such as a background check or CPR card), payment handles (such as a Venmo username) and, for year-end tax statements, a sitter's legal name, address and taxpayer ID.</li>
         <li><strong>Billing:</strong> when a sitter or a daycare subscribes to a paid plan, payment is handled by Stripe. We never see or store full card numbers.</li>
@@ -120,7 +120,7 @@ function Terms() {
 
       <h2>What littleloop is, and isn't</h2>
       <ul>
-        <li>littleloop provides software for check-ins, updates, messaging, scheduling, invoices, care agreements and Field Trip location sharing and, for daycares, classroom ratios, daily and incident reports, enrollment packets, lesson plans, skills progress and report cards.</li>
+        <li>littleloop provides software for check-ins, updates, messaging, scheduling, invoices, care agreements and Field Trip location sharing and, for daycares, classroom ratios, daily and incident reports, enrollment packets, lesson plans, skills progress, report cards, tuition billing, bookkeeping reports and a staff time clock.</li>
         <li><strong>We do not provide childcare, and we do not employ, recommend, supervise or guarantee any sitter or daycare.</strong> Sitters and daycares are independent. Families are responsible for choosing care and checking references, licensing and background.</li>
         <li>A "verified" badge means a sitter uploaded a document that we looked at. It is not a guarantee of identity, qualifications or conduct.</li>
         <li>Childcare licensing rules vary by state. Sitters and daycares are responsible for following the laws that apply to them, including ratio, record-keeping and reporting rules. littleloop's ratio counts, reports and records are tools to help, not a guarantee of compliance.</li>
@@ -135,7 +135,7 @@ function Terms() {
         <li><strong>Care agreements and signatures:</strong> the agreement template is a general starting point, not legal advice. Sitters and daycares are responsible for the content of their own agreements and forms. When you type your name and confirm, that counts as your electronic signature on that agreement, form or report.</li>
         <li><strong>Daycares:</strong> a daycare's director decides who joins as staff and what each person can do, and can remove a staff member's access at any time. Daily reports, incident reports, lesson plans and report cards are written by the daycare's staff, and the daycare is responsible for what they say.</li>
         <li><strong>Emergency information:</strong> parents are responsible for keeping children's medical details, contacts and pickup permissions accurate and up to date. littleloop is not an emergency service. In an emergency, call 911.</li>
-        <li><strong>Location:</strong> Field Trip and arrival-time locations depend on the device and network, and may be delayed or inaccurate. Don't rely on them as the only way to know where a child is.</li>
+        <li><strong>Location:</strong> Field Trip, arrival-time and time clock locations depend on the device and network, and may be delayed or inaccurate. Don't rely on them as the only way to know where a child is. The daycare is responsible for its staff timesheets, payroll and wage-and-hour compliance; littleloop's hours and overtime figures are a tool to help, not payroll or legal advice.</li>
       </ul>
 
       <h2>Acceptable use</h2>

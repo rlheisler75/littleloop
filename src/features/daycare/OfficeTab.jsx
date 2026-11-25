@@ -3,8 +3,9 @@ import { supabase } from '../../lib/supabase';
 import { Modal } from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import { money, longDate, shortDate, methodLabel } from './billing';
-import { EXPENSE_CATEGORIES, expenseCat, EXPENSE_METHODS, FREQUENCIES, INCOME_LABELS, RANGE_PRESETS, presetRange,
+import { EXPENSE_CATEGORIES, expenseCat, EXPENSE_METHODS, FREQUENCIES, INCOME_LABELS, presetRange,
          hours, monthLabel, downloadCsv } from './office';
+import RangePicker from './RangePicker';
 import { localDate } from './enrollment';
 import { errText } from './api';
 
@@ -41,25 +42,6 @@ export default function OfficeTab({ facility, facilityId }) {
       {view === 'attendance' && <Attendance facility={facility} facilityId={facilityId}/>}
       {view === 'staff'      && <StaffHours facility={facility} facilityId={facilityId}/>}
       {view === 'export'     && <QuickBooksExport facility={facility} facilityId={facilityId}/>}
-    </div>
-  );
-}
-
-function RangePicker({ range, setRange, presets = RANGE_PRESETS }) {
-  const [preset, setPreset] = useState(null);
-  return (
-    <div className="card" style={{ padding: '10px 12px', marginBottom: 10 }}>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
-        {presets.map(p => (
-          <button key={p.id} className="chip" onClick={() => { setPreset(p.id); setRange(presetRange(p.id)); }}
-            style={{ cursor: 'pointer', fontSize: 11, fontWeight: 700, background: preset === p.id ? 'var(--accent)' : undefined, color: preset === p.id ? '#fff' : undefined }}>{p.label}</button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12 }}>
-        <input className="fi" type="date" value={range[0]} onChange={e => { setPreset(null); setRange([e.target.value, range[1]]); }} style={{ width: 'auto', marginBottom: 0, padding: '5px 8px' }} aria-label="From"/>
-        <span>to</span>
-        <input className="fi" type="date" value={range[1]} onChange={e => { setPreset(null); setRange([range[0], e.target.value]); }} style={{ width: 'auto', marginBottom: 0, padding: '5px 8px' }} aria-label="To"/>
-      </div>
     </div>
   );
 }
@@ -428,32 +410,53 @@ function Attendance({ facility, facilityId }) {
 
 // ── Staff hours ──────────────────────────────────────────────────────────────
 function StaffHours({ facilityId }) {
-  const [range, setRange] = useState(() => presetRange('last_week'));
-  const [rows,  setRows]  = useState(null);
-  const [open,  setOpen]  = useState(null);
-  const [msg,   setMsg]   = useState(null);
+  const [range,  setRange]  = useState(() => presetRange('last_week'));
+  const [source, setSource] = useState('clock');   // clock = time clock punches; rooms = "I'm in this room" sign-ins
+  const [rows,   setRows]   = useState(null);
+  const [open,   setOpen]   = useState(null);
+  const [msg,    setMsg]    = useState(null);
   useEffect(() => {
-    setRows(null);
-    supabase.rpc('daycare_staff_hours', { p_facility: facilityId, p_from: range[0], p_to: range[1] }).then(({ data, error }) => {
-      if (error) setMsg({ err: errText(error) });
-      setRows(data || []);
-    });
-  }, [facilityId, range]);
+    setRows(null); setMsg(null);
+    const args = { p_facility: facilityId, p_from: range[0], p_to: range[1] };
+    if (source === 'clock') {
+      supabase.rpc('daycare_timeclock_hours', args).then(({ data, error }) => {
+        if (error) setMsg({ err: errText(error) });
+        const byDay = {};   // one row per person per day (shifts added up)
+        for (const r of data || []) {
+          const x = byDay[r.staff_id + '|' + r.day] ||= { staff_id: r.staff_id, staff_name: r.staff_name, role: r.role, day: r.day, minutes: 0, still_open: false };
+          x.minutes += r.minutes || 0;
+          if (!r.clock_out) x.still_open = true;
+        }
+        setRows(Object.values(byDay));
+      });
+    } else {
+      supabase.rpc('daycare_staff_hours', args).then(({ data, error }) => {
+        if (error) setMsg({ err: errText(error) });
+        setRows(data || []);
+      });
+    }
+  }, [facilityId, range, source]);
   const staff = {};
   for (const r of rows || []) (staff[r.staff_id] ||= { name: r.staff_name, role: r.role, days: [] }).days.push(r);
   const list = Object.entries(staff).sort((a, b) => a[1].name.localeCompare(b[1].name));
   function csv() {
     downloadCsv(`staff-hours-${range[0]}-to-${range[1]}.csv`, [
-      ['Staff member', 'Role', 'Date', 'Hours', 'Still signed in'],
+      ['Staff member', 'Role', 'Date', 'Hours', source === 'clock' ? 'Missing clock-out' : 'Still signed in'],
       ...(rows || []).map(r => [r.staff_name, r.role, r.day, hours(r.minutes), r.still_open ? 'yes' : '']),
     ]);
   }
   return (
     <div>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+        {[['clock', 'Time clock'], ['rooms', 'Room sign-ins']].map(([id, label]) => (
+          <button key={id} className="chip" onClick={() => setSource(id)}
+            style={{ cursor: 'pointer', fontSize: 11, fontWeight: 700, background: source === id ? 'var(--accent)' : undefined, color: source === id ? '#fff' : undefined }}>{label}</button>
+        ))}
+      </div>
       <RangePicker range={range} setRange={setRange}/>
       {msg && <div className="al al-e">{msg.err}</div>}
       {!rows ? <div style={{ textAlign: 'center', padding: 40 }}><Spinner size={22}/></div>
-        : list.length === 0 ? <div className="al al-s">No room sign-ins in these dates.</div> : (
+        : list.length === 0 ? <div className="al al-s">{source === 'clock' ? 'No clock-ins in these dates.' : 'No room sign-ins in these dates.'}</div> : (
           <div className="card" style={{ padding: '4px 14px' }}>
             {list.map(([id, s]) => (
               <div key={id} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -464,7 +467,7 @@ function StaffHours({ facilityId }) {
                 </button>
                 {open === id && s.days.map(d => (
                   <div key={d.day} style={{ display: 'flex', gap: 10, fontSize: 12, padding: '3px 0 3px 12px', color: 'var(--text-dim)' }}>
-                    <span style={{ flex: 1 }}>{longDate(d.day)}{d.still_open ? ' · still signed in to a room' : ''}</span>
+                    <span style={{ flex: 1 }}>{longDate(d.day)}{d.still_open ? (source === 'clock' ? ' · no clock-out' : ' · still signed in to a room') : ''}</span>
                     <span>{hours(d.minutes)} h</span>
                   </div>
                 ))}
@@ -474,7 +477,9 @@ function StaffHours({ facilityId }) {
         )}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
         <button className="bg" style={{ fontSize: 12 }} onClick={csv} disabled={!rows?.length}>⬇ Download CSV for payroll</button>
-        <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>From "I'm in this room" sign-ins on the Today board. Time spent outside a room (office, breaks) isn't counted.</span>
+        <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{source === 'clock'
+          ? 'From the Clock tab. Fix a missed or wrong punch in Clock → Team.'
+          : 'From “I’m in this room” sign-ins on the Today board. Time spent outside a room (office, breaks) isn’t counted.'}</span>
       </div>
     </div>
   );
