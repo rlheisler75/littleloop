@@ -244,8 +244,9 @@ begin
   end if;
   if p_period_start is null then raise exception 'Choose the period to bill.' using errcode = '22023'; end if;
   select * into s from daycare_billing_settings where facility_id = p_facility;
-  if s.facility_id is null then
-    insert into daycare_billing_settings (facility_id) values (p_facility) returning * into s;
+  if s.facility_id is null then   -- two first-time previews can race: insert once, then read
+    insert into daycare_billing_settings (facility_id) values (p_facility) on conflict (facility_id) do nothing;
+    select * into s from daycare_billing_settings where facility_id = p_facility;
   end if;
   if s.cycle = 'weekly' and extract(isodow from p_period_start) <> 1 then
     raise exception 'Weekly billing periods start on a Monday.' using errcode = '22023';
