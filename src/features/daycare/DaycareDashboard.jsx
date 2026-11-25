@@ -20,6 +20,7 @@ import DaycareBillingTab from './DaycareBillingTab';
 import DaycarePlanCard, { trialDaysLeft } from './DaycarePlanCard';
 import { loadFacilityPlan } from '../../lib/plan';
 import { isManagerRole, roleLabel } from './api';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 // Staff side of a daycare: one dashboard per daycare the user works at.
 export default function DaycareDashboard({ session, onSignOut, switchTo = null }) {
@@ -131,6 +132,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
               <button className="bp" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => setTab('center')}>See plans</button>
             </div>
           )}
+          <ErrorBoundary key={activeTab} scope={`daycare:${activeTab}`}>
           {locked ? (
             manager
               ? <div style={{ maxWidth: 640, margin: '0 auto' }}><DaycarePlanCard session={session} facility={facility} plan={plan} onChanged={loadPlan}/></div>
@@ -150,6 +152,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
           {activeTab === 'staff'      && <StaffTab {...props}/>}
           {activeTab === 'center'     && <CenterTab {...props}/>}
           </>}
+          </ErrorBoundary>
         </div>
       </div>
     </>

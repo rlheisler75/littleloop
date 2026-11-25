@@ -27,6 +27,7 @@ import ParentFollowUs from './components/FieldTrip/ParentFollowUs';
 import { ParentAgreementsCard } from './features/agreements/FamilyAgreements';
 import { FamilyCareInfoCard } from './features/agreements/FamilyInfo';
 import ParentDaycareCard from './features/daycare/ParentDaycareCard';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function NewFamilySetup({ session, onComplete, onSignOut }) {
   const [step,       setStep]       = useState(0);
@@ -279,6 +280,7 @@ export default function ParentDashboard({ session, onSignOut, switchTo = null })
         ))}
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', maxWidth: 800, width: '100%', margin: '0 auto' }}>
+        <ErrorBoundary key={tab} scope={`parent:${tab}`}>
         {tab === 'home' && (
           <div>
             {family ? (
@@ -382,6 +384,7 @@ export default function ParentDashboard({ session, onSignOut, switchTo = null })
         {tab === 'invoices' && family && <FamilyInvoicesTab familyId={family.id} currentUserId={session.user.id}/>}
         {tab === 'browse' && <BrowseSitters session={session} familyId={family?.id} familyName={family?.name} onConnected={load}/>}
         {tab === 'profile' && <MemberProfileTab memberId={member?.id} memberName={name} onNameChange={setName}/>}
+        </ErrorBoundary>
       </div>
       <ChildProfileModal open={!!selectedChild} onClose={() => setSelectedChild(null)} child={selectedChild} sitterId={null} isParent={true}/>
       <ChildModal open={showAddChild || !!editChild} onClose={() => { setShowAddChild(false); setEditChild(null); }} familyId={family?.id} child={editChild || null} onSaved={load}/>

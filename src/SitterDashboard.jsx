@@ -13,6 +13,7 @@ import { SitterMessagesWrapper } from './features/messages/index';
 import { SitterProfileTab } from './features/profile/index';
 import SitterOnboarding from './features/onboarding/SitterOnboarding';
 import BillingTab from './BillingTab';
+import ErrorBoundary from './components/ErrorBoundary';
 import SitterFieldTripPanel from './components/FieldTrip/SitterFieldTripPanel';
 import SitterParentMap from './components/FieldTrip/SitterParentMap';
 import GettingStarted from './features/onboarding/GettingStarted';
@@ -212,6 +213,7 @@ export default function SitterDashboard({ session, onSignOut, switchTo = null })
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', maxWidth: 800, width: '100%', margin: '0 auto' }}>
+        <ErrorBoundary key={tab} scope={`sitter:${tab}`}>
         {isPastDue && tab !== 'billing' && (
           <div onClick={() => setTab('billing')} style={{ cursor: 'pointer', marginBottom: 14, padding: '10px 14px', background: 'rgba(224,90,90,.1)', border: '1px solid rgba(224,90,90,.25)', borderRadius: 10, fontSize: 13, color: '#E05A5A' }}>
             ⚠️ Your last payment didn't go through. Update your card to keep your plan →
@@ -236,6 +238,7 @@ export default function SitterDashboard({ session, onSignOut, switchTo = null })
         {tab === 'messages' && <SitterMessagesWrapper sitterId={sitterId} sitterName={name}/>}
         {tab === 'profile'  && <SitterProfileTab sitterId={sitterId} sitterName={name} onNameChange={setName}/>}
         {tab === 'billing'  && <BillingTab session={session} onChanged={refreshSub}/>}
+        </ErrorBoundary>
       </div>
     </div>
   );
