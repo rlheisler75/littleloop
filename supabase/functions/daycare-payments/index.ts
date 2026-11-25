@@ -1,4 +1,6 @@
-// Daycare online payments (phase 4C): Stripe Connect with standard accounts and direct charges.
+// Daycare online payments (phase 4C): Stripe Connect with direct charges. Each daycare's account is
+// an Accounts v2 account with the full Stripe Dashboard, Stripe collecting its fees from the daycare
+// and covering losses (the same as a v1 "standard" account; new platforms must create v2 accounts).
 // Each daycare connects its own Stripe account; parents pay on Stripe Checkout created ON that
 // account, so the money goes straight to the daycare and Stripe charges the daycare its fees.
 // littleloop's platform fee (daycare_payment_accounts.fee_bps, 25 = 0.25%) is the application fee.
@@ -41,6 +43,19 @@ async function stripe(test: boolean, path: string, method = "GET", body?: Record
   const res = await fetch(`https://api.stripe.com/v1${path}`, { method, headers, body: body ? new URLSearchParams(body).toString() : undefined });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) console.error(`Stripe ${method} ${path} =>`, res.status, JSON.stringify(data?.error || data));
+  return { ok: res.ok, status: res.status, data };
+}
+// Connected accounts use Stripe's Accounts v2 API (JSON, versioned). Their acct_ ids still work
+// with the v1 endpoints above (Checkout Sessions with the Stripe-Account header).
+const STRIPE_V2_VERSION = "2026-11-18.endive";
+async function stripeV2(test: boolean, path: string, method = "GET", body?: unknown) {
+  const key = test ? TEST_KEY : LIVE_KEY;
+  if (!key) return { ok: false, status: 500, data: { error: { message: test ? "Stripe test mode isn't set up yet." : "Stripe isn't set up yet." } } };
+  const headers: Record<string, string> = { Authorization: `Bearer ${key}`, "Stripe-Version": STRIPE_V2_VERSION };
+  if (body) headers["Content-Type"] = "application/json";
+  const res = await fetch(`https://api.stripe.com/v2${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) console.error(`Stripe v2 ${method} ${path} =>`, res.status, JSON.stringify(data?.error || data));
   return { ok: res.ok, status: res.status, data };
 }
 const stripeMsg = (r: any) => r?.data?.error?.message || "Stripe didn't answer. Please try again.";
@@ -103,15 +118,20 @@ async function announce(sb: any, p: any, kind: "paid" | "failed" | "refunded" | 
 
 async function refreshAccount(sb: any, acct: any) {
   if (!acct?.stripe_account_id) return acct;
-  const r = await stripe(acct.test_mode, `/accounts/${acct.stripe_account_id}`);
+  const r = await stripeV2(acct.test_mode, `/core/accounts/${acct.stripe_account_id}?include[0]=configuration.merchant&include[1]=requirements`);
   if (!r.ok) return acct;
   const a = r.data;
-  const due = [...(a.requirements?.currently_due || []), ...(a.requirements?.past_due || [])];
-  const ach = a.capabilities?.us_bank_account_ach_payments;
+  const caps = a.configuration?.merchant?.capabilities || {};
+  const entries = Array.isArray(a.requirements?.entries) ? a.requirements.entries : [];
+  const userDue = entries.filter((e: any) => e.awaiting_action_from === "user" && ["currently_due", "past_due"].includes(e.minimum_deadline?.status));
+  const card = caps.card_payments?.status, ach = caps.ach_debit_payments?.status;
   const upd = {
-    charges_enabled: !!a.charges_enabled, payouts_enabled: !!a.payouts_enabled, details_submitted: !!a.details_submitted,
+    charges_enabled: card === "active",
+    payouts_enabled: caps.stripe_balance?.payouts?.status === "active",
+    details_submitted: userDue.length === 0,
     bank_available: ach === undefined ? acct.bank_available : ach === "active",
-    requirements: due.length ? "Stripe needs a few more details." : a.requirements?.disabled_reason ? "Stripe is reviewing the account." : null,
+    requirements: userDue.length ? "Stripe needs a few more details."
+      : card !== "active" && entries.some((e: any) => e.awaiting_action_from === "stripe") ? "Stripe is reviewing the account." : null,
     updated_at: nowIso(),
   };
   await sb.from("daycare_payment_accounts").update(upd).eq("facility_id", acct.facility_id);
@@ -185,8 +205,9 @@ async function handleWebhook(sb: any, text: string) {
   const fromAcct = String(event?.account || "");
   const id = String(obj?.id || "");
 
-  if (type.startsWith("account.") || type.startsWith("capability.")) {
-    const acctId = type.startsWith("account.") ? id : fromAcct;
+  if (type.startsWith("account.") || type.startsWith("capability.") || type.startsWith("v2.core.account")) {
+    // v1 snapshot events carry the account (or it's the event's account); v2 thin events name it in related_object
+    const acctId = type.startsWith("v2.") ? String(event?.related_object?.id || "") : type.startsWith("account.") ? id : fromAcct;
     if (!/^acct_[A-Za-z0-9]+$/.test(acctId)) return reply({ received: true });
     const { data: acct } = await sb.from("daycare_payment_accounts").select("*").eq("stripe_account_id", acctId).maybeSingle();
     if (acct) await refreshAccount(sb, acct);
@@ -260,14 +281,21 @@ serve(async (req) => {
       }
       if (!acct.stripe_account_id) {
         const { data: fac } = await sb.from("facilities").select("name").eq("id", facilityId).maybeSingle();
-        const params: Record<string, string> = {
-          type: "standard", country: "US",
-          "business_profile[name]": fac?.name || "Daycare", "business_profile[mcc]": "8351",
-          "business_profile[product_description]": "Child care tuition and fees",
-          "metadata[facility_id]": facilityId, "metadata[app]": "littleloop",
+        // Full Stripe Dashboard; Stripe charges the daycare its fees and covers losses (like a standard account)
+        const params: Record<string, unknown> = {
+          display_name: (fac?.name || "Daycare").slice(0, 100),
+          dashboard: "full",
+          identity: { country: "us" },
+          configuration: { merchant: { mcc: "8351", capabilities: { card_payments: { requested: true }, ach_debit_payments: { requested: true } } } },
+          defaults: {
+            currency: "usd", locales: ["en-US"],
+            responsibilities: { fees_collector: "stripe", losses_collector: "stripe" },
+            profile: { product_description: "Child care tuition and fees" },
+          },
+          metadata: { facility_id: facilityId, app: "littleloop" },
         };
-        if (user.email) params.email = user.email;
-        const r = await stripe(acct.test_mode, "/accounts", "POST", params);
+        if (user.email) params.contact_email = user.email;
+        const r = await stripeV2(acct.test_mode, "/core/accounts", "POST", params);
         if (!r.ok || !r.data?.id) return reply({ error: `Couldn't start Stripe setup: ${stripeMsg(r)}` }, 502);
         const { data: saved } = await sb.from("daycare_payment_accounts").update({ stripe_account_id: r.data.id, updated_at: nowIso() })
           .eq("facility_id", facilityId).is("stripe_account_id", null).select("*").maybeSingle();
@@ -275,9 +303,14 @@ serve(async (req) => {
         else ({ data: acct } = await sb.from("daycare_payment_accounts").select("*").eq("facility_id", facilityId).maybeSingle());
       }
       const base = baseUrl(body.returnUrl);
-      const link = await stripe(acct.test_mode, "/account_links", "POST", {
-        account: acct.stripe_account_id, type: "account_onboarding",
-        refresh_url: withParams(base, { daycare_connect: "retry" }), return_url: withParams(base, { daycare_connect: "done" }),
+      const link = await stripeV2(acct.test_mode, "/core/account_links", "POST", {
+        account: acct.stripe_account_id,
+        use_case: {
+          type: "account_onboarding",
+          account_onboarding: {
+            refresh_url: withParams(base, { daycare_connect: "retry" }), return_url: withParams(base, { daycare_connect: "done" }),
+          },
+        },
       });
       if (!link.ok || !link.data?.url) return reply({ error: `Couldn't open Stripe: ${stripeMsg(link)}` }, 502);
       return reply({ url: link.data.url });
