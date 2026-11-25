@@ -201,6 +201,7 @@ end $$;
 revoke all on public.daycare_payment_accounts, public.daycare_online_payments from anon;
 revoke execute on function public.daycare_set_payment_methods(uuid, boolean, boolean), public.daycare_online_pay_info(uuid),
   public.daycare_record_online_payment(uuid), public.daycare_online_payment_refunded(uuid, numeric) from anon, public;
+revoke execute on function public.daycare_record_online_payment(uuid), public.daycare_online_payment_refunded(uuid, numeric) from authenticated;
 grant execute on function public.daycare_set_payment_methods(uuid, boolean, boolean), public.daycare_online_pay_info(uuid) to authenticated;
 grant execute on function public.daycare_record_online_payment(uuid), public.daycare_online_payment_refunded(uuid, numeric) to service_role;
 
