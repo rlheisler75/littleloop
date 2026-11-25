@@ -16,6 +16,7 @@ import DailyReportsTab from './DailyReportsTab';
 import IncidentsTab from './IncidentsTab';
 import ResourcesTab from './ResourcesTab';
 import LearningTab from './LearningTab';
+import DaycareBillingTab from './DaycareBillingTab';
 import DaycarePlanCard, { trialDaysLeft } from './DaycarePlanCard';
 import { loadFacilityPlan } from '../../lib/plan';
 import { isManagerRole, roleLabel } from './api';
@@ -73,6 +74,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
     { id: 'feed',       icon: '🌸', label: 'Updates' },
     { id: 'resources',  icon: '📚', label: 'Resources' },
     ...(manager ? [
+      { id: 'billing',    icon: '💵', label: 'Billing' },
       { id: 'records',    icon: '📋', label: 'Records' },
       { id: 'classrooms', icon: '🧸', label: 'Rooms' },
       { id: 'staff',      icon: '👥', label: 'Staff' },
@@ -142,6 +144,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
           {activeTab === 'resources'  && <ResourcesTab {...props}/>}
           {activeTab === 'families'   && <DaycareFamilies {...props}/>}
           {activeTab === 'feed'       && <DaycareFeed {...props}/>}
+          {activeTab === 'billing'    && <DaycareBillingTab {...props}/>}
           {activeTab === 'records'    && <RecordsTab {...props}/>}
           {activeTab === 'classrooms' && <ClassroomsTab {...props}/>}
           {activeTab === 'staff'      && <StaffTab {...props}/>}

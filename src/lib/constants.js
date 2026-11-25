@@ -120,6 +120,7 @@ export const PUSH_PREFS_PARENT = [
   { key:'daycare_report',   label:'Daycare daily reports', icon:'📒' },
   { key:'daycare_incident', label:'Daycare incident reports', icon:'🩹' },
   { key:'daycare_report_card', label:'Daycare report cards', icon:'🎓' },
+  { key:'daycare_billing',  label:'Daycare bills',            icon:'🧾' },
 ];
 
 export const PUSH_PREFS_SITTER_FULL = [

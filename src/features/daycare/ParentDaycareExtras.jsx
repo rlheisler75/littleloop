@@ -13,6 +13,7 @@ import { errText } from './api';
 import { LessonPlanWeek } from './LessonPlans';
 import { ReportCardView } from './ReportCards';
 import { weekStart, weekText, childName, printReportCard } from './learning';
+import { money, longDate, periodText, entryLabel, printStatement, printTaxStatement } from './billing';
 
 // Parent home, under a connected daycare: the day's report, incident reports to sign, the
 // week's lesson plan, report cards, and the daycare's resources. Daily reports and incidents are for parents (admin/member);
@@ -25,13 +26,16 @@ export default function ParentDaycareExtras({ facility, kids, memberRole }) {
 
   const load = useCallback(async () => {
     const ids = kidIds ? kidIds.split(',') : [];
-    const [care, reps, { data: inc }, res, { data: en }, { data: cards }] = await Promise.all([
+    const familyId = kids[0]?.family_id || null;
+    const [care, reps, { data: inc }, res, { data: en }, { data: cards }, { data: bill }, { data: lastSt }] = await Promise.all([
       isParent && ids.length ? loadCareLogs(facility.id, localDate(), ids) : {},
       isParent && ids.length ? loadDailyReports(facility.id, localDate(), ids) : {},
       isParent && ids.length ? supabase.from('incident_reports').select('id, status').eq('facility_id', facility.id).in('child_id', ids) : { data: [] },
       loadResources(facility.id),
       ids.length ? supabase.from('facility_enrollments').select('child_id, classroom_id, classrooms(name)').eq('facility_id', facility.id).eq('status', 'active').in('child_id', ids) : { data: [] },
       isParent && ids.length ? supabase.from('report_cards').select('id, parent_seen_at').eq('facility_id', facility.id).in('child_id', ids) : { data: [] },
+      isParent && familyId ? supabase.from('daycare_ledger').select('kind, amount').eq('facility_id', facility.id).eq('family_id', familyId).eq('payer', 'family').is('voided_at', null) : { data: [] },
+      isParent && familyId ? supabase.from('daycare_statements').select('due_date, balance_due').eq('facility_id', facility.id).eq('family_id', familyId).order('number', { ascending: false }).limit(1).maybeSingle() : { data: null },
     ]);
     const rooms = [...new Map((en || []).filter(e => e.classroom_id).map(e => [e.classroom_id, { id: e.classroom_id, name: e.classrooms?.name || 'Classroom' }])).values()];
     const { data: plans } = rooms.length
@@ -45,6 +49,7 @@ export default function ParentDaycareExtras({ facility, kids, memberRole }) {
       resources: res.filter(r => r.published).length,
       rooms, plans: plans || [],
       cards: (cards || []).length, unread: (cards || []).filter(c => !c.parent_seen_at).length,
+      billing: (bill || []).length || lastSt ? { balance: (bill || []).reduce((s, e) => s + (e.kind === 'charge' ? 1 : -1) * Number(e.amount), 0), due: lastSt?.due_date || null } : null,
     });
   }, [facility.id, kidIds, isParent]);
 
@@ -67,6 +72,12 @@ export default function ParentDaycareExtras({ facility, kids, memberRole }) {
     isParent && counts.cards > 0 && {
       id: 'reports', icon: '🎓', title: 'Report cards', alert: counts.unread > 0, action: counts.unread > 0 ? 'Read' : 'Open',
       sub: counts.unread ? `${counts.unread} new report card${counts.unread === 1 ? '' : 's'} to read` : `${counts.cards} report card${counts.cards === 1 ? '' : 's'}`,
+    },
+    isParent && counts.billing && {
+      id: 'billing', icon: '🧾', title: 'Billing', action: 'Open',
+      alert: counts.billing.balance > 0.004 && counts.billing.due && counts.billing.due < localDate(),
+      sub: counts.billing.balance > 0.004 ? `${money(counts.billing.balance)} due${counts.billing.due ? ` by ${longDate(counts.billing.due)}` : ''}`
+         : counts.billing.balance < -0.004 ? `${money(-counts.billing.balance)} credit` : 'Paid up. Thank you!',
     },
     counts.resources > 0 && {
       id: 'resources', icon: '📚', title: 'Resources',
@@ -93,6 +104,7 @@ export default function ParentDaycareExtras({ facility, kids, memberRole }) {
       {open === 'resources' && <ParentResources facility={facility} onClose={() => setOpen(null)}/>}
       {open === 'plans'     && <ParentLessonPlans rooms={counts.rooms} onClose={() => setOpen(null)}/>}
       {open === 'reports'   && <ParentReportCards facility={facility} kids={kids} rooms={counts.rooms} onClose={() => { setOpen(null); load(); }}/>}
+      {open === 'billing'   && <ParentBilling facility={facility} familyId={kids[0]?.family_id} onClose={() => setOpen(null)}/>}
     </>
   );
 }
@@ -406,6 +418,87 @@ function ReadReportCard({ card, child, facility, roomName, onBack }) {
         <button className="bg" onClick={() => printReportCard(seen ? { ...card, parent_seen_at: seen.at, parent_seen_name: 'you', parent_comment: seen.comment } : card, child, facility.name, roomName)}>🖨 Print</button>
         <button className="bg full" onClick={onBack} disabled={busy}>Back</button>
       </div>
+    </Modal>
+  );
+}
+
+// The family's account with the daycare: balance, statements, payments, and the year-end
+// statement for taxes. Parents (admin/member) only; read-only.
+function ParentBilling({ facility, familyId, onClose }) {
+  const [data, setData] = useState(null);
+  const [year, setYear] = useState(new Date().getMonth() < 3 ? new Date().getFullYear() - 1 : new Date().getFullYear());
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    if (!familyId) return;
+    Promise.all([
+      supabase.rpc('daycare_billing_info', { p_facility: facility.id }),
+      supabase.from('daycare_statements').select('*').eq('facility_id', facility.id).eq('family_id', familyId).order('number', { ascending: false }).limit(24),
+      supabase.from('daycare_ledger').select('*').eq('facility_id', facility.id).eq('family_id', familyId).eq('payer', 'family').order('entry_date', { ascending: false }).order('created_at', { ascending: false }).limit(60),
+    ]).then(([{ data: info }, { data: sts }, { data: entries }]) => setData({ info, statements: sts || [], entries: entries || [] }));
+  }, [facility.id, familyId]);
+
+  async function printSt(st) {
+    const { data: lines } = await supabase.from('daycare_ledger').select('*').eq('statement_id', st.id).order('entry_date');
+    printStatement(st, lines, data?.info, null);
+  }
+  async function printYear() {
+    setError(null);
+    const { data: t, error: err } = await supabase.rpc('daycare_tax_statement', { p_facility: facility.id, p_family: familyId, p_year: year });
+    if (err) { setError(errText(err)); return; }
+    printTaxStatement(t);
+  }
+
+  const live = (data?.entries || []).filter(e => !e.voided_at);
+  const balance = live.reduce((s, e) => s + (e.kind === 'charge' ? 1 : -1) * Number(e.amount), 0);
+  const thisYear = new Date().getFullYear();
+  return (
+    <Modal open onClose={onClose}>
+      <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 21, fontWeight: 600, marginBottom: 2 }}>🧾 Billing</div>
+      <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 10 }}>{facility.name}</div>
+      {!data ? <div style={{ textAlign: 'center', padding: 30 }}><Spinner size={20}/></div> : (
+        <div style={{ maxHeight: '64vh', overflowY: 'auto' }}>
+          <div className="card" style={{ padding: '12px 14px', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.6px', color: 'var(--text-faint)' }}>Balance</div>
+            <div style={{ fontSize: 26, fontWeight: 800 }}>{balance < -0.004 ? `${money(-balance)} credit` : money(balance)}</div>
+            {data.statements[0] && balance > 0.004 && <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Due by {longDate(data.statements[0].due_date)}</div>}
+            {data.info?.payment_instructions && <div style={{ fontSize: 12, marginTop: 8, padding: '8px 10px', borderRadius: 10, background: 'var(--input-bg)' }}><strong>How to pay:</strong> {data.info.payment_instructions}</div>}
+          </div>
+          {data.statements.length > 0 && (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 800, margin: '6px 0 4px' }}>Statements</div>
+              {data.statements.map(s => (
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '6px 0', borderTop: '1px solid var(--border)' }}>
+                  <span style={{ flex: 1 }}>#{s.number} · {s.period_start ? periodText(s.period_start, s.period_end) : longDate(s.statement_date)}</span>
+                  <span style={{ fontWeight: 700 }}>{money(s.balance_due)}</span>
+                  <button className="bg" style={{ padding: '3px 9px', fontSize: 11 }} onClick={() => printSt(s)}>🖨</button>
+                </div>
+              ))}
+            </>
+          )}
+          {live.length > 0 && (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 800, margin: '12px 0 4px' }}>Recent activity</div>
+              {live.slice(0, 20).map(e => (
+                <div key={e.id} style={{ display: 'flex', gap: 8, fontSize: 12, padding: '5px 0', borderTop: '1px solid var(--border)' }}>
+                  <span style={{ minWidth: 80, color: 'var(--text-faint)' }}>{longDate(e.entry_date)}</span>
+                  <span style={{ flex: 1 }}>{entryLabel(e)}</span>
+                  <span style={{ fontWeight: 700, color: e.kind === 'charge' ? 'var(--text)' : 'var(--ok-text)' }}>{e.kind === 'charge' ? '' : '−'}{money(e.amount)}</span>
+                </div>
+              ))}
+            </>
+          )}
+          <div style={{ fontSize: 12, fontWeight: 800, margin: '14px 0 4px' }}>For your taxes</div>
+          {error && <div className="al al-e">{error}</div>}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select className="fi" value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 'auto', marginBottom: 0, padding: '6px 10px' }} aria-label="Year">
+              {[thisYear, thisYear - 1, thisYear - 2].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <button className="bg" style={{ fontSize: 12 }} onClick={printYear}>🖨 Year-end statement</button>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>What you paid that year, with the daycare's tax ID, for the child care credit or a dependent care FSA.</div>
+        </div>
+      )}
+      <button className="bg full" style={{ marginTop: 10 }} onClick={onClose}>Close</button>
     </Modal>
   );
 }
