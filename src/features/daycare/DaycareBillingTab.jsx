@@ -6,6 +6,8 @@ import { money, METHODS, CHARGE_TYPES, longDate, shortDate, periodText, shiftPer
          sendStatements, sendReminder, printStatement, printTaxStatement } from './billing';
 import { localDate } from './enrollment';
 import { errText } from './api';
+import OnlinePayments from './OnlinePayments';
+import { takeParams } from './payments';
 
 const VIEWS = [
   { id: 'accounts', label: 'Accounts' },
@@ -26,7 +28,9 @@ const defaultNext = cycle => {
 
 // Billing (director and office): family accounts, statements, tuition, agencies, year-end.
 export default function DaycareBillingTab({ facility, facilityId }) {
-  const [view, setView] = useState('accounts');
+  const [connectParam] = useState(() => new URLSearchParams(window.location.search).get('daycare_connect'));   // back from Stripe setup
+  const [view, setView] = useState(connectParam ? 'settings' : 'accounts');
+  useEffect(() => { if (connectParam) takeParams(['daycare_connect']); }, [connectParam]);
   const [settings, setSettings] = useState(null);
   const loadSettings = useCallback(async () => {
     const { data } = await supabase.from('daycare_billing_settings').select('*').eq('facility_id', facilityId).maybeSingle();
@@ -60,7 +64,7 @@ export default function DaycareBillingTab({ facility, facilityId }) {
       {view === 'tuition'  && <Tuition {...props}/>}
       {view === 'agencies' && <Agencies {...props}/>}
       {view === 'yearend'  && <YearEnd {...props}/>}
-      {view === 'settings' && <Settings {...props}/>}
+      {view === 'settings' && <><OnlinePayments facility={facility} facilityId={facilityId} connectParam={connectParam}/><Settings {...props}/></>}
     </div>
   );
 }

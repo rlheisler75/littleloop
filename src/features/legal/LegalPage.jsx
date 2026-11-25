@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import LoopMark from '../../components/ui/LoopMark';
 import { FREE_CHILD_LIMIT, SITTER_TIERS, DAYCARE_TIERS, DAYCARE_TRIAL_DAYS } from '../../lib/plan';
 
-export const LEGAL_UPDATED = 'November 25, 2026';
+export const LEGAL_UPDATED = 'November 25, 2026';   // online tuition payments (4C) added the same day
 export const SUPPORT_EMAIL = 'littleloop@loopwaresolutions.com';
 const COMPANY = 'Loopware Solutions LLC';
 
@@ -55,6 +55,7 @@ function Privacy() {
         <li><strong>Agreements:</strong> care agreements, typed-name signatures with the date and the signer's account, and any signed paper copies a sitter uploads.</li>
         <li><strong>Sitter details:</strong> public profile information a sitter chooses to publish, verification documents a sitter uploads (such as a background check or CPR card), payment handles (such as a Venmo username) and, for year-end tax statements, a sitter's legal name, address and taxpayer ID.</li>
         <li><strong>Billing:</strong> when a sitter or a daycare subscribes to a paid plan, payment is handled by Stripe. We never see or store full card numbers.</li>
+        <li><strong>Online tuition payments:</strong> when a daycare takes payments online, the daycare sets up its own Stripe account on Stripe's site, and parents enter card or bank details on Stripe's payment page. littleloop never sees or stores card numbers, bank account numbers or the daycare's identity documents. We keep the amount, date, whether it was a card or bank payment, its status (such as paid, refunded or disputed) and Stripe's reference numbers, so the payment shows on the family's account.</li>
         <li><strong>Usage data:</strong> basic, cookie-free page analytics (pages visited, referring site, device type and country) to understand how people find and use littleloop.</li>
       </ul>
 
@@ -84,7 +85,7 @@ function Privacy() {
         <li>Vercel (website hosting and cookie-free analytics)</li>
         <li>Resend (email delivery)</li>
         <li>Google Firebase Cloud Messaging (push notifications)</li>
-        <li>Stripe (subscription payments for sitters and daycares)</li>
+        <li>Stripe (subscription payments for sitters and daycares, and daycares' online tuition payments)</li>
         <li>OpenStreetMap (map images on Field Trip maps; your device requests map tiles directly)</li>
       </ul>
       <p>Payments between families and sitters (such as Venmo, Cash App or PayPal) happen in those apps, under their own privacy policies. littleloop only opens the app with the amount filled in.</p>
@@ -132,6 +133,7 @@ function Terms() {
       <h2>Families, sitters and daycares</h2>
       <ul>
         <li><strong>Payments:</strong> invoices in littleloop are records between a family and a sitter. Payments are made directly between them (for example by cash, Venmo or Cash App). littleloop is not a party to those payments and does not handle refunds or disputes about them.</li>
+        <li><strong>Online tuition payments:</strong> a daycare can let families pay its bills online. The daycare connects its own Stripe account and agrees to Stripe's terms with Stripe; the daycare is the seller, and payments go to the daycare's Stripe account, not to littleloop. Families pay the amount they choose, up to what they owe. littleloop records each payment on the family's account but is not a party to it: refunds, disputes and chargebacks are between the family, the daycare and Stripe.</li>
         <li><strong>Care agreements and signatures:</strong> the agreement template is a general starting point, not legal advice. Sitters and daycares are responsible for the content of their own agreements and forms. When you type your name and confirm, that counts as your electronic signature on that agreement, form or report.</li>
         <li><strong>Daycares:</strong> a daycare's director decides who joins as staff and what each person can do, and can remove a staff member's access at any time. Daily reports, incident reports, lesson plans and report cards are written by the daycare's staff, and the daycare is responsible for what they say.</li>
         <li><strong>Emergency information:</strong> parents are responsible for keeping children's medical details, contacts and pickup permissions accurate and up to date. littleloop is not an emergency service. In an emergency, call 911.</li>
@@ -151,7 +153,8 @@ function Terms() {
         <li><strong>Daycares</strong> get a {DAYCARE_TRIAL_DAYS}-day free trial with no card. Daycare plans are {DAYCARE_TIERS.map(t => `${t.label} ${tierText(t)}`).join(', ')}, or ten times the monthly price for a year, with unlimited staff. If the trial ends without a plan, the daycare's tools pause until one is chosen; nothing is deleted.</li>
         <li>Staff of a daycare that's on a plan or in its trial can use littleloop's sitter tools free while they work there.</li>
         <li>Plans renew automatically until you cancel. You can cancel at any time from the Plan tab (sitters) or Center → Plan &amp; billing (daycares), and the plan stays active until the end of the period you paid for. Switching plans is prorated. We don't give refunds for partial periods unless the law requires it.</li>
-        <li>We'll give at least 30 days' notice before changing the price of an existing subscription.</li>
+        <li>For daycares that take <strong>online tuition payments</strong>, littleloop keeps a platform fee of 0.25% of each payment, and Stripe charges the daycare its own processing fees. Both are taken out of the payment before it reaches the daycare's bank; families pay only what they owe. If a payment is fully refunded, Stripe's and littleloop's fees may not be returned, following Stripe's rules.</li>
+        <li>We'll give at least 30 days' notice before changing the price of an existing subscription or the online payment fee.</li>
       </ul>
 
       <h2>Ending your account</h2>

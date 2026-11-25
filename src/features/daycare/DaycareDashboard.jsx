@@ -29,7 +29,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
   const userId = session.user.id;
   const [rows,     setRows]     = useState(null);   // my active facility_staff rows with facilities
   const [current,  setCurrent]  = useState(() => { try { return localStorage.getItem(`ll_facility_${userId}`); } catch { return null; } });
-  const [tab,      setTab]      = useState('today');
+  const [tab,      setTab]      = useState(() => new URLSearchParams(window.location.search).has('daycare_connect') ? 'billing' : 'today');   // back from Stripe setup
   const [plan,     setPlan]     = useState(null);   // facility_plan_summary() for the current daycare
 
   const load = useCallback(async () => {

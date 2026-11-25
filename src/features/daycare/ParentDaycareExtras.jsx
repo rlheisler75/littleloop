@@ -14,6 +14,7 @@ import { LessonPlanWeek } from './LessonPlans';
 import { ReportCardView } from './ReportCards';
 import { weekStart, weekText, childName, printReportCard } from './learning';
 import { money, longDate, periodText, entryLabel, printStatement, printTaxStatement } from './billing';
+import { payCall, takeParams } from './payments';
 
 // Parent home, under a connected daycare: the day's report, incident reports to sign, the
 // week's lesson plan, report cards, and the daycare's resources. Daily reports and incidents are for parents (admin/member);
@@ -22,6 +23,12 @@ export default function ParentDaycareExtras({ facility, kids, memberRole }) {
   const isParent = memberRole === 'admin' || memberRole === 'member';
   const [counts, setCounts] = useState(null);   // { logs, sent, toSign, incidents, resources, rooms, plans, cards, unread }
   const [open,   setOpen]   = useState(null);   // 'daily' | 'incidents' | 'plans' | 'reports' | 'resources'
+  const [payReturn] = useState(() => {          // back from paying on Stripe
+    const q = new URLSearchParams(window.location.search);
+    return q.get('daycare') === facility.id && (q.get('daycare_paid') || q.get('daycare_pay'))
+      ? { paid: q.get('daycare_paid'), canceled: q.get('daycare_pay') === 'canceled' } : null;
+  });
+  useEffect(() => { if (payReturn) { takeParams(['daycare_paid', 'daycare_pay', 'daycare']); setOpen('billing'); } }, [payReturn]);
   const kidIds = kids.map(k => k.id).join(',');
 
   const load = useCallback(async () => {
@@ -104,7 +111,7 @@ export default function ParentDaycareExtras({ facility, kids, memberRole }) {
       {open === 'resources' && <ParentResources facility={facility} onClose={() => setOpen(null)}/>}
       {open === 'plans'     && <ParentLessonPlans rooms={counts.rooms} onClose={() => setOpen(null)}/>}
       {open === 'reports'   && <ParentReportCards facility={facility} kids={kids} rooms={counts.rooms} onClose={() => { setOpen(null); load(); }}/>}
-      {open === 'billing'   && <ParentBilling facility={facility} familyId={kids[0]?.family_id} onClose={() => setOpen(null)}/>}
+      {open === 'billing'   && <ParentBilling facility={facility} familyId={kids[0]?.family_id} canPay={isParent} payReturn={payReturn} onClose={() => { setOpen(null); load(); }}/>}
     </>
   );
 }
@@ -424,18 +431,44 @@ function ReadReportCard({ card, child, facility, roomName, onBack }) {
 
 // The family's account with the daycare: balance, statements, payments, and the year-end
 // statement for taxes. Parents (admin/member) only; read-only.
-function ParentBilling({ facility, familyId, onClose }) {
+function ParentBilling({ facility, familyId, canPay, payReturn, onClose }) {
   const [data, setData] = useState(null);
   const [year, setYear] = useState(new Date().getMonth() < 3 ? new Date().getFullYear() - 1 : new Date().getFullYear());
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const [reload, setReload] = useState(0);
   useEffect(() => {
     if (!familyId) return;
     Promise.all([
       supabase.rpc('daycare_billing_info', { p_facility: facility.id }),
       supabase.from('daycare_statements').select('*').eq('facility_id', facility.id).eq('family_id', familyId).order('number', { ascending: false }).limit(24),
       supabase.from('daycare_ledger').select('*').eq('facility_id', facility.id).eq('family_id', familyId).eq('payer', 'family').order('entry_date', { ascending: false }).order('created_at', { ascending: false }).limit(60),
-    ]).then(([{ data: info }, { data: sts }, { data: entries }]) => setData({ info, statements: sts || [], entries: entries || [] }));
-  }, [facility.id, familyId]);
+      canPay ? supabase.rpc('daycare_online_pay_info', { p_facility: facility.id }) : { data: null },
+      canPay ? supabase.from('daycare_online_payments').select('id, amount, created_at').eq('facility_id', facility.id).eq('family_id', familyId).eq('status', 'processing') : { data: [] },
+    ]).then(([{ data: info }, { data: sts }, { data: entries }, { data: pay }, { data: clearing }]) =>
+      setData({ info, statements: sts || [], entries: entries || [], pay, clearing: clearing || [] }));
+  }, [facility.id, familyId, canPay, reload]);
+
+  // Back from Stripe: check the payment and say what happened
+  useEffect(() => {
+    if (!payReturn) return;
+    if (payReturn.canceled) { setNotice({ ok: 'Payment canceled. Nothing was charged.' }); return; }
+    if (!payReturn.paid) return;
+    let stop = false, tries = 0;
+    const check = async () => {
+      try {
+        const { payment } = await payCall('confirm', { paymentId: payReturn.paid });
+        if (stop) return;
+        if (payment.status === 'paid') { setNotice({ ok: `Thank you! Your payment of ${money(payment.amount)} went through.` }); setReload(r => r + 1); }
+        else if (payment.status === 'processing') { setNotice({ ok: `Thanks! Your bank payment of ${money(payment.amount)} is on its way. It takes about 4 business days to clear and shows on your account when it does.` }); setReload(r => r + 1); }
+        else if (payment.status === 'failed') setNotice({ err: 'That payment didn’t go through. Nothing was charged.' });
+        else if (++tries < 4) setTimeout(check, 2500);
+        else setNotice({ ok: 'Thanks! We’re waiting to hear back from Stripe. Your account updates in a few minutes.' });
+      } catch (e) { if (!stop) setNotice({ err: e.message }); }
+    };
+    check();
+    return () => { stop = true; };
+  }, [payReturn]);
 
   async function printSt(st) {
     const { data: lines } = await supabase.from('daycare_ledger').select('*').eq('statement_id', st.id).order('entry_date');
@@ -450,17 +483,22 @@ function ParentBilling({ facility, familyId, onClose }) {
 
   const live = (data?.entries || []).filter(e => !e.voided_at);
   const balance = live.reduce((s, e) => s + (e.kind === 'charge' ? 1 : -1) * Number(e.amount), 0);
+  const clearing = data?.clearing || [];
+  const payable = Math.round((balance - clearing.reduce((s, p) => s + Number(p.amount), 0)) * 100) / 100;
   const thisYear = new Date().getFullYear();
   return (
     <Modal open onClose={onClose}>
       <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 21, fontWeight: 600, marginBottom: 2 }}>🧾 Billing</div>
       <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 10 }}>{facility.name}</div>
+      {notice && <div className={`al ${notice.err ? 'al-e' : 'al-s'}`}>{notice.err || notice.ok}</div>}
       {!data ? <div style={{ textAlign: 'center', padding: 30 }}><Spinner size={20}/></div> : (
         <div style={{ maxHeight: '64vh', overflowY: 'auto' }}>
           <div className="card" style={{ padding: '12px 14px', marginBottom: 10 }}>
             <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.6px', color: 'var(--text-faint)' }}>Balance</div>
             <div style={{ fontSize: 26, fontWeight: 800 }}>{balance < -0.004 ? `${money(-balance)} credit` : money(balance)}</div>
             {data.statements[0] && balance > 0.004 && <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Due by {longDate(data.statements[0].due_date)}</div>}
+            {clearing.map(p => <div key={p.id} style={{ fontSize: 12, marginTop: 6, color: 'var(--text-dim)' }}>⏳ Bank payment of {money(p.amount)} clearing (started {longDate(localDate(new Date(p.created_at)))})</div>)}
+            {canPay && data.pay?.enabled && payable > 0.004 && <PayOnline facility={facility} familyId={familyId} payable={payable} pay={data.pay} onError={m => setNotice({ err: m })}/>}
             {data.info?.payment_instructions && <div style={{ fontSize: 12, marginTop: 8, padding: '8px 10px', borderRadius: 10, background: 'var(--input-bg)' }}><strong>How to pay:</strong> {data.info.payment_instructions}</div>}
           </div>
           {data.statements.length > 0 && (
@@ -500,5 +538,34 @@ function ParentBilling({ facility, familyId, onClose }) {
       )}
       <button className="bg full" style={{ marginTop: 10 }} onClick={onClose}>Close</button>
     </Modal>
+  );
+}
+
+// Pay a daycare bill online: the amount (up to what's owed), then Stripe's secure page
+function PayOnline({ facility, familyId, payable, pay, onError }) {
+  const [amount, setAmount] = useState(payable.toFixed(2));
+  const [busy,   setBusy]   = useState(false);
+  const value = Math.round(parseFloat(amount) * 100) / 100;
+  const ok = value >= 1 && value <= payable + 0.004;
+  async function go() {
+    setBusy(true);
+    try {
+      const { url } = await payCall('checkout', { facilityId: facility.id, familyId, amount: value, returnUrl: window.location.origin });
+      window.location.href = url;
+    } catch (e) { setBusy(false); onError(e.message); }
+  }
+  const how = pay.card && pay.bank ? 'card or bank account' : pay.card ? 'card' : 'bank account';
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>$</span>
+        <input className="fi" type="number" inputMode="decimal" min="1" step="0.01" max={payable} value={amount} onChange={e => setAmount(e.target.value)}
+          aria-label="Amount to pay" style={{ width: 110, marginBottom: 0, padding: '7px 10px' }}/>
+        <button className="bp" onClick={go} disabled={busy || !ok} style={{ padding: '8px 16px' }}>{busy ? <Spinner/> : ok ? `Pay ${money(value)} online` : 'Pay online'}</button>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6, lineHeight: 1.5 }}>
+        By {how} on Stripe’s secure page. {pay.bank ? 'Bank payments take about 4 business days to clear. ' : ''}{pay.test_mode ? 'Test mode: no real money moves.' : ''}
+      </div>
+    </div>
   );
 }
