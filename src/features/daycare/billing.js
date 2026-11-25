@@ -40,6 +40,7 @@ export function shiftPeriod(start, cycle, dir) {
 
 // How an entry reads in a ledger: charges add, payments and credits subtract
 export function entryLabel(e) {
+  if (e.kind === 'payment' && /^(pi|cs)_/.test(e.reference || '')) return e.description || 'Paid online';   // online payments carry Stripe's id
   if (e.kind === 'payment') return `Payment${e.method ? ` · ${methodLabel(e.method)}` : ''}${e.reference ? ` #${e.reference}` : ''}`;
   if (e.kind === 'credit') return e.description || 'Credit';
   return e.description || chargeLabel(e.category);

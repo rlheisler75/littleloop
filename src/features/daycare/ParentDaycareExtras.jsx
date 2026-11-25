@@ -544,6 +544,7 @@ function ParentBilling({ facility, familyId, canPay, payReturn, onClose }) {
 // Pay a daycare bill online: the amount (up to what's owed), then Stripe's secure page
 function PayOnline({ facility, familyId, payable, pay, onError }) {
   const [amount, setAmount] = useState(payable.toFixed(2));
+  useEffect(() => { setAmount(payable.toFixed(2)); }, [payable]);   // the new balance after a payment
   const [busy,   setBusy]   = useState(false);
   const value = Math.round(parseFloat(amount) * 100) / 100;
   const ok = value >= 1 && value <= payable + 0.004;

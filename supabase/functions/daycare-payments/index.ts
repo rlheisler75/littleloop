@@ -97,7 +97,7 @@ async function announce(sb: any, p: any, kind: "paid" | "failed" | "refunded" | 
     sb.from("facilities").select("name").eq("id", p.facility_id).maybeSingle(),
     sb.from("families").select("name").eq("id", p.family_id).maybeSingle(),
   ]);
-  const facName = fac?.name || "the daycare", famName = fam?.name ? `The ${fam.name} family` : "A family";
+  const facName = fac?.name || "the daycare", famName = fam?.name || "A family";   // family names already read like "The Johnsons"
   const data = { facility_id: p.facility_id, family_id: p.family_id, payment_id: p.id };
   const [parents, managers] = await Promise.all([parentIds(sb, p.family_id), managerIds(sb, p.facility_id)]);
   const amt = money(p.amount);
@@ -107,10 +107,10 @@ async function announce(sb: any, p: any, kind: "paid" | "failed" | "refunded" | 
   } else if (kind === "failed") {
     const why = p.failure_reason || "The payment didn't go through.";
     await notify(sb, parents, "Your payment didn't go through", `${amt} to ${facName}: ${why} Your balance hasn't changed.`, data);
-    await notify(sb, managers, `${famName}'s ${amt} online payment didn't go through`, why, data);
+    await notify(sb, managers, `An online payment of ${amt} from ${famName} didn't go through`, why, data);
   } else if (kind === "refunded") {
     await notify(sb, parents, `Refund from ${facName}`, `${money(refunded)} of your ${amt} payment was refunded.`, data);
-    await notify(sb, managers, `Refund recorded for ${famName.replace(/^The /, "the ")}`, `${money(refunded)} of ${amt} refunded in Stripe. Their balance is updated.`, data);
+    await notify(sb, managers, `Refund recorded: ${famName}`, `${money(refunded)} of ${amt} refunded in Stripe. Their balance is updated.`, data);
   } else {
     await notify(sb, managers, `${famName} disputed a ${amt} card payment`, "Respond in your Stripe dashboard before Stripe's deadline. The payment stays on their account until it's settled.", data);
   }
@@ -356,8 +356,8 @@ serve(async (req) => {
           "line_items[0][price_data][currency]": "usd",
           "line_items[0][price_data][unit_amount]": String(cents),
           "line_items[0][price_data][product_data][name]": `Payment to ${facName}`,
-          "line_items[0][price_data][product_data][description]": `${fam?.name ? `${fam.name} family` : "Family"} account`,
-          "payment_intent_data[description]": `${facName}: ${fam?.name || "family"} account`,
+          "line_items[0][price_data][product_data][description]": `Account: ${fam?.name || "your family"}`,
+          "payment_intent_data[description]": `${facName}: ${fam?.name || "family account"}`,
           "payment_intent_data[metadata][payment_id]": row.id, "payment_intent_data[metadata][facility_id]": facilityId,
           "payment_intent_data[metadata][family_id]": familyId, "payment_intent_data[metadata][app]": "littleloop",
           "metadata[payment_id]": row.id, "metadata[app]": "littleloop",
