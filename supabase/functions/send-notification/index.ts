@@ -304,6 +304,47 @@ serve(async (req) => {
       return reply({ sent: notify.length });
     }
 
+    // ── FIELD TRIP STARTED (sitter → families of the children on the trip) ───
+    // Robert 2026-11-26: parents should hear when a trip starts, not just find the map.
+    // Each family hears only about its own children, and only families the sitter is
+    // actively connected to (field_trip_children itself doesn't check that).
+    if (type === "field_trip") {
+      const sessionId = clip(payload.sessionId, 64);
+      if (!sessionId) return reply({ error: "sessionId required" }, 400);
+      const { data: sess } = await supabase.from("field_trip_sessions")
+        .select("id, created_by, note, is_active").eq("id", sessionId).maybeSingle();
+      if (!sess || (!svc && sess.created_by !== caller.id)) return forbidden();
+      if (!sess.is_active) return reply({ sent: 0 });
+      const { data: rows } = await supabase.from("field_trip_children")
+        .select("children(name, family_id)").eq("session_id", sessionId);
+      const byFamily = new Map<string, string[]>();
+      for (const r of rows || []) {
+        const c: any = (r as any).children;
+        if (c?.family_id) byFamily.set(c.family_id, [...(byFamily.get(c.family_id) || []), c.name || "your child"]);
+      }
+      if (!svc && byFamily.size) {
+        const { data: fs } = await supabase.from("family_sitters").select("family_id")
+          .eq("sitter_id", sess.created_by).eq("status", "active").in("family_id", [...byFamily.keys()]);
+        const ok = new Set((fs || []).map((f: any) => f.family_id));
+        for (const fid of [...byFamily.keys()]) if (!ok.has(fid)) byFamily.delete(fid);
+      }
+      const who = myName || "Your sitter";
+      const note = clip(sess.note, 80).trim();
+      const listNames = (n: string[]) => n.length <= 1 ? (n[0] || "your child")
+        : `${n.slice(0, -1).join(", ")} and ${n[n.length - 1]}`;
+      let sent = 0;
+      for (const [familyId, names] of byFamily) {
+        const { userIds } = await familyRecipients(supabase, familyId);
+        if (!userIds.length) continue;
+        const title = "📍 Field trip started";
+        const body = `${who} is out with ${listNames(names)}${note ? ` (${note})` : ""}. Tap to follow along live.`;
+        for (const uid of userIds) await createNotification(supabase, uid, "field_trip", title, body, { familyId, sessionId });
+        await sendPush(supabase, userIds, title, body, "field_trip", "/?portal=parent");
+        sent += userIds.length;
+      }
+      return reply({ sent });
+    }
+
     // ── CONNECTION REQUEST (family → sitter; the request row must exist) ─────
     if (type === "connection_request") {
       const { sitterId } = payload;

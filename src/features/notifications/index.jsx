@@ -58,7 +58,7 @@ export function NotificationCenter({ userId }) {
 
   const NOTIF_ICONS = {
     new_message: '💬', new_post: '🌸', new_invoice: '💰',
-    invoice_paid: '✅', checkin: '🟢', checkout: '🔴',
+    invoice_paid: '✅', checkin: '🟢', checkout: '🔴', field_trip: '📍',
     eta: '🚗', connection_request: '🤝', connection_accepted: '✅',
     invoice_reminder: '🔔', review: '⭐',
     daycare_report: '📒', daycare_incident: '🩹', daycare_report_card: '🎓', daycare_statement: '🧾', daycare_payment: '💳',

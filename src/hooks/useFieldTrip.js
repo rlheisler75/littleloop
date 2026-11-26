@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { invokeNotification } from '../services/push';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -118,9 +119,11 @@ export function useFieldTripSitter(sitterId, checkedInChildren = []) {
       if (sessErr) throw sessErr;
 
       if (checkedInChildren.length > 0) {
-        await supabase.from('field_trip_children').insert(
+        const { error: kidsErr } = await supabase.from('field_trip_children').insert(
           checkedInChildren.map((childId) => ({ session_id: sess.id, child_id: childId }))
         );
+        // Tell each family whose child is on the trip (bell + push; server checks who may hear)
+        if (!kidsErr) invokeNotification({ type: 'field_trip', payload: { sessionId: sess.id } });
       }
 
       setSession(sess);
