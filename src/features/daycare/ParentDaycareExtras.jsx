@@ -335,7 +335,7 @@ function ParentMenu({ facility, kids, onClose }) {
   const kidIds = kids.map(k => k.id).join(',');
   useEffect(() => {
     setData(null);
-    const to = addDays(week, 4);
+    const to = addDays(week, 6);   // through Sunday, for daycares open on weekends
     Promise.all([
       supabase.from('daycare_menu_weeks').select('week_start').eq('facility_id', facility.id).eq('week_start', week).not('shared_at', 'is', null).maybeSingle(),
       supabase.from('daycare_menus').select('day, meal, foods, note').eq('facility_id', facility.id).gte('day', week).lte('day', to),
@@ -361,7 +361,7 @@ function ParentMenu({ facility, kids, onClose }) {
       <div style={{ maxHeight: '64vh', overflowY: 'auto' }}>
         {!data ? <div style={{ textAlign: 'center', padding: 30 }}><Spinner size={20}/></div>
           : !data.shared ? <div style={{ fontSize: 13, color: 'var(--text-faint)', padding: '10px 0' }}>{facility.name} hasn't shared this week's menu yet.</div>
-          : weekDays(week).map(day => {
+          : weekDays(week, 7).map(day => {
             const meals = MEALS.filter(m => data.menus[`${day}|${m.id}`]?.foods?.length);
             if (!meals.length) return null;
             return (

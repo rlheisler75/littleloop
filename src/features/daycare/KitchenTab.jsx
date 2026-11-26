@@ -134,7 +134,7 @@ function KitchenToday({ facilityId, settings, kids, rooms, onGoTo }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ color: 'var(--text-faint)', textAlign: 'left' }}>
-                  <th style={th}>Room</th><th style={thR}>Checked in</th>
+                  <th style={th}>Room</th><th style={thR}>Here today</th>
                   {meals.map(m => <th key={m.id} style={thR}>{m.short}</th>)}
                 </tr>
               </thead>
@@ -153,7 +153,7 @@ function KitchenToday({ facilityId, settings, kids, rooms, onGoTo }) {
               </tbody>
             </table>
             <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6 }}>
-              Counts come from the meals teachers log on the Today screen (tap a child, then Meal, then pick which meal).
+              Here today counts every child checked in at any time today, including children who stayed overnight. Meals come from what teachers log on the Today screen (tap a child, then Meal, then pick which meal).
             </div>
           </div>
         </>
@@ -175,7 +175,7 @@ function MealCard({ facilityId, day, meal, row, kids, subs, roomName, cacfp, ser
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 18 }}>{meal.icon}</span>
         <strong style={{ fontSize: 14, flex: 1 }}>{meal.label}</strong>
-        {checkedIn > 0 || served > 0 ? <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Served {served}{checkedIn ? ` of ${checkedIn} checked in` : ''}</span> : null}
+        {checkedIn > 0 || served > 0 ? <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Served {served}{checkedIn ? ` of ${checkedIn} here today` : ''}</span> : null}
       </div>
       {foods.length ? (
         <div style={{ fontSize: 13, marginTop: 4 }}>{foods.map(f => f.name).join(', ')}{row.note && <span style={{ color: 'var(--text-faint)', fontStyle: 'italic' }}> · {row.note}</span>}</div>
@@ -242,6 +242,7 @@ function SubstituteRow({ facilityId, day, meal, kid, hits, room, sub, onSaved })
 function KitchenSettings({ facilityId, settings, onSaved }) {
   const [meals, setMeals] = useState(settings.meals || []);
   const [cacfp, setCacfp] = useState(!!settings.cacfp);
+  const [weekends, setWeekends] = useState(!!settings.weekends);
   const [busy,  setBusy]  = useState(false);
   const [msg,   setMsg]   = useState(null);
   const toggle = id => setMeals(ms => ms.includes(id) ? ms.filter(x => x !== id) : MEALS.map(m => m.id).filter(x => x === id || ms.includes(x)));
@@ -249,7 +250,7 @@ function KitchenSettings({ facilityId, settings, onSaved }) {
   async function save() {
     if (!meals.length) { setMsg({ err: 'Pick at least one meal you serve.' }); return; }
     setBusy(true); setMsg(null);
-    const { error } = await supabase.from('daycare_kitchen_settings').upsert({ facility_id: facilityId, meals, cacfp }, { onConflict: 'facility_id' });
+    const { error } = await supabase.from('daycare_kitchen_settings').upsert({ facility_id: facilityId, meals, cacfp, weekends }, { onConflict: 'facility_id' });
     setBusy(false);
     if (error) { setMsg({ err: errText(error) }); return; }
     setMsg({ ok: 'Saved.' });
@@ -268,6 +269,13 @@ function KitchenSettings({ facilityId, settings, onSaved }) {
           </button>
         ))}
       </div>
+      <div style={{ fontSize: 12, color: 'var(--text-faint)', margin: '-8px 0 14px' }}>Open evenings or around the clock? Add Supper and Evening snack.</div>
+      <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, cursor: 'pointer', marginBottom: 14 }}>
+        <input type="checkbox" checked={weekends} onChange={e => setWeekends(e.target.checked)} style={{ marginTop: 3 }}/>
+        <span><strong>We're open on weekends</strong>
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>Menus run Monday through Sunday instead of Monday through Friday.</span>
+        </span>
+      </label>
       <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, cursor: 'pointer', marginBottom: 14 }}>
         <input type="checkbox" checked={cacfp} onChange={e => setCacfp(e.target.checked)} style={{ marginTop: 3 }}/>
         <span>

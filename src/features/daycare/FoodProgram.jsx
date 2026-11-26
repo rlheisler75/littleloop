@@ -48,7 +48,7 @@ export default function FoodProgram({ facility, facilityId, settings, kids }) {
 
   function csv() {
     downloadCsv(`food-program-${month.slice(0, 7)}.csv`, [
-      ['Date', 'Children checked in', ...meals.flatMap(m => CATS.map(c => `${m.label} (${c.label})`))],
+      ['Date', 'Children here', ...meals.flatMap(m => CATS.map(c => `${m.label} (${c.label})`))],
       ...days.map(d => [d, att[d] || 0, ...meals.flatMap(m => CATS.map(c => counts.filter(r => r.day === d && r.meal === m.id && r.category === c.id).reduce((s, r) => s + r.n, 0)))]),
       ['Total', '', ...meals.flatMap(m => CATS.map(c => total(m.id, c.id)))],
     ]);
@@ -60,7 +60,7 @@ export default function FoodProgram({ facility, facilityId, settings, kids }) {
       `<h1>Meal counts: ${esc(monthName(month))}</h1><div class="sub">${esc(facility?.name || '')} · USDA Child and Adult Care Food Program</div>
        <table><tr><th>Meal</th>${CATS.map(c => `<th>${c.label}</th>`).join('')}<th>Total</th></tr>
        ${meals.map(m => `<tr><td>${esc(m.label)}</td>${CATS.map(c => `<td>${total(m.id, c.id)}</td>`).join('')}<td><b>${total(m.id)}</b></td></tr>`).join('')}</table>
-       <table><tr><th>Date</th><th>Checked in</th>${meals.map(m => `<th>${esc(m.short)}</th>`).join('')}</tr>
+       <table><tr><th>Date</th><th>Here</th>${meals.map(m => `<th>${esc(m.short)}</th>`).join('')}</tr>
        ${days.map(d => `<tr><td>${esc(dayShort(d))}</td><td>${att[d] || 0}</td>${meals.map(m => `<td>${dayMeal(d, m.id)}</td>`).join('')}</tr>`).join('')}
        <tr class="tot"><td>Total</td><td></td>${meals.map(m => `<td>${total(m.id)}</td>`).join('')}</tr></table>`);
   }
@@ -108,8 +108,8 @@ export default function FoodProgram({ facility, facilityId, settings, kids }) {
               )}
               {data.not_checked_in.length > 0 && (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 800, marginTop: data.over_limit.length ? 10 : 0 }}>Meals for a child who wasn't checked in</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>Auditors compare meal counts with attendance. Check these children in for that day, or fix the meal entry.</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, marginTop: data.over_limit.length ? 10 : 0 }}>Meals for a child who wasn't here that day</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>Auditors compare meal counts with attendance. A child counts as here if they were checked in at any time that day, overnight stays included. Fix the check-in or the meal entry.</div>
                   {data.not_checked_in.slice(0, 30).map((r, i) => <div key={i} style={{ fontSize: 12, padding: '2px 0' }}>{dayShort(r.day)} · <strong>{r.name}</strong>: {mealLabel(r.meal)}</div>)}
                   {data.not_checked_in.length > 30 && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>…and {data.not_checked_in.length - 30} more</div>}
                 </>
@@ -120,7 +120,7 @@ export default function FoodProgram({ facility, facilityId, settings, kids }) {
           <div className="card" style={{ padding: '8px 12px', overflowX: 'auto' }}>
             {days.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-faint)', padding: '8px 0' }}>No meals or check-ins this month yet.</div> : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead><tr style={{ color: 'var(--text-faint)' }}><th style={th}>Date</th><th style={thR}>Checked in</th>{meals.map(m => <th key={m.id} style={thR}>{m.short}</th>)}</tr></thead>
+                <thead><tr style={{ color: 'var(--text-faint)' }}><th style={th}>Date</th><th style={thR}>Here</th>{meals.map(m => <th key={m.id} style={thR}>{m.short}</th>)}</tr></thead>
                 <tbody>
                   {days.map(d => (
                     <tr key={d}><td style={td}>{dayShort(d)}</td><td style={tdR}>{att[d] || 0}</td>

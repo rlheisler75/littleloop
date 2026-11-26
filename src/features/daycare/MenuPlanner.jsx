@@ -7,7 +7,7 @@ import { addDays } from './enrollment';
 import { weekStart, weekText } from './learning';
 import {
   COMPONENTS, ALLERGENS, componentOf, allergenLabel, servedMeals, loadMenus, weekDays, dayLabel, isToday,
-  cacfpCheck, mealConflicts, printMenu,
+  cacfpCheck, mealConflicts, printMenu, openDays, weekRange,
 } from './kitchen';
 
 // The week's menu: Monday to Friday, by meal. Copy an earlier week (a 4-week cycle is "copy from
@@ -22,16 +22,17 @@ export default function MenuPlanner({ facility, facilityId, settings, kids }) {
   const [busy,    setBusy]    = useState(false);
   const [msg,     setMsg]     = useState(null);
   const meals = servedMeals(settings);
-  const days = weekDays(week);
+  const n = openDays(settings);                      // 7 when open on weekends
+  const days = weekDays(week, n);
 
   const load = useCallback(async () => {
     const [m, { data: w }, { data: lib }] = await Promise.all([
-      loadMenus(facilityId, week, addDays(week, 4)),
+      loadMenus(facilityId, week, addDays(week, n - 1)),
       supabase.from('daycare_menu_weeks').select('*').eq('facility_id', facilityId).eq('week_start', week).maybeSingle(),
       supabase.from('daycare_foods').select('id, name, component, allergens').eq('facility_id', facilityId).order('name'),
     ]);
     setMenus(m); setShared(w || null); setLibrary(lib || []);
-  }, [facilityId, week]);
+  }, [facilityId, week, n]);
   useEffect(() => { setMenus(null); setMsg(null); load(); }, [load]);
 
   const planned = menus ? Object.values(menus).filter(r => r.foods?.length).length : 0;
@@ -48,16 +49,16 @@ export default function MenuPlanner({ facility, facilityId, settings, kids }) {
   async function copy(weeksBack) {
     setCopyFrom(null); setBusy(true); setMsg(null);
     const from = addDays(week, -7 * weeksBack);
-    const src = await loadMenus(facilityId, from, addDays(from, 4));
+    const src = await loadMenus(facilityId, from, addDays(from, n - 1));
     const rows = Object.values(src).filter(r => meals.some(m => m.id === r.meal) && (r.foods?.length || r.note)).map(r => {
       const offset = Math.round((new Date(r.day + 'T12:00:00') - new Date(from + 'T12:00:00')) / 86400000);
       return { facility_id: facilityId, day: addDays(week, offset), meal: r.meal, foods: r.foods, note: r.note };
     });
-    if (!rows.length) { setBusy(false); setMsg({ err: `Nothing was planned the week of ${weekText(from)}.` }); return; }
+    if (!rows.length) { setBusy(false); setMsg({ err: `Nothing was planned the week of ${weekRange(from, n)}.` }); return; }
     const { error } = await supabase.from('daycare_menus').upsert(rows, { onConflict: 'facility_id,day,meal' });
     setBusy(false);
     if (error) { setMsg({ err: errText(error) }); return; }
-    setMsg({ ok: `Copied ${rows.length} meal${rows.length === 1 ? '' : 's'} from the week of ${weekText(from)}.` });
+    setMsg({ ok: `Copied ${rows.length} meal${rows.length === 1 ? '' : 's'} from the week of ${weekRange(from, n)}.` });
     load();
   }
 
@@ -66,15 +67,15 @@ export default function MenuPlanner({ facility, facilityId, settings, kids }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
         <button className="bg" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setWeek(w => addDays(w, -7))} aria-label="Previous week">‹</button>
-        <span style={{ fontSize: 13, fontWeight: 800, minWidth: 120, textAlign: 'center' }}>{week === thisWeek ? 'This week' : week === addDays(thisWeek, 7) ? 'Next week' : weekText(week)}</span>
+        <span style={{ fontSize: 13, fontWeight: 800, minWidth: 120, textAlign: 'center' }}>{week === thisWeek ? 'This week' : week === addDays(thisWeek, 7) ? 'Next week' : weekRange(week, n)}</span>
         <button className="bg" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setWeek(w => addDays(w, 7))} aria-label="Next week">›</button>
         <span style={{ flex: 1 }}/>
         <select className="fi" value="" disabled={busy} onChange={e => e.target.value && setCopyFrom(Number(e.target.value))} aria-label="Copy an earlier week"
           style={{ width: 'auto', marginBottom: 0, padding: '5px 8px', fontSize: 12 }}>
           <option value="">Copy from…</option>
-          {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n === 1 ? 'Last week' : `${n} weeks ago`} ({weekText(addDays(week, -7 * n))})</option>)}
+          {[1, 2, 3, 4].map(w => <option key={w} value={w}>{w === 1 ? 'Last week' : `${w} weeks ago`} ({weekRange(addDays(week, -7 * w), n)})</option>)}
         </select>
-        <button className="bg" style={{ padding: '5px 10px', fontSize: 12 }} disabled={!menus || !planned} onClick={() => printMenu(week, menus, meals, facility?.name)}>🖨 Print</button>
+        <button className="bg" style={{ padding: '5px 10px', fontSize: 12 }} disabled={!menus || !planned} onClick={() => printMenu(week, menus, meals, facility?.name, n)}>🖨 Print</button>
         {shared?.shared_at
           ? <button className="bg" style={{ padding: '5px 10px', fontSize: 12 }} disabled={busy} onClick={() => share(false)} title={`Shared by ${shared.shared_by_name || 'staff'}`}>✓ Shared · Stop sharing</button>
           : <button className="bp" style={{ padding: '5px 12px', fontSize: 12 }} disabled={busy || !planned} onClick={() => share(true)}>Share with families</button>}
@@ -118,7 +119,7 @@ export default function MenuPlanner({ facility, facilityId, settings, kids }) {
         <MealEditor facilityId={facilityId} day={editing.day} meal={editing.meal} row={menus?.[`${editing.day}|${editing.meal.id}`]}
           library={library} kids={kids} cacfp={settings.cacfp} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }}/>
       )}
-      <Confirm open={copyFrom != null} title={`Copy the week of ${copyFrom ? weekText(addDays(week, -7 * copyFrom)) : ''}?`}
+      <Confirm open={copyFrom != null} title={`Copy the week of ${copyFrom ? weekRange(addDays(week, -7 * copyFrom), n) : ''}?`}
         message="Its meals are copied into this week. Meals you already planned for the same day and meal are replaced."
         onConfirm={() => copy(copyFrom)} onCancel={() => setCopyFrom(null)}/>
     </div>

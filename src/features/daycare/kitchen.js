@@ -11,6 +11,7 @@ export const MEALS = [
   { id: 'lunch',     label: 'Lunch',           short: 'Lunch',     icon: '🍽️' },
   { id: 'pm_snack',  label: 'Afternoon snack', short: 'PM snack',  icon: '🧀', snack: true },
   { id: 'supper',    label: 'Supper',          short: 'Supper',    icon: '🍲' },
+  { id: 'evening_snack', label: 'Evening snack', short: 'Eve snack', icon: '🌙', snack: true },   // evening and overnight care
 ];
 export const DEFAULT_MEALS = ['breakfast', 'am_snack', 'lunch', 'pm_snack'];
 export const mealOf = id => MEALS.find(m => m.id === id) || null;
@@ -39,7 +40,9 @@ export const allergenLabel = id => ALLERGENS.find(a => a.id === id)?.label || id
 export function guessMeal(served, d = new Date()) {
   if (!served?.length) return null;
   const m = d.getHours() * 60 + d.getMinutes();
-  const id = m < 9 * 60 + 30 ? 'breakfast' : m < 11 * 60 ? 'am_snack' : m < 13 * 60 + 30 ? 'lunch' : m < 16 * 60 + 30 ? 'pm_snack' : 'supper';
+  // Overnight (24-hour care): after 7 PM and before 5 AM is the evening snack
+  const id = m < 5 * 60 ? 'evening_snack' : m < 9 * 60 + 30 ? 'breakfast' : m < 11 * 60 ? 'am_snack' : m < 13 * 60 + 30 ? 'lunch'
+    : m < 16 * 60 + 30 ? 'pm_snack' : m < 19 * 60 ? 'supper' : 'evening_snack';
   if (served.includes(id)) return id;
   const at = i => MEALS.findIndex(x => x.id === i);
   return [...served].sort((a, b) => Math.abs(at(a) - at(id)) - Math.abs(at(b) - at(id)))[0];
@@ -180,23 +183,29 @@ export async function loadSubs(facilityId, from, to) {
   return Object.fromEntries((data || []).map(r => [`${r.day}|${r.meal}|${r.child_id}`, r]));
 }
 
-export const weekDays = monday => [0, 1, 2, 3, 4].map(i => addDays(monday, i));
+// Monday to Friday, or to Sunday for a daycare open on weekends
+export const weekDays = (monday, n = 5) => Array.from({ length: n }, (_, i) => addDays(monday, i));
+export const openDays = settings => settings?.weekends ? 7 : 5;
+export function weekRange(monday, n = 5) {
+  const a = new Date(monday + 'T12:00:00'), b = new Date(addDays(monday, n - 1) + 'T12:00:00');
+  return `${a.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${b.toLocaleDateString([], a.getMonth() === b.getMonth() ? { day: 'numeric' } : { month: 'short', day: 'numeric' })}`;
+}
 export const dayLabel = iso => new Date(iso + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 export const isToday = iso => iso === localDate();
 
 // Print the week's menu to post on the wall
-export function printMenu(monday, menus, meals, facilityName) {
-  const days = weekDays(monday);
+export function printMenu(monday, menus, meals, facilityName, n = 5) {
+  const days = weekDays(monday, n);
   const cell = (d, m) => {
     const r = menus[`${d}|${m.id}`];
     return r?.foods?.length ? r.foods.map(f => esc(f.name)).join('<br>') + (r.note ? `<div class="note">${esc(r.note)}</div>` : '') : '<span class="none">—</span>';
   };
-  printWindow(`Menu: week of ${weekText(monday)}`, `
+  printWindow(`Menu: week of ${weekRange(monday, n)}`, `
     @page{size:landscape;margin:12mm}
     table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#f1f5f9;font-size:13px;padding:6px;border:1px solid #cbd5e1}
     td{vertical-align:top;border:1px solid #cbd5e1;padding:6px;font-size:13px;line-height:1.5}th.meal{width:110px;text-align:left}
     .none{color:#94a3b8}.note{font-size:11px;color:#64748b;font-style:italic;margin-top:4px}.foot{font-size:11px;color:#64748b;margin-top:10px}`,
-    `<h1>Menu: week of ${esc(weekText(monday))}</h1><div class="sub">${esc(facilityName || '')}</div>
+    `<h1>Menu: week of ${esc(weekRange(monday, n))}</h1><div class="sub">${esc(facilityName || '')}</div>
      <table><tr><th class="meal"></th>${days.map(d => `<th>${esc(dayLabel(d))}</th>`).join('')}</tr>
      ${meals.map(m => `<tr><th class="meal">${esc(m.label)}</th>${days.map(d => `<td>${cell(d, m)}</td>`).join('')}</tr>`).join('')}</table>
      <div class="foot">Children with food allergies or special diets get a safe substitute. Menu may change.</div>`);
