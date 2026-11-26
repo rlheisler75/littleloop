@@ -286,10 +286,7 @@ export default function ParentDashboard({ session, onSignOut, switchTo = null })
             {family ? (
               <>
                 {family.id && <div style={{ marginBottom: 20 }}><ParentFollowUs familyId={family.id}/></div>}
-                <ParentDaycareCard familyId={family.id} links={daycares} children={children} isAdmin={isAdmin} memberRole={member?.role} onChanged={load}/>
-                <ParentAgreementsCard familyId={family.id} sitters={family.sitters_list || []} userId={session.user.id} canSign={isAdmin || member?.role === 'member'}/>
-                <WeeklyScheduleCard familyId={family.id} sitterName={family.sitter_name || 'Sitter'}/>
-                <HoursSummaryCard familyId={family.id} children={children} onViewHistory={() => setShowCheckinHist(true)}/>
+                {/* The family first: its children (with check-in), care info, sitters and members */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                   <button onClick={() => setShowIconPicker(true)} style={{ fontSize: 36, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{family.icon || '&#x1F468;&#x200D;&#x1F469;&#x200D;&#x1F467;'}</button>
                   <div style={{ flex: 1 }}><FamilyNameEditor familyId={family.id} name={family.name} onSaved={n => setFamily(f => ({ ...f, name: n }))}/></div>
@@ -349,7 +346,7 @@ export default function ParentDashboard({ session, onSignOut, switchTo = null })
                       </div>
                   }
                 </div>
-                <div>
+                <div style={{ marginBottom: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <SectionLabel>Family Members</SectionLabel>
                     {isAdmin && <button className="bp" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setShowAddMember(true)}>+ Add Member</button>}
@@ -372,6 +369,10 @@ export default function ParentDashboard({ session, onSignOut, switchTo = null })
                     ))}
                   </div>
                 </div>
+                <ParentDaycareCard familyId={family.id} links={daycares} children={children} isAdmin={isAdmin} memberRole={member?.role} onChanged={load}/>
+                <ParentAgreementsCard familyId={family.id} sitters={family.sitters_list || []} userId={session.user.id} canSign={isAdmin || member?.role === 'member'}/>
+                <WeeklyScheduleCard familyId={family.id} sitterName={family.sitter_name || 'Sitter'}/>
+                <HoursSummaryCard familyId={family.id} children={children} onViewHistory={() => setShowCheckinHist(true)}/>
               </>
             ) : (
               <div className="es"><div className="ic">&#x1F3E0;</div><h3>No family found</h3><p>Your account is not linked to a family yet.</p></div>
