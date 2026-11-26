@@ -5,6 +5,7 @@ import { loopMarkSvg } from '../../lib/loopMark';
 import { Modal } from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import SectionLabel from '../../components/ui/SectionLabel';
+import Collapsible from '../../components/ui/Collapsible';
 
 const KINDS = [
   { id: 'guardian',  label: 'Parents / Guardians',  icon: '👪', add: '+ Add parent/guardian', hint: 'Everyone with legal responsibility for the children.' },
@@ -45,11 +46,9 @@ export function FamilyCareInfoCard({ familyId, familyName, children, isAdmin }) 
   if (children.some(c => !c.doctor_name)) missing.push("each child's doctor");
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <SectionLabel>Emergency &amp; Pickup Info</SectionLabel>
-        {isAdmin && <button className="bp" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setEditing(true)}>Edit</button>}
-      </div>
+    <>
+      <Collapsible id="parent-care-info" title="Emergency & Pickup Info" summary={isAdmin && missing.length ? 'some info still needed' : null}
+        actions={isAdmin && <button className="bp" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setEditing(true)}>Edit</button>}>
       <div style={{ padding: '12px 14px', background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-dim)' }}>
           {KINDS.map(k => <span key={k.id}>{k.icon} {count(k.id)} {k.label.toLowerCase()}</span>)}
@@ -61,9 +60,10 @@ export function FamilyCareInfoCard({ familyId, familyName, children, isAdmin }) 
         )}
         <button className="bg" style={{ fontSize: 11, padding: '5px 10px', marginTop: 10 }} onClick={() => setShowCard(true)}>🚑 View emergency card</button>
       </div>
+      </Collapsible>
       <FamilyInfoModal open={editing} onClose={() => setEditing(false)} familyId={familyId} initial={data} onSaved={load}/>
       <EmergencyCardModal open={showCard} onClose={() => setShowCard(false)} familyId={familyId} familyName={familyName} children={children}/>
-    </div>
+    </>
   );
 }
 

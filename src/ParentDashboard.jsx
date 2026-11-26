@@ -6,6 +6,7 @@ import { ROLE_LABELS } from './lib/constants';
 import Bg from './components/ui/Bg';
 import Spinner from './components/ui/Spinner';
 import SectionLabel from './components/ui/SectionLabel';
+import Collapsible from './components/ui/Collapsible';
 import { Confirm } from './components/ui/Modal';
 import { NotificationCenter } from './features/notifications/index';
 import { FamilyNameEditor, MemberProfileTab } from './features/members/MemberProfileTab';
@@ -291,11 +292,8 @@ export default function ParentDashboard({ session, onSignOut, switchTo = null })
                   <button onClick={() => setShowIconPicker(true)} style={{ fontSize: 36, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{family.icon || '&#x1F468;&#x200D;&#x1F469;&#x200D;&#x1F467;'}</button>
                   <div style={{ flex: 1 }}><FamilyNameEditor familyId={family.id} name={family.name} onSaved={n => setFamily(f => ({ ...f, name: n }))}/></div>
                 </div>
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <SectionLabel>Children</SectionLabel>
-                    {isAdmin && <button className="bp" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setShowAddChild(true)}>+ Add Child</button>}
-                  </div>
+                <Collapsible id="parent-children" title="Children" summary={children.length ? `${children.length}` : null}
+                  actions={isAdmin && <button className="bp" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setShowAddChild(true)}>+ Add Child</button>}>
                   {children.length === 0
                     ? <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No children added yet.</div>
                     : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -313,14 +311,11 @@ export default function ParentDashboard({ session, onSignOut, switchTo = null })
                         ))}
                       </div>
                   }
-                </div>
+                </Collapsible>
                 <FamilyCareInfoCard familyId={family.id} familyName={family.name} children={children} isAdmin={isAdmin}/>
                 {(isAdmin || member?.role === 'member') && <OnMyWayButton familyId={family.id} memberId={member?.id} memberName={name}/>}
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <SectionLabel>Sitters</SectionLabel>
-                    {isAdmin && <button className="bp" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setShowFindSitter(true)}>+ Find Sitter</button>}
-                  </div>
+                <Collapsible id="parent-sitters" title="Sitters" summary={(family.sitters_list || []).length ? `${family.sitters_list.length}` : null}
+                  actions={isAdmin && <button className="bp" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setShowFindSitter(true)}>+ Find Sitter</button>}>
                   {(family.sitters_list || []).length === 0
                     ? <div style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No sitters connected yet.</div>
                     : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -345,12 +340,9 @@ export default function ParentDashboard({ session, onSignOut, switchTo = null })
                         ))}
                       </div>
                   }
-                </div>
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <SectionLabel>Family Members</SectionLabel>
-                    {isAdmin && <button className="bp" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setShowAddMember(true)}>+ Add Member</button>}
-                  </div>
+                </Collapsible>
+                <Collapsible id="parent-members" title="Family Members" style={{ marginBottom: 24 }} summary={members.length ? `${members.length}` : null}
+                  actions={isAdmin && <button className="bp" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setShowAddMember(true)}>+ Add Member</button>}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {members.map(m => (
                       <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
@@ -368,7 +360,7 @@ export default function ParentDashboard({ session, onSignOut, switchTo = null })
                       </div>
                     ))}
                   </div>
-                </div>
+                </Collapsible>
                 <ParentDaycareCard familyId={family.id} links={daycares} children={children} isAdmin={isAdmin} memberRole={member?.role} onChanged={load}/>
                 <ParentAgreementsCard familyId={family.id} sitters={family.sitters_list || []} userId={session.user.id} canSign={isAdmin || member?.role === 'member'}/>
                 <WeeklyScheduleCard familyId={family.id} sitterName={family.sitter_name || 'Sitter'}/>

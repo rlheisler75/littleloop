@@ -7,6 +7,7 @@ import { ScheduleSlotModal } from '../../components/modals/LeaveReviewModal';
 import SectionLabel from '../../components/ui/SectionLabel';
 import Spinner from '../../components/ui/Spinner';
 import SitterAvatar from '../../components/ui/SitterAvatar';
+import { useFolded } from '../../components/ui/Collapsible';
 import { useMemberLocationShare } from '../../hooks/useMemberLocation';
 
 // ─── Schedule manager (sitter side) ──────────────────────────────────────────
@@ -75,7 +76,7 @@ export function ScheduleManager({ sitterId, familyId, familyName }) {
 export function WeeklyScheduleCard({ familyId, sitters }) {
   const [slots,     setSlots]     = useState([]);
   const [loading,   setLoading]   = useState(true);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, toggleCollapsed] = useFolded('parent-week');
 
   useEffect(() => { load(); }, [familyId]);
 
@@ -107,7 +108,7 @@ export function WeeklyScheduleCard({ familyId, sitters }) {
   return (
     <div className="card fade-up" style={{ padding: '16px 18px', marginBottom: 16 }}>
       <div
-        onClick={() => setCollapsed(v => !v)}
+        onClick={toggleCollapsed}
         style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: collapsed ? 0 : 14, cursor: 'pointer', userSelect: 'none' }}
       >
         <span style={{ fontSize: 18 }}>📅</span>

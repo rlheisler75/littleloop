@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Confirm } from '../../components/ui/Modal';
 import SectionLabel from '../../components/ui/SectionLabel';
+import Collapsible from '../../components/ui/Collapsible';
 import Spinner from '../../components/ui/Spinner';
 import EnrollmentPacket from './EnrollmentPacket';
 import ParentDaycareExtras from './ParentDaycareExtras';
@@ -13,6 +14,8 @@ export default function ParentDaycareCard({ familyId, links, children, isAdmin, 
   const [rooms,   setRooms]   = useState({});    // `${facility}:${child}` -> classroom
   const [packets, setPackets] = useState({});    // facility_id -> { done, total }
   const [packetFor, setPacketFor] = useState(null);
+  // Back from paying online: stay open even if folded, so the billing window can open
+  const [payReturning] = useState(() => { const q = new URLSearchParams(window.location.search); return q.has('daycare_paid') || q.has('daycare_pay'); });
   const [busy,    setBusy]    = useState(null);
   const [leaving, setLeaving] = useState(null);
   const [error,   setError]   = useState(null);
@@ -50,10 +53,11 @@ export default function ParentDaycareCard({ familyId, links, children, isAdmin, 
   }
 
   if (!links.length) return null;
+  const names = links.map(l => l.facilities?.name).filter(Boolean).join(', ');
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <SectionLabel>Daycare</SectionLabel>
+    <>
+      <Collapsible id="parent-daycare" title={links.length > 1 ? 'Daycares' : 'Daycare'} summary={names} forceOpen={payReturning}>
       {error && <div className="al al-e">{error}</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {links.map(link => {
@@ -122,6 +126,7 @@ export default function ParentDaycareCard({ familyId, links, children, isAdmin, 
           );
         })}
       </div>
+      </Collapsible>
       {packetFor && (
         <EnrollmentPacket open={!!packetFor} onClose={() => setPacketFor(null)} facility={{ id: packetFor.facility_id, ...packetFor.facilities }}
           familyId={familyId} memberRole={memberRole} onChanged={loadPackets}/>
@@ -129,6 +134,6 @@ export default function ParentDaycareCard({ familyId, links, children, isAdmin, 
       <Confirm open={!!leaving} danger title={`Disconnect from ${leaving?.facilities?.name || 'this daycare'}?`}
         message="Their staff will no longer see your family or post to your feed. Past check-ins and updates stay in your history."
         onConfirm={() => { const l = leaving; setLeaving(null); respond(l, false); }} onCancel={() => setLeaving(null)}/>
-    </div>
+    </>
   );
 }

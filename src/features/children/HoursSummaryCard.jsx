@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { fmtHours, fmtTime, fmtDateTime } from '../../services/format';
 import Spinner from '../../components/ui/Spinner';
+import { useFolded, Chevron } from '../../components/ui/Collapsible';
 
 // ─── Hours summary card for parent home tab ───────────────────────────────────
 
@@ -9,6 +10,7 @@ export function HoursSummaryCard({ familyId, children }) {
   const [openSessions, setOpenSessions] = useState([]);
   const [weekHours,    setWeekHours]    = useState(0);
   const [needsReview,  setNeedsReview]  = useState([]);
+  const [folded, toggleFolded] = useFolded('parent-hours');
 
   useEffect(() => { load(); }, [familyId]);
 
@@ -35,17 +37,20 @@ export function HoursSummaryCard({ familyId, children }) {
 
   return (
     <div className="card fade-up" style={{ padding: '14px 18px', marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      <div onClick={toggleFolded} role="button" tabIndex={0} aria-expanded={!folded}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFolded(); } }}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: folded ? 0 : 10, cursor: 'pointer', userSelect: 'none' }}>
         <span style={{ fontSize: 16 }}>⏱</span>
         <span style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 16, fontWeight: 600 }}>Hours This Week</span>
         <span style={{ marginLeft: 'auto', fontSize: 15, fontWeight: 700, color: 'var(--accent)' }}>{fmtHours(weekHours)}</span>
+        <span style={{ color: 'var(--text-faint)' }}><Chevron folded={folded}/></span>
       </div>
-      {needsReview.map(s => (
+      {!folded && needsReview.map(s => (
         <div key={s.checkin_id} style={{ fontSize: 11, color: 'var(--pend-text)', marginBottom: 4, padding: '6px 10px', background: 'rgba(200,120,74,.08)', borderRadius: 8, border: '1px solid rgba(200,120,74,.2)' }}>
           ⚠️ {s.children?.name} — missing checkout from {fmtDateTime(s.checked_in_at)}
         </div>
       ))}
-      {openSessions.map(s => (
+      {!folded && openSessions.map(s => (
         <div key={s.checkin_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(58,158,122,.08)', borderRadius: 8, border: '1px solid rgba(58,158,122,.2)', marginBottom: 4 }}>
           <span style={{ fontSize: 16 }}>{s.children?.avatar || '🧒'}</span>
           <span style={{ fontSize: 12, flex: 1 }}>{s.children?.name} is checked in</span>

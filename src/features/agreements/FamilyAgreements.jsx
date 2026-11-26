@@ -4,6 +4,7 @@ import { sendPushNotification } from '../../services/push';
 import { Modal } from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import SectionLabel from '../../components/ui/SectionLabel';
+import Collapsible from '../../components/ui/Collapsible';
 import AgreementView, { printAgreement, PERIODS } from './AgreementView';
 import { loadTemplate } from './AgreementEditor';
 import { findBlanks } from './defaultTemplate';
@@ -224,9 +225,11 @@ export function ParentAgreementsCard({ familyId, sitters = [], userId, canSign }
   if (!items?.length) return null;
   const sitterName = id => sitters.find(s => s.id === id)?.name || 'Your sitter';
   const current = items.find(a => a.id === open);
+  const toSign = items.filter(a => canSign && !a.signatures.some(s => s.user_id === userId) && a.status === 'sent' && a.sections?.length > 0).length;
 
   return (
-    <div style={{ marginBottom: 20 }}>
+    <>
+      <Collapsible id="parent-agreements" title="Care agreements" summary={toSign ? `${toSign} to sign` : `${items.length}`} forceOpen={toSign > 0}>
       {items.map(a => {
         const mine = a.signatures.some(s => s.user_id === userId);
         const needs = canSign && !mine && a.status === 'sent' && a.sections?.length > 0;
@@ -246,8 +249,9 @@ export function ParentAgreementsCard({ familyId, sitters = [], userId, canSign }
           </div>
         );
       })}
+      </Collapsible>
       <SignModal agreement={current} sitterName={current ? sitterName(current.sitter_id) : ''} userId={userId} canSign={canSign} onClose={() => setOpen(null)} onSigned={load}/>
-    </div>
+    </>
   );
 }
 
