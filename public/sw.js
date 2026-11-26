@@ -1,7 +1,7 @@
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
-const CACHE_VERSION = 'littleloop-v5';
+const CACHE_VERSION = 'littleloop-v6';
 
 firebase.initializeApp({
   apiKey: "AIzaSyBfGko5kB7BeSy4kFzaAdfWQiG_Nk62SqU",
@@ -16,14 +16,14 @@ const messaging = firebase.messaging();
 
 // ── Background push handler (Firebase) ────────────────────────────────────────
 messaging.onBackgroundMessage((payload) => {
-  console.log('[SW v5] Firebase background message:', JSON.stringify(payload));
+  console.log('[SW v6] Firebase background message:', JSON.stringify(payload));
   const { title, body } = payload.notification || {};
   const data = payload.data || {};
 
-  return self.registration.showNotification(title || '➿ littleloop', {
+  return self.registration.showNotification(title || 'littleloop', {
     body:     body || 'Tap to open littleloop.',
-    icon:     '/icons/icon-192x192.png',
-    badge:    '/icons/icon-96x96.png',
+    icon:     '/icons/icon-192x192.png?v=2',
+    badge:    '/icons/icon-96x96.png?v=2',
     tag:      data.tag || 'littleloop',
     data:     { url: data.url || '/' },
     vibrate:  [200, 100, 200],
@@ -33,17 +33,17 @@ messaging.onBackgroundMessage((payload) => {
 
 // ── Install ────────────────────────────────────────────────────────────────────
 self.addEventListener('install', (e) => {
-  console.log('[SW v5] Installing...');
+  console.log('[SW v6] Installing...');
   e.waitUntil(
     caches.open(CACHE_VERSION)
-      .then(cache => cache.addAll(['/icons/icon-192x192.png', '/icons/icon-96x96.png']).catch(()=>{}))
+      .then(cache => cache.addAll(['/icons/icon-192x192.png?v=2', '/icons/icon-96x96.png?v=2']).catch(()=>{}))
       .then(() => self.skipWaiting())
   );
 });
 
 // ── Activate ───────────────────────────────────────────────────────────────────
 self.addEventListener('activate', (e) => {
-  console.log('[SW v5] Activating...');
+  console.log('[SW v6] Activating...');
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k))))
@@ -53,18 +53,18 @@ self.addEventListener('activate', (e) => {
 
 // ── Fallback push handler (Web Push) ──────────────────────────────────────────
 self.addEventListener('push', (e) => {
-  console.log('[SW v5] Raw push received');
+  console.log('[SW v6] Raw push received');
   // Firebase handles its own pushes via onBackgroundMessage
   // This catches any non-Firebase pushes
-  let data = { title: '➿ littleloop', body: 'You have a new update.' };
+  let data = { title: 'littleloop', body: 'You have a new update.' };
   if (e.data) {
     try { const p = e.data.json(); if (p.title) data = p; } catch {}
   }
   e.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-96x96.png',
+      icon: '/icons/icon-192x192.png?v=2',
+      badge: '/icons/icon-96x96.png?v=2',
       tag: 'littleloop',
       vibrate: [200, 100, 200],
     })
@@ -73,7 +73,7 @@ self.addEventListener('push', (e) => {
 
 // ── Notification click ─────────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (e) => {
-  console.log('[SW v5] Notification clicked');
+  console.log('[SW v6] Notification clicked');
   e.notification.close();
   const url = e.notification.data?.url || '/';
   e.waitUntil(
