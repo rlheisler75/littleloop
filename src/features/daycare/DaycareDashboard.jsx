@@ -19,9 +19,10 @@ import LearningTab from './LearningTab';
 import DaycareBillingTab from './DaycareBillingTab';
 import OfficeTab from './OfficeTab';
 import TimeClockTab from './TimeClockTab';
+import KitchenTab from './KitchenTab';
 import DaycarePlanCard, { trialDaysLeft } from './DaycarePlanCard';
 import { loadFacilityPlan } from '../../lib/plan';
-import { isManagerRole, roleLabel } from './api';
+import { isManagerRole, isChildcareRole, isKitchenRole, roleLabel } from './api';
 import ErrorBoundary from '../../components/ErrorBoundary';
 
 // Staff side of a daycare: one dashboard per daycare the user works at.
@@ -68,12 +69,18 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
   const director  = me.role === 'director';
   const myName    = me.name || session.user.user_metadata?.name || session.user.email.split('@')[0];
 
-  const NAV = [
+  // A cook or housekeeper sees only their own tools; childcare staff see the full daycare
+  const NAV = !isChildcareRole(me.role) ? [
+    ...(isKitchenRole(me.role) ? [{ id: 'kitchen', icon: '🍎', label: 'Kitchen' }] : []),
+    { id: 'clock',      icon: '⏱️', label: 'Clock' },
+    { id: 'center',     icon: '⚙️', label: 'Center' },
+  ] : [
     { id: 'today',      icon: '🏫', label: 'Today' },
     { id: 'clock',      icon: '⏱️', label: 'Clock' },
     { id: 'daily',      icon: '📒', label: 'Daily' },
     { id: 'incidents',  icon: '🩹', label: 'Incidents' },
     { id: 'learning',   icon: '🌱', label: 'Learning' },
+    { id: 'kitchen',    icon: '🍎', label: 'Kitchen' },
     { id: 'families',   icon: '👨‍👩‍👧', label: 'Families' },
     { id: 'feed',       icon: '🌸', label: 'Updates' },
     { id: 'resources',  icon: '📚', label: 'Resources' },
@@ -86,7 +93,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
     ] : []),
     { id: 'center',     icon: '⚙️', label: 'Center' },
   ];
-  const activeTab = NAV.some(n => n.id === tab) ? tab : 'today';
+  const activeTab = NAV.some(n => n.id === tab) ? tab : NAV[0].id;
   const props = { facility, facilityId: facility.id, me, myName, manager, director, userId, onFacilityChanged: load,
                   session, plan, onPlanChanged: loadPlan };
   const locked = plan && !plan.good_standing;          // trial over and no plan
@@ -148,6 +155,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
           {activeTab === 'daily'      && <DailyReportsTab {...props}/>}
           {activeTab === 'incidents'  && <IncidentsTab {...props}/>}
           {activeTab === 'learning'   && <LearningTab {...props}/>}
+          {activeTab === 'kitchen'    && <KitchenTab {...props}/>}
           {activeTab === 'resources'  && <ResourcesTab {...props}/>}
           {activeTab === 'families'   && <DaycareFamilies {...props}/>}
           {activeTab === 'feed'       && <DaycareFeed {...props}/>}

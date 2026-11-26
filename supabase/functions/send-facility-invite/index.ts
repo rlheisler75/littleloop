@@ -24,7 +24,13 @@ const esc = (v: unknown) => String(v ?? "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
-const ROLE_LABEL: Record<string, string> = { director: "a director", office: "office staff", teacher: "a teacher" };
+const ROLE_LABEL: Record<string, string> = { director: "a director", office: "office staff", teacher: "a teacher", cook: "a cook", housekeeper: "a housekeeper" };
+// What the new staff member will do in littleloop (cooks and housekeepers never see children's records)
+const ROLE_WORK: Record<string, string> = {
+  cook: "plan menus, see which children can't have a meal and what they get instead, and log meal counts, food orders and fridge temperatures",
+  housekeeper: "clock in and out",
+};
+const DEFAULT_WORK = "check children in and out, see your classroom, and share updates with families";
 
 function emailHtml(title: string, body: string, button: string, url: string, foot: string) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#F4F7FB;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;"><div style="max-width:520px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)"><div style="background:linear-gradient(135deg,#0C1420,#1A2E4A);padding:32px 36px"><img src="https://www.littleloop.xyz/icons/mark-coral.png" width="56" height="28" alt="littleloop" style="display:block;margin-bottom:6px;border:0"><div style="font-size:22px;font-weight:700;color:#A8CCFF;letter-spacing:-0.5px">littleloop</div><div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:3px">Childcare, thoughtfully connected.</div></div><div style="padding:32px 36px"><h1 style="font-size:22px;font-weight:700;color:#14243A;margin:0 0 12px">${title}</h1><p style="font-size:15px;color:#3A5070;line-height:1.6;margin:0 0 28px">${body}</p><div style="text-align:center;margin-bottom:24px"><a href="${url}" style="display:inline-block;background:linear-gradient(135deg,#3A6FD4,#2550A8);color:#fff !important;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">${button} &rarr;</a></div><p style="font-size:12px;color:#9AAABB;line-height:1.6;text-align:center;margin:0">${foot}</p></div><div style="padding:18px 36px;border-top:1px solid #EAF0F8;text-align:center"><div style="font-size:11px;color:#B0BEC5">littleloop &middot; littleloop.xyz</div></div></div></body></html>`;
@@ -86,7 +92,7 @@ serve(async (req) => {
       subject = `${facility?.name || "Your daycare"} invited you to littleloop`;
       html = emailHtml(
         `Join ${D} on littleloop`,
-        `<strong>${inviter}</strong> added you to <strong>${D}</strong> as ${esc(ROLE_LABEL[staffRow.role] || "staff")}. littleloop is where you'll check children in and out, see your classroom, and share updates with families.`,
+        `<strong>${inviter}</strong> added you to <strong>${D}</strong> as ${esc(ROLE_LABEL[staffRow.role] || "staff")}. littleloop is where you'll ${ROLE_WORK[staffRow.role] || DEFAULT_WORK}.`,
         hasAccount ? "Sign in" : "Create your login", url,
         hasAccount ? `Sign in with <strong>${esc(to)}</strong> and ${D} will appear.` : `Sign up with <strong>${esc(to)}</strong> (choose "Daycare") to join ${D} automatically.`,
       );

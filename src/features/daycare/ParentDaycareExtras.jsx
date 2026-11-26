@@ -15,6 +15,7 @@ import { ReportCardView } from './ReportCards';
 import { weekStart, weekText, childName, printReportCard } from './learning';
 import { money, longDate, periodText, entryLabel, printStatement, printTaxStatement } from './billing';
 import { payCall, takeParams } from './payments';
+import { MEALS, conflictsFor, dayLabel, weekDays } from './kitchen';
 
 // Parent home, under a connected daycare: the day's report, incident reports to sign, the
 // week's lesson plan, report cards, and the daycare's resources. Daily reports and incidents are for parents (admin/member);
@@ -45,6 +46,11 @@ export default function ParentDaycareExtras({ facility, kids, memberRole }) {
       isParent && familyId ? supabase.from('daycare_statements').select('due_date, balance_due').eq('facility_id', facility.id).eq('family_id', familyId).order('number', { ascending: false }).limit(1).maybeSingle() : { data: null },
     ]);
     const rooms = [...new Map((en || []).filter(e => e.classroom_id).map(e => [e.classroom_id, { id: e.classroom_id, name: e.classrooms?.name || 'Classroom' }])).values()];
+    // The kitchen's menu, once it shares the week (families can't read unshared weeks)
+    const [{ data: menuWeek }, { data: todayMenus }] = await Promise.all([
+      supabase.from('daycare_menu_weeks').select('week_start').eq('facility_id', facility.id).eq('week_start', weekStart()).not('shared_at', 'is', null).maybeSingle(),
+      supabase.from('daycare_menus').select('meal, foods').eq('facility_id', facility.id).eq('day', localDate()),
+    ]);
     const { data: plans } = rooms.length
       ? await supabase.from('lesson_plans').select('id, classroom_id, theme').in('classroom_id', rooms.map(r => r.id)).eq('week_start', weekStart()).eq('status', 'published')
       : { data: [] };
@@ -55,6 +61,7 @@ export default function ParentDaycareExtras({ facility, kids, memberRole }) {
       incidents: (inc || []).length,
       resources: res.filter(r => r.published).length,
       rooms, plans: plans || [],
+      menu: menuWeek ? { today: todayMenus || [] } : null,
       cards: (cards || []).length, unread: (cards || []).filter(c => !c.parent_seen_at).length,
       billing: (bill || []).length || lastSt ? { balance: (bill || []).reduce((s, e) => s + (e.kind === 'charge' ? 1 : -1) * Number(e.amount), 0), due: lastSt?.due_date || null } : null,
     });
@@ -75,6 +82,10 @@ export default function ParentDaycareExtras({ facility, kids, memberRole }) {
     counts.plans.length > 0 && {
       id: 'plans', icon: '🗓️', title: "This week's lesson plan",
       sub: counts.plans.map(p => p.theme).filter(Boolean).join(' · ') || `What ${counts.rooms.filter(r => counts.plans.some(p => p.classroom_id === r.id)).map(r => r.name).join(' and ')} is doing this week`,
+    },
+    counts.menu && {
+      id: 'menu', icon: '🍽️', title: "This week's menu",
+      sub: menuSub(counts.menu.today, kids),
     },
     isParent && counts.cards > 0 && {
       id: 'reports', icon: '🎓', title: 'Report cards', alert: counts.unread > 0, action: counts.unread > 0 ? 'Read' : 'Open',
@@ -110,6 +121,7 @@ export default function ParentDaycareExtras({ facility, kids, memberRole }) {
       {open === 'incidents' && <ParentIncidents facility={facility} kids={kids} onClose={() => { setOpen(null); load(); }}/>}
       {open === 'resources' && <ParentResources facility={facility} onClose={() => setOpen(null)}/>}
       {open === 'plans'     && <ParentLessonPlans rooms={counts.rooms} onClose={() => setOpen(null)}/>}
+      {open === 'menu'      && <ParentMenu facility={facility} kids={kids} onClose={() => setOpen(null)}/>}
       {open === 'reports'   && <ParentReportCards facility={facility} kids={kids} rooms={counts.rooms} onClose={() => { setOpen(null); load(); }}/>}
       {open === 'billing'   && <ParentBilling facility={facility} familyId={kids[0]?.family_id} canPay={isParent} payReturn={payReturn} onClose={() => { setOpen(null); load(); }}/>}
     </>
@@ -302,6 +314,83 @@ function ParentResources({ facility, onClose }) {
       <div style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 12 }}>Shared by {facility.name}</div>
       <div style={{ maxHeight: '62vh', overflowY: 'auto' }}>
         {!items ? <div style={{ textAlign: 'center', padding: 30 }}><Spinner size={20}/></div> : <ResourceList items={items}/>}
+      </div>
+      <button className="bg full" style={{ marginTop: 10 }} onClick={onClose}>Close</button>
+    </Modal>
+  );
+}
+
+// The menu row's second line: a heads-up when today has something a child can't have, else today's lunch
+function menuSub(today, kids) {
+  const flagged = kids.filter(k => today.some(m => conflictsFor(k, m.foods || []).length));
+  if (flagged.length) return `Today has something ${flagged.map(k => k.preferred_name || k.name).join(' and ')} can't have: see the substitute`;
+  const meal = today.find(m => m.meal === 'lunch') || today[0];
+  return meal?.foods?.length ? `Today: ${meal.foods.map(f => f.name).join(', ')}` : 'Meals and snacks for the week';
+}
+
+// The daycare's shared weekly menu, with what this family's children can't have and what they get instead
+function ParentMenu({ facility, kids, onClose }) {
+  const [week, setWeek] = useState(weekStart());
+  const [data, setData] = useState(null);   // { shared, menus: {'day|meal': row}, subs: {'day|meal|child': text} }
+  const kidIds = kids.map(k => k.id).join(',');
+  useEffect(() => {
+    setData(null);
+    const to = addDays(week, 4);
+    Promise.all([
+      supabase.from('daycare_menu_weeks').select('week_start').eq('facility_id', facility.id).eq('week_start', week).not('shared_at', 'is', null).maybeSingle(),
+      supabase.from('daycare_menus').select('day, meal, foods, note').eq('facility_id', facility.id).gte('day', week).lte('day', to),
+      kidIds ? supabase.from('daycare_meal_subs').select('day, meal, child_id, substitute').eq('facility_id', facility.id).gte('day', week).lte('day', to).in('child_id', kidIds.split(',')) : { data: [] },
+    ]).then(([{ data: w }, { data: m }, { data: sub }]) => setData({
+      shared: !!w,
+      menus: Object.fromEntries((m || []).map(r => [`${r.day}|${r.meal}`, r])),
+      subs: Object.fromEntries((sub || []).map(r => [`${r.day}|${r.meal}|${r.child_id}`, r.substitute])),
+    }));
+  }, [week, facility.id, kidIds]);
+  const thisWeek = weekStart();
+  const today = localDate();
+  return (
+    <Modal open onClose={onClose}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+        <div style={{ fontFamily: "'Fredoka',sans-serif", fontSize: 21, fontWeight: 600 }}>🍽️ Menu</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button className="bg" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setWeek(w => addDays(w, -7))} disabled={week <= addDays(thisWeek, -28)} aria-label="Previous week">‹</button>
+          <span style={{ fontSize: 12, fontWeight: 700, minWidth: 96, textAlign: 'center' }}>{week === thisWeek ? 'This week' : weekText(week)}</span>
+          <button className="bg" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setWeek(w => addDays(w, 7))} disabled={week >= addDays(thisWeek, 7)} aria-label="Next week">›</button>
+        </div>
+      </div>
+      <div style={{ maxHeight: '64vh', overflowY: 'auto' }}>
+        {!data ? <div style={{ textAlign: 'center', padding: 30 }}><Spinner size={20}/></div>
+          : !data.shared ? <div style={{ fontSize: 13, color: 'var(--text-faint)', padding: '10px 0' }}>{facility.name} hasn't shared this week's menu yet.</div>
+          : weekDays(week).map(day => {
+            const meals = MEALS.filter(m => data.menus[`${day}|${m.id}`]?.foods?.length);
+            if (!meals.length) return null;
+            return (
+              <div key={day} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.6px', color: day === today ? 'var(--accent)' : 'var(--text-faint)', marginBottom: 4 }}>
+                  {dayLabel(day)}{day === today ? ' · today' : ''}
+                </div>
+                {meals.map(m => {
+                  const row = data.menus[`${day}|${m.id}`];
+                  const flagged = kids.map(k => ({ k, hits: conflictsFor(k, row.foods) })).filter(x => x.hits.length);
+                  return (
+                    <div key={m.id} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                      <span style={{ fontWeight: 700 }}>{m.icon} {m.label}:</span> {row.foods.map(f => f.name).join(', ')}
+                      {row.note && <span style={{ color: 'var(--text-faint)', fontStyle: 'italic' }}> · {row.note}</span>}
+                      {flagged.map(({ k, hits }) => {
+                        const sub = data.subs[`${day}|${m.id}|${k.id}`];
+                        return (
+                          <div key={k.id} style={{ fontSize: 12, color: 'var(--warn-text)', marginTop: 2 }}>
+                            ⚠️ {k.preferred_name || k.name} can't have {hits.map(h => h.food).join(', ')}.{' '}
+                            {sub ? <>Gets instead: <strong>{sub}</strong></> : 'The kitchen makes a substitute.'}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
       </div>
       <button className="bg full" style={{ marginTop: 10 }} onClick={onClose}>Close</button>
     </Modal>

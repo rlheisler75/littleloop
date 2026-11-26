@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { localDate } from './enrollment';
+import { mealLabel } from './kitchen';
 
 // What a teacher can log during the day. `choices` become quick-pick chips stored in
 // `amount` (meal) or `detail` (everything else).
@@ -48,7 +49,8 @@ export function describe(log) {
       bits.push(`Slept ${clock(log.started_at)} – ${clock(log.ended_at)} (${minutesText(mins)})`);
     } else bits.push(`Fell asleep at ${clock(log.started_at)}`);
   } else if (log.kind === 'meal') {
-    bits.push(log.amount ? `Ate ${log.amount.toLowerCase()}` : 'Meal');
+    if (log.meal) bits.push(mealLabel(log.meal));                       // which meal (for meal counts)
+    if (log.amount) bits.push(`Ate ${log.amount.toLowerCase()}`); else if (!log.meal) bits.push('Meal');
     if (log.detail) bits.push(log.detail);
   } else if (log.kind === 'bottle') {
     bits.push(log.amount ? `${log.amount} oz` : 'Bottle');

@@ -4,9 +4,15 @@ export const STAFF_ROLES = [
   { id: 'director', label: 'Director', desc: 'Everything, including the center\'s details and other directors' },
   { id: 'office',   label: 'Office',   desc: 'Families, classrooms and staff' },
   { id: 'teacher',  label: 'Teacher',  desc: 'Check-ins, classroom board and updates' },
+  { id: 'cook',     label: 'Cook',     desc: "Kitchen: menus, the allergy check at each meal, meal counts, food orders, fridge temperatures. Sees children's names, rooms and allergies only." },
+  { id: 'housekeeper', label: 'Housekeeper', desc: "Time clock and cleaning. No children's records." },
 ];
 export const roleLabel = r => STAFF_ROLES.find(x => x.id === r)?.label || r;
 export const isManagerRole = r => r === 'director' || r === 'office';
+// Childcare staff see children's records; a cook or housekeeper doesn't (is_facility_staff in SQL)
+export const isChildcareRole = r => ['director', 'office', 'teacher'].includes(r);
+// Who uses the Kitchen (is_kitchen_staff in SQL)
+export const isKitchenRole = r => ['director', 'office', 'teacher', 'cook'].includes(r);
 
 export const ROOM_COLORS = ['#E8845C', '#F5B83D', '#5DBB8A', '#4AA3DF', '#8B78D4', '#E06C9F', '#3FB6B2', '#8A9BB0'];
 

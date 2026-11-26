@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Modal, Confirm } from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
-import { STAFF_ROLES, roleLabel, errText, sendFacilityInvite } from './api';
+import { STAFF_ROLES, roleLabel, errText, sendFacilityInvite, isChildcareRole } from './api';
 
 // Invite staff by email and set their role. Office managers handle office and teacher
 // accounts; only a director adds, changes or removes directors (the database enforces it).
@@ -78,7 +78,7 @@ export default function StaffTab({ facilityId, me, director }) {
               <div style={{ fontSize: 12, color: 'var(--text-faint)', wordBreak: 'break-all' }}>{s.email}</div>
             </div>
             {s.status === 'invited' && <span className="sb sb-p">Invited</span>}
-            {(director || s.role !== 'director') && rooms.length > 0 && (
+            {(director || s.role !== 'director') && rooms.length > 0 && isChildcareRole(s.role) && (
               <select className="fi" value={s.classroom_id || ''} disabled={busy[s.id]} onChange={e => update(s, { classroom_id: e.target.value || null })}
                 aria-label={`Home room for ${s.name || s.email}`} title="Home room: teachers can open the documents of children in this room"
                 style={{ width: 'auto', marginBottom: 0, padding: '6px 10px', fontSize: 12 }}>
@@ -87,7 +87,7 @@ export default function StaffTab({ facilityId, me, director }) {
               </select>
             )}
             {canManage(s) ? (
-              <select className="fi" value={s.role} disabled={busy[s.id]} onChange={e => update(s, { role: e.target.value })} aria-label={`Role for ${s.name || s.email}`}
+              <select className="fi" value={s.role} disabled={busy[s.id]} onChange={e => update(s, { role: e.target.value, ...(isChildcareRole(e.target.value) ? {} : { classroom_id: null }) })} aria-label={`Role for ${s.name || s.email}`}
                 style={{ width: 'auto', marginBottom: 0, padding: '6px 10px', fontSize: 12 }}>
                 {roleOptions.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
               </select>

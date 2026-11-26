@@ -64,7 +64,8 @@ serve(async (req) => {
 
     const { data: me } = await sb.from("facility_staff").select("role")
       .eq("facility_id", facilityId).eq("user_id", user.id).eq("status", "active").maybeSingle();
-    if (!me || (managersOnly && !["director", "office"].includes(me.role))) return reply({ error: "Forbidden" }, 403);
+    // Childcare staff only: a cook or housekeeper never sends anything to parents
+    if (!me || !["director", "office", "teacher"].includes(me.role) || (managersOnly && !["director", "office"].includes(me.role))) return reply({ error: "Forbidden" }, 403);
 
     const [{ data: child }, { data: fac }] = await Promise.all([
       sb.from("children").select("name, preferred_name, family_id").eq("id", childId).maybeSingle(),

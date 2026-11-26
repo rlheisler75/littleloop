@@ -166,10 +166,10 @@ export function starterRows(facilityId) {
 }
 
 // ── Printing ─────────────────────────────────────────────────────────────────
-const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+export const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const nl = s => esc(s).replace(/\n/g, '<br>');
 
-function printWindow(title, css, body) {
+export function printWindow(title, css, body) {
   const w = window.open('', '_blank');
   if (!w) return;
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>
