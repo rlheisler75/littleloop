@@ -69,6 +69,10 @@ export const CSS = `
   .nav-tabs-scroll{scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .nav-tabs-scroll::-webkit-scrollbar{display:none}
   .nav-tabs-scroll .nav-tab{flex:1 0 auto;min-width:64px;padding:11px 10px;white-space:nowrap}
+  /* ‹ › buttons that ScrollRow shows on an edge with more tabs */
+  .scroll-row-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:32px;height:32px;padding:0 0 3px;border-radius:50%;border:1px solid var(--border);background:var(--card-bg,#fff);color:var(--accent,#7BAAEE);font-size:22px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.14);cursor:pointer}
+  .scroll-row-btn.left{left:4px}.scroll-row-btn.right{right:4px}
+  .scroll-row-btn:focus-visible{outline:2px solid var(--accent,#7BAAEE);outline-offset:2px}
 
   .tab{
     flex:1;padding:9px 0;text-align:center;cursor:pointer;

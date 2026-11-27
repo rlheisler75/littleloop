@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import LoopMark from '../../components/ui/LoopMark';
 import Spinner from '../../components/ui/Spinner';
 import Bg from '../../components/ui/Bg';
+import ScrollRow from '../../components/ui/ScrollRow';
 import { NotificationCenter } from '../notifications/index';
 import FacilitySetup from './FacilitySetup';
 import TodayBoard from './TodayBoard';
@@ -127,14 +128,16 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
           </div>
         </div>
 
-        <div className="nav-tabs-scroll" style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg,rgba(0,0,0,.15))', overflowX: 'auto' }}>
+        <ScrollRow className="nav-tabs-scroll" activeKey={activeTab}
+          outerStyle={{ borderBottom: '1px solid var(--border)', background: 'var(--nav-bg,rgba(0,0,0,.15))' }}
+          style={{ display: 'flex', overflowX: 'auto' }}>
           {NAV.map(n => (
             <div key={n.id} className={`nav-tab ${activeTab === n.id ? 'active' : ''}`} onClick={() => setTab(n.id)}>
               <span style={{ fontSize: 18 }}>{n.icon}</span>
               <span>{n.label}</span>
             </div>
           ))}
-        </div>
+        </ScrollRow>
 
         <div style={{ flex: 1, padding: '16px 14px', maxWidth: 960, width: '100%', margin: '0 auto' }}>
           {!locked && manager && daysLeft != null && daysLeft <= 7 && activeTab !== 'center' && (
