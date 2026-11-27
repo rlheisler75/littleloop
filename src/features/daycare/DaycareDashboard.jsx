@@ -127,7 +127,7 @@ export default function DaycareDashboard({ session, onSignOut, switchTo = null }
           </div>
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg,rgba(0,0,0,.15))', overflowX: 'auto' }}>
+        <div className="nav-tabs-scroll" style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg,rgba(0,0,0,.15))', overflowX: 'auto' }}>
           {NAV.map(n => (
             <div key={n.id} className={`nav-tab ${activeTab === n.id ? 'active' : ''}`} onClick={() => setTab(n.id)}>
               <span style={{ fontSize: 18 }}>{n.icon}</span>

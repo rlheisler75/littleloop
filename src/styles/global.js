@@ -64,6 +64,11 @@ export const CSS = `
   }
   .nav-tab:hover{color:var(--text-dim,rgba(255,255,255,.6))}
   .nav-tab.active{color:var(--accent,#7BAAEE);border-bottom-color:var(--accent,#7BAAEE)}
+  /* Long menus (the daycare has up to 15 tabs): each tab keeps its own width and the row
+     scrolls sideways on a phone, instead of squeezing the labels into each other. */
+  .nav-tabs-scroll{scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .nav-tabs-scroll::-webkit-scrollbar{display:none}
+  .nav-tabs-scroll .nav-tab{flex:1 0 auto;min-width:64px;padding:11px 10px;white-space:nowrap}
 
   .tab{
     flex:1;padding:9px 0;text-align:center;cursor:pointer;
